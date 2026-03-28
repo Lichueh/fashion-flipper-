@@ -1,0 +1,104 @@
+import { useState, useRef } from 'react'
+
+export default function UploadScreen({ navigate }) {
+  const [preview, setPreview] = useState(null)
+  const fileRef = useRef()
+
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setPreview(URL.createObjectURL(file))
+  }
+
+  return (
+    <div className="h-full flex flex-col bg-[#f5f4f0]">
+      {/* Header */}
+      <div className="flex items-center px-5 pt-8 pb-4 bg-[#f5f4f0]">
+        <button
+          onClick={() => navigate('home')}
+          className="w-9 h-9 bg-white rounded-full border border-stone-200 flex items-center justify-center text-zinc-600 shadow-sm mr-3"
+        >
+          ←
+        </button>
+        <h2 className="font-semibold text-zinc-800">Upload Your Old Clothes</h2>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 pb-6">
+        <p className="text-sm text-zinc-500 mb-5 leading-5">
+          Photograph or upload clothing you want to upcycle — AI will analyze fabric properties and suggest ideas
+        </p>
+
+        {/* Upload zone */}
+        <div
+          onClick={() => fileRef.current?.click()}
+          className={`relative rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all mb-5 overflow-hidden ${
+            preview
+              ? 'border-green-400 h-72'
+              : 'border-stone-300 bg-white h-52 hover:border-green-400 hover:bg-green-50/30 active:scale-[0.98]'
+          }`}
+        >
+          {preview ? (
+            <>
+              <img src={preview} alt="preview" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 flex items-end justify-center pb-4 bg-gradient-to-t from-black/30 to-transparent">
+                <span className="bg-white/90 text-zinc-700 text-xs font-medium px-4 py-1.5 rounded-full">
+                  Click to Reselect
+                </span>
+              </div>
+              {/* Checkmark */}
+              <div className="absolute top-3 right-3 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">✓</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2 px-6 text-center">
+              <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center text-4xl mb-1">
+                📷
+              </div>
+              <p className="text-zinc-600 font-medium text-sm">Tap to Take Photo / Select Photo</p>
+              <p className="text-zinc-400 text-xs">Supports JPG, PNG — recommended to shoot in natural light</p>
+            </div>
+          )}
+        </div>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleFile}
+        />
+
+        {/* Tips */}
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6">
+          <p className="text-amber-700 font-semibold text-sm mb-2">📸 Photography Tips</p>
+          <ul className="space-y-1.5">
+            {[
+              'Shoot in natural light for more accurate color recognition',
+              'Lay the garment flat to fully expose the fabric',
+              'Get close so AI can clearly see the fabric texture',
+            ].map(tip => (
+              <li key={tip} className="flex items-start gap-2 text-amber-600 text-xs">
+                <span className="mt-0.5 flex-shrink-0">•</span>
+                <span className="leading-4">{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* CTA */}
+        <button
+          onClick={() => preview && navigate('analysis', { image: preview })}
+          className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
+            preview
+              ? 'bg-green-700 text-white active:scale-[0.98] shadow-md shadow-green-700/20'
+              : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+          }`}
+        >
+          {preview ? '🔍 Start AI Analysis' : 'Please select a photo first'}
+        </button>
+      </div>
+    </div>
+  )
+}

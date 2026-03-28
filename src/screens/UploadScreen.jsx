@@ -65,7 +65,6 @@ export default function UploadScreen({ navigate }) {
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={handleFile}
         />

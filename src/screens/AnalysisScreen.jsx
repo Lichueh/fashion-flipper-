@@ -142,6 +142,10 @@ export default function AnalysisScreen({ navigate, uploadedImage }) {
               { label: 'Condition', value: mockAnalysis.fabric.condition },
               { label: 'Weight', value: mockAnalysis.fabric.weight },
               { label: 'Weave', value: mockAnalysis.fabric.texture },
+              { label: 'Grain Direction', value:
+                  mockAnalysis.garmentLayout.grainAngleDeg === 90 ? 'Vertical (Warp)' :
+                  mockAnalysis.garmentLayout.grainAngleDeg === 0  ? 'Horizontal (Weft)' :
+                  `Bias (${mockAnalysis.garmentLayout.grainAngleDeg}°)` },
             ].map(item => (
               <div key={item.label} className="flex justify-between items-center">
                 <span className="text-zinc-400 text-sm">{item.label}</span>

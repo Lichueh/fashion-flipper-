@@ -27,7 +27,7 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
       <div className="px-5 pt-8 pb-3 bg-[#f5f4f0]">
         <div className="flex items-center mb-3">
           <button
-            onClick={() => navigate('templateSelect')}
+            onClick={() => navigate('patternLayout')}
             className="w-9 h-9 bg-white rounded-full border border-stone-200 flex items-center justify-center text-zinc-600 shadow-sm mr-3 flex-shrink-0"
           >
             ←

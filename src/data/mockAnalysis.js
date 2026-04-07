@@ -25,4 +25,10 @@ export const mockAnalysis = {
     },
   ],
   tags: ['Natural Fiber', 'Machine Washable', 'Dye-friendly'],
+  garmentLayout: {
+    widthCm: 50,    // one panel width (~50cm)
+    heightCm: 70,   // body length shoulder to hem
+    grainAngleDeg: 90,
+    grainSpacingPx: 20,
+  },
 }

@@ -1,6 +1,7 @@
 const navItems = [
   { id: 'home',      label: 'Home',      icon: HomeIcon },
   { id: 'upload',    label: 'Upcycle',   icon: ScissorsIcon },
+  { id: 'learn',     label: 'Learn',     icon: BookIcon },
   { id: 'community', label: 'Community', icon: LeafIcon },
 ]
 
@@ -21,6 +22,17 @@ function ScissorsIcon({ active }) {
       <line x1="20" y1="4" x2="8.12" y2="15.88" />
       <line x1="14.47" y1="14.48" x2="20" y2="20" />
       <line x1="8.12" y1="8.12" x2="12" y2="12" />
+    </svg>
+  )
+}
+
+function BookIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#15803d' : '#9ca3af'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+      <line x1="9" y1="7" x2="15" y2="7" />
+      <line x1="9" y1="11" x2="13" y2="11" />
     </svg>
   )
 }
@@ -48,7 +60,7 @@ export default function BottomNav({ current, navigate }) {
             className="flex-1 flex flex-col items-center pt-2 pb-2.5 gap-0.5"
           >
             <Icon active={active} />
-            <span className={`text-[11px] font-medium ${active ? 'text-green-700' : 'text-gray-400'}`}>
+            <span className={`text-[10px] font-medium ${active ? 'text-green-700' : 'text-gray-400'}`}>
               {label}
             </span>
           </button>

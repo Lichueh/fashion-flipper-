@@ -29,7 +29,7 @@ export default function TemplateSelectScreen({ navigate }) {
           return (
             <div
               key={template.id}
-              onClick={() => navigate('stepGuide', { template: template.id })}
+              onClick={() => navigate('patternLayout', { template: template.id })}
               className={`bg-white rounded-3xl overflow-hidden border-2 cursor-pointer active:scale-[0.98] transition-transform shadow-sm ${
                 isRecommended ? 'border-green-300' : 'border-stone-100'
               }`}

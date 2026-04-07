@@ -7,6 +7,9 @@ import TemplateSelectScreen from './screens/TemplateSelectScreen'
 import StepGuideScreen from './screens/StepGuideScreen'
 import ResultScreen from './screens/ResultScreen'
 import CommunityScreen from './screens/CommunityScreen'
+import PatternLayoutScreen from './screens/PatternLayoutScreen'
+import BasicTutorialScreen from './screens/BasicTutorialScreen'
+import CameraPatternScreen from './screens/CameraPatternScreen'
 
 export default function App() {
   const [screen, setScreen] = useState('home')
@@ -26,8 +29,11 @@ export default function App() {
     upload:         <UploadScreen         navigate={navigate} />,
     analysis:       <AnalysisScreen       navigate={navigate} uploadedImage={uploadedImage} />,
     templateSelect: <TemplateSelectScreen navigate={navigate} />,
+    patternLayout:  <PatternLayoutScreen  navigate={navigate} template={selectedTemplate} />,
     stepGuide:      <StepGuideScreen      navigate={navigate} template={selectedTemplate} />,
     result:         <ResultScreen         navigate={navigate} template={selectedTemplate} uploadedImage={uploadedImage} />,
+    learn:          <BasicTutorialScreen  navigate={navigate} />,
+    arPattern:      <CameraPatternScreen  navigate={navigate} template={selectedTemplate} />,
     community:      <CommunityScreen      navigate={navigate} />,
   }
 

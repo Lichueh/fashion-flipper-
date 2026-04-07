@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { templates } from '../data/templates'
 import { mockAnalysis } from '../data/mockAnalysis'
 
-// ─── Draggable piece on camera overlay ───────────────────────────────────────
 
 function CameraPiece({ piece, scale, pos, dragging, onPointerDown }) {
   const pw = piece.widthCm * scale
@@ -16,8 +15,8 @@ function CameraPiece({ piece, scale, pos, dragging, onPointerDown }) {
   const shapeStyle = {
     width: pw,
     height: ph,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    border: '2px solid rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(240,242,236,0.18)',
+    border: '2px solid rgba(240,242,236,0.9)',
     backdropFilter: 'blur(2px)',
     position: 'relative',
     display: 'flex', flexDirection: 'column',
@@ -28,7 +27,7 @@ function CameraPiece({ piece, scale, pos, dragging, onPointerDown }) {
     ...(piece.shape === 'circle'    && { borderRadius: '50%' }),
     ...(piece.shape === 'ring'      && {
       borderRadius: '50%',
-      background: `radial-gradient(circle, transparent ${innerPct}%, rgba(255,255,255,0.18) ${innerPct}%, rgba(255,255,255,0.18) 100%)`,
+      background: `radial-gradient(circle, transparent ${innerPct}%, rgba(240,242,236,0.18) ${innerPct}%, rgba(240,242,236,0.18) 100%)`,
     }),
   }
 
@@ -45,37 +44,33 @@ function CameraPiece({ piece, scale, pos, dragging, onPointerDown }) {
       }}
       onPointerDown={onPointerDown}
     >
-      {/* Trapezoid rendered as SVG */}
       {piece.shape === 'trapezoid' && (
         <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} width={pw} height={ph} viewBox={`0 0 ${pw} ${ph}`}>
           <polygon
             points={`${pw*0.08},0 ${pw*0.92},0 ${pw},${ph} 0,${ph}`}
-            fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.9)" strokeWidth="2"
+            fill="rgba(240,242,236,0.18)" stroke="rgba(240,242,236,0.9)" strokeWidth="2"
           />
           <polygon
             points={`${pw*0.08+seam},${seam} ${pw*0.92-seam},${seam} ${pw-seam},${ph-seam} ${seam},${ph-seam}`}
-            fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1" strokeDasharray="4,3"
+            fill="none" stroke="rgba(240,242,236,0.5)" strokeWidth="1" strokeDasharray="4,3"
           />
         </svg>
       )}
 
       <div style={shapeStyle}>
-        {/* Seam allowance dashes */}
         {piece.shape !== 'trapezoid' && !isCircular && (
-          <div style={{ position: 'absolute', inset: seam, border: '1px dashed rgba(255,255,255,0.5)', borderRadius: 2, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: seam, border: '1px dashed rgba(240,242,236,0.5)', borderRadius: 2, pointerEvents: 'none' }} />
         )}
-        {/* Grain arrow */}
         <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
-          <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>▲</span>
-          <div style={{ width: 1, height: Math.max(14, ph * 0.35), borderLeft: '1px solid rgba(255,255,255,0.6)' }} />
-          <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>▼</span>
+          <span style={{ fontSize: 8, color: 'rgba(240,242,236,0.8)', lineHeight: 1 }}>▲</span>
+          <div style={{ width: 1, height: Math.max(14, ph * 0.35), borderLeft: '1px solid rgba(240,242,236,0.6)' }} />
+          <span style={{ fontSize: 8, color: 'rgba(240,242,236,0.8)', lineHeight: 1 }}>▼</span>
         </div>
-        {/* Label */}
         <div style={{ position: 'absolute', bottom: seam + 2, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
           <div style={{ fontSize: 8, color: 'white', fontWeight: 700, fontFamily: 'monospace', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
             {piece.label}
           </div>
-          <div style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.8)', fontFamily: 'monospace', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+          <div style={{ fontSize: 6.5, color: 'rgba(240,242,236,0.8)', fontFamily: 'monospace', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
             {piece.widthCm}×{piece.heightCm}cm
           </div>
         </div>
@@ -84,7 +79,6 @@ function CameraPiece({ piece, scale, pos, dragging, onPointerDown }) {
   )
 }
 
-// ─── Grain overlay lines (SVG, full screen) ───────────────────────────────────
 
 function GrainOverlay({ w, h, angle, spacing }) {
   const cssAngle = (90 - angle + 360) % 360
@@ -95,22 +89,21 @@ function GrainOverlay({ w, h, angle, spacing }) {
         backgroundImage: `repeating-linear-gradient(
           ${cssAngle}deg,
           transparent 0px, transparent ${spacing - 1}px,
-          rgba(100,220,150,0.12) ${spacing - 1}px, rgba(100,220,150,0.12) ${spacing}px
+          rgba(144,164,128,0.18) ${spacing - 1}px, rgba(144,164,128,0.18) ${spacing}px
         )`,
       }}
     />
   )
 }
 
-// ─── Main screen ──────────────────────────────────────────────────────────────
 
-const PIECE_SCALE = 2.4   // px per cm for pieces on camera view
+const PIECE_SCALE = 2.4
+
 
 export default function CameraPatternScreen({ navigate, template: templateId }) {
   const template   = templates[templateId]
   const { garmentLayout } = mockAnalysis
 
-  // phase: 'loading' | 'scanning' | 'ready' | 'denied'
   const [phase, setPhase]       = useState('loading')
   const [scanPct, setScanPct]   = useState(0)
   const [dimensions, setDimensions] = useState({ w: 390, h: 700 })
@@ -119,7 +112,6 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
   const containerRef = useRef()
   const streamRef   = useRef()
 
-  // piece drag state
   const [positions, setPositions] = useState(() =>
     Object.fromEntries(
       template.patternPieces.map((p, i) => [
@@ -130,7 +122,6 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
   )
   const [dragging, setDragging] = useState(null)
 
-  // Start camera
   useEffect(() => {
     let cancelled = false
     async function startCamera() {
@@ -153,7 +144,6 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
     return () => { cancelled = true; streamRef.current?.getTracks().forEach(t => t.stop()) }
   }, [])
 
-  // Scanning progress animation
   useEffect(() => {
     if (phase !== 'scanning') return
     setScanPct(0)
@@ -162,14 +152,12 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
     return () => { clearInterval(iv); clearTimeout(tm) }
   }, [phase])
 
-  // Track container dimensions for clamping
   useEffect(() => {
     if (!containerRef.current) return
     const { offsetWidth: w, offsetHeight: h } = containerRef.current
     setDimensions({ w, h })
   }, [phase])
 
-  // Drag handlers
   function handlePointerDown(e, pieceId) {
     e.preventDefault()
     const rect = containerRef.current.getBoundingClientRect()
@@ -196,79 +184,67 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
 
   function handlePointerUp() { setDragging(null) }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div
       ref={containerRef}
-      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#000', touchAction: 'none' }}
+      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#283326', touchAction: 'none' }}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
-      {/* ── Camera feed ── */}
       <video
         ref={videoRef}
         playsInline muted autoPlay
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
       />
 
-      {/* ── Scanning phase ── */}
       {phase === 'scanning' && (
         <>
-          {/* Dark overlay */}
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)', pointerEvents: 'none' }} />
-          {/* Scan line */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(40,51,38,0.25)', pointerEvents: 'none' }} />
           <div style={{
             position: 'absolute', left: 0, right: 0, height: 2,
-            background: 'rgba(74,222,128,0.85)',
-            boxShadow: '0 0 16px 4px rgba(74,222,128,0.6)',
+            background: 'rgba(144,164,128,0.85)',
+            boxShadow: '0 0 16px 4px rgba(144,164,128,0.6)',
             top: `${scanPct}%`,
             transition: 'top 0.05s linear',
             pointerEvents: 'none',
           }} />
-          {/* Corner marks */}
           {['top-4 left-4 border-t-2 border-l-2','top-4 right-4 border-t-2 border-r-2',
             'bottom-4 left-4 border-b-2 border-l-2','bottom-4 right-4 border-b-2 border-r-2',
           ].map((cls, i) => (
-            <div key={i} className={`absolute w-6 h-6 border-green-400 ${cls}`} style={{ pointerEvents: 'none' }} />
+            <div key={i} className={`absolute w-6 h-6 border-primary-300 ${cls}`} style={{ pointerEvents: 'none' }} />
           ))}
-          {/* Status pill */}
           <div style={{
             position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+            background: 'rgba(40,51,38,0.6)', backdropFilter: 'blur(8px)',
             color: 'white', fontSize: 13, fontWeight: 600,
             padding: '8px 20px', borderRadius: 24,
             display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap',
             pointerEvents: 'none',
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'pulse 1s infinite' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#90a480', display: 'inline-block', animation: 'pulse 1s infinite' }} />
             Detecting garment &amp; grain direction…
           </div>
-          {/* Progress bar */}
-          <div style={{ position: 'absolute', bottom: 80, left: 40, right: 40, height: 3, background: 'rgba(255,255,255,0.2)', borderRadius: 2, pointerEvents: 'none' }}>
-            <div style={{ height: '100%', background: '#4ade80', borderRadius: 2, width: `${scanPct}%`, transition: 'width 0.05s linear' }} />
+          <div style={{ position: 'absolute', bottom: 80, left: 40, right: 40, height: 3, background: 'rgba(240,242,236,0.2)', borderRadius: 2, pointerEvents: 'none' }}>
+            <div style={{ height: '100%', background: '#90a480', borderRadius: 2, width: `${scanPct}%`, transition: 'width 0.05s linear' }} />
           </div>
         </>
       )}
 
-      {/* ── Ready phase ── */}
       {phase === 'ready' && (
         <>
-          {/* Grain overlay */}
           <GrainOverlay w={dimensions.w} h={dimensions.h} angle={garmentLayout.grainAngleDeg} spacing={22} />
 
-          {/* Grain direction badge */}
           <div style={{
             position: 'absolute', top: 70, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
-            color: '#86efac', fontSize: 11, fontWeight: 600,
+            background: 'rgba(40,51,38,0.55)', backdropFilter: 'blur(6px)',
+            color: '#dde3d5', fontSize: 11, fontWeight: 600,
             padding: '4px 14px', borderRadius: 16, whiteSpace: 'nowrap',
             pointerEvents: 'none',
           }}>
             ✓ Grain detected: Vertical (Warp)
           </div>
 
-          {/* Pattern pieces */}
           {template.patternPieces.map(piece => (
             <CameraPiece
               key={piece.id}
@@ -280,10 +256,9 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
             />
           ))}
 
-          {/* Instruction pill */}
           <div style={{
             position: 'absolute', bottom: 110, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+            background: 'rgba(40,51,38,0.55)', backdropFilter: 'blur(6px)',
             color: 'white', fontSize: 11, fontWeight: 500,
             padding: '5px 16px', borderRadius: 16, whiteSpace: 'nowrap',
             pointerEvents: 'none',
@@ -293,33 +268,31 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
         </>
       )}
 
-      {/* ── Camera denied fallback ── */}
       {phase === 'denied' && (
         <div style={{
           position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          background: '#1c1917', padding: 32,
+          background: '#283326', padding: 32,
         }}>
           <span style={{ fontSize: 48, marginBottom: 16 }}>📷</span>
-          <p style={{ color: 'white', fontWeight: 700, fontSize: 16, marginBottom: 8, textAlign: 'center' }}>Camera Access Required</p>
-          <p style={{ color: '#a8a29e', fontSize: 13, textAlign: 'center', lineHeight: 1.6, marginBottom: 24 }}>
+          <p style={{ color: '#f0f2ec', fontWeight: 700, fontSize: 16, marginBottom: 8, textAlign: 'center' }}>Camera Access Required</p>
+          <p style={{ color: '#90a480', fontSize: 13, textAlign: 'center', lineHeight: 1.6, marginBottom: 24 }}>
             Please allow camera access in your browser settings to use the AR Pattern view.
           </p>
           <button
             onClick={() => navigate('patternLayout')}
-            style={{ background: '#15803d', color: 'white', fontSize: 14, fontWeight: 700, padding: '12px 28px', borderRadius: 24, border: 'none', cursor: 'pointer' }}
+            style={{ background: '#475840', color: '#f0f2ec', fontSize: 14, fontWeight: 700, padding: '12px 28px', borderRadius: 24, border: 'none', cursor: 'pointer' }}
           >
             ← Back to Layout
           </button>
         </div>
       )}
 
-      {/* ── Top bar (always visible) ── */}
       {phase !== 'denied' && (
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0,
           padding: '12px 16px 10px',
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.55), transparent)',
+          background: 'linear-gradient(to bottom, rgba(40,51,38,0.55), transparent)',
           display: 'flex', alignItems: 'center', gap: 12,
           pointerEvents: phase === 'scanning' ? 'none' : 'auto',
         }}>
@@ -327,39 +300,37 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
             onClick={() => navigate('patternLayout')}
             style={{
               width: 36, height: 36, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
-              border: '1px solid rgba(255,255,255,0.25)',
+              background: 'rgba(40,51,38,0.45)', backdropFilter: 'blur(4px)',
+              border: '1px solid rgba(240,242,236,0.25)',
               color: 'white', fontSize: 16, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >←</button>
           <div>
-            <p style={{ color: 'white', fontWeight: 700, fontSize: 14, margin: 0 }}>AR Pattern View</p>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, margin: 0 }}>{template.name} · {template.patternPieces.length} pieces</p>
+            <p style={{ color: '#f0f2ec', fontWeight: 700, fontSize: 14, margin: 0 }}>AR Pattern View</p>
+            <p style={{ color: 'rgba(240,242,236,0.6)', fontSize: 11, margin: 0 }}>{template.name} · {template.patternPieces.length} pieces</p>
           </div>
           {phase === 'ready' && (
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />
-              <span style={{ color: '#4ade80', fontSize: 11, fontWeight: 600 }}>LIVE</span>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#90a480', display: 'inline-block' }} />
+              <span style={{ color: '#90a480', fontSize: 11, fontWeight: 600 }}>LIVE</span>
             </div>
           )}
         </div>
       )}
 
-      {/* ── Bottom bar ── */}
       {phase === 'ready' && (
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           padding: '16px 20px 28px',
-          background: 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)',
+          background: 'linear-gradient(to top, rgba(40,51,38,0.65), transparent)',
           display: 'flex', gap: 10,
         }}>
-          {/* Piece thumbnails */}
           <div style={{ display: 'flex', gap: 6, flex: 1, alignItems: 'center' }}>
             {template.patternPieces.map(p => (
               <div key={p.id} style={{
-                background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(4px)',
-                border: '1px solid rgba(255,255,255,0.35)',
+                background: 'rgba(240,242,236,0.15)', backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(240,242,236,0.35)',
                 borderRadius: 8, padding: '3px 8px',
                 color: 'white', fontSize: 9, fontFamily: 'monospace', fontWeight: 600,
                 whiteSpace: 'nowrap',
@@ -368,11 +339,10 @@ export default function CameraPatternScreen({ navigate, template: templateId }) 
               </div>
             ))}
           </div>
-          {/* Confirm button */}
           <button
             onClick={() => navigate('stepGuide')}
             style={{
-              background: '#15803d', color: 'white',
+              background: '#475840', color: '#f0f2ec',
               fontSize: 13, fontWeight: 700,
               padding: '10px 20px', borderRadius: 20, border: 'none',
               cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,

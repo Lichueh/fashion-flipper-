@@ -1,202 +1,588 @@
-import { useState, useRef } from 'react'
-import { templates } from '../data/templates'
-import { mockAnalysis } from '../data/mockAnalysis'
+import { useState, useRef, useEffect } from "react";
+import { templates } from "../data/templates";
+import { mockAnalysis } from "../data/mockAnalysis";
 
-
-const CANVAS_W   = 280
-const SVG_SRC_W  = 494.56
-const SVG_SRC_H  = 890.81
-const SVG_SCALE  = CANVAS_W / SVG_SRC_W
-const SVG_PX_H   = Math.round(SVG_SRC_H * SVG_SCALE)
-const CANVAS_H   = SVG_PX_H + 24
-
+/* ── Layout constants ────────────────────────────────────────────── */
+const PANEL_W = 290; // each panel takes the full available width
 
 function grainLabel(angle) {
-  if (angle === 90) return 'Vertical (Warp)'
-  if (angle === 0)  return 'Horizontal (Weft)'
-  return `Bias (${angle}°)`
+  if (angle === 90) return "Vertical (Warp)";
+  if (angle === 0) return "Horizontal (Weft)";
+  return `Bias (${angle}°)`;
 }
-
 
 function isMisaligned(pieceAngle, garmentAngle) {
-  const diff = Math.abs((pieceAngle - garmentAngle + 180) % 180)
-  return diff > 15
+  const diff = Math.abs((pieceAngle - garmentAngle + 180) % 180);
+  return diff > 15;
 }
 
+/* ── Effective bounding box of a piece after rotation ────────────── */
+function effectiveSize(piece, scale, rotation) {
+  const pw = piece.widthCm * scale;
+  const ph = piece.heightCm * scale;
+  const r = ((rotation % 360) + 360) % 360;
+  // For 90/270 swap width and height
+  return r === 90 || r === 270 ? { ew: ph, eh: pw } : { ew: pw, eh: ph };
+}
 
-const CX          = CANVAS_W / 2
-const FRONT_LABEL_Y = Math.round(402 * SVG_SCALE) + 14
-const BACK_LABEL_Y  = Math.round(890 * SVG_SCALE) + 14
-const FRONT_GRAIN_MID = Math.round(215 * SVG_SCALE)
-const BACK_GRAIN_MID  = Math.round(695 * SVG_SCALE)
-const GRAIN_LEN = 60
-
-
-function GarmentBackground({ grainAngleDeg }) {
+/* ── Panel background (grid + optional garment image) ────────────── */
+function PanelBackground({ label, panelW, panelH, imageUrl, opacity }) {
+  const gridId = `grid-${label}`;
   return (
-    <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} width={CANVAS_W} height={CANVAS_H}>
-      <rect width={CANVAS_W} height={CANVAS_H} fill="var(--color-p800, #374533)" className="[fill:theme(colors.primary.200)]" />
+    <svg
+      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      width={panelW}
+      height={panelH}
+    >
+      <rect
+        width={panelW}
+        height={panelH}
+        className="[fill:theme(colors.primary.200)]"
+      />
       <defs>
-        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.7"
-            className="text-primary-500 opacity-50" />
+        <pattern
+          id={gridId}
+          width="28"
+          height="28"
+          patternUnits="userSpaceOnUse"
+        >
+          <path
+            d="M 28 0 L 0 0 0 28"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.5"
+            className="text-primary-500 opacity-40"
+          />
         </pattern>
       </defs>
-      <rect width={CANVAS_W} height={CANVAS_H} fill="url(#grid)" />
-
-      <image href="/shirt.svg" x="0" y="0" width={CANVAS_W} height={SVG_PX_H} />
-
-      {grainAngleDeg === 90 && [FRONT_GRAIN_MID, BACK_GRAIN_MID].map((my, i) => (
-        <g key={i} className="text-primary-300">
-          <line x1={CX + 22} y1={my - GRAIN_LEN / 2} x2={CX + 22} y2={my + GRAIN_LEN / 2}
-            stroke="currentColor" strokeWidth="1.2" />
-          <polygon points={`${CX+22},${my - GRAIN_LEN/2 - 1} ${CX+18},${my - GRAIN_LEN/2 + 9} ${CX+26},${my - GRAIN_LEN/2 + 9}`} fill="currentColor" />
-          <polygon points={`${CX+22},${my + GRAIN_LEN/2 + 1} ${CX+18},${my + GRAIN_LEN/2 - 9} ${CX+26},${my + GRAIN_LEN/2 - 9}`} fill="currentColor" />
-          <text x={CX + 29} y={my + 4} fontSize="9" className="fill-primary-500" fontFamily="monospace">grain</text>
-        </g>
-      ))}
-
-      {[['FRONT', FRONT_LABEL_Y], ['BACK', BACK_LABEL_Y]].map(([label, ly]) => (
-        <g key={label}>
-          <text x={CX} y={ly} textAnchor="middle" fontSize="12" fontWeight="700"
-            className="fill-primary-100" fontFamily="monospace" letterSpacing="2">{label}</text>
-          <text x={CX} y={ly + 13} textAnchor="middle" fontSize="8"
-            className="fill-primary-100" fontFamily="monospace">1cm SCALE</text>
-        </g>
-      ))}
+      <rect width={panelW} height={panelH} fill={`url(#${gridId})`} />
+      {imageUrl && (
+        <image
+          href={imageUrl}
+          x="0"
+          y="0"
+          width={panelW}
+          height={panelH}
+          preserveAspectRatio="xMidYMid meet"
+          opacity={opacity ?? 0.8}
+        />
+      )}
+      <text
+        x={panelW / 2}
+        y={panelH - 6}
+        textAnchor="middle"
+        fontSize="9"
+        fontWeight="700"
+        className="fill-primary-300"
+        fontFamily="monospace"
+        letterSpacing="1.5"
+      >
+        {label}
+      </text>
     </svg>
-  )
+  );
 }
 
-
+/* ── Grain direction arrow ───────────────────────────────────────── */
 function GrainArrow({ angle, pw, ph }) {
-  const isVertical = Math.abs((angle % 180) - 90) <= 15
-  const len = isVertical ? Math.max(18, ph * 0.45) : Math.max(18, pw * 0.45)
-
-  if (isVertical) {
-    return (
-      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
-        <span className="text-primary-700" style={{ fontSize: 7, lineHeight: 1 }}>▲</span>
-        <div className="border-l border-primary-700" style={{ width: 1, height: len }} />
-        <span className="text-primary-700" style={{ fontSize: 7, lineHeight: 1 }}>▼</span>
-      </div>
-    )
-  }
+  const isVertical = Math.abs((angle % 180) - 90) <= 15;
+  const len = isVertical ? Math.max(14, ph * 0.4) : Math.max(14, pw * 0.4);
+  const arrowStyle = {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    transform: "translate(-50%, -50%)",
+    display: "flex",
+    alignItems: "center",
+    pointerEvents: "none",
+    flexDirection: isVertical ? "column" : "row",
+  };
+  const sym = isVertical ? ["▲", "▼"] : ["◀", "▶"];
+  const divClass = isVertical
+    ? "border-l border-primary-700"
+    : "border-t border-primary-700";
+  const divStyle = isVertical
+    ? { width: 1, height: len }
+    : { height: 1, width: len };
   return (
-    <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
-      <span className="text-primary-700" style={{ fontSize: 7, lineHeight: 1 }}>◀</span>
-      <div className="border-t border-primary-700" style={{ height: 1, width: len }} />
-      <span className="text-primary-700" style={{ fontSize: 7, lineHeight: 1 }}>▶</span>
+    <div style={arrowStyle}>
+      <span className="text-primary-700" style={{ fontSize: 6, lineHeight: 1 }}>
+        {sym[0]}
+      </span>
+      <div className={divClass} style={divStyle} />
+      <span className="text-primary-700" style={{ fontSize: 6, lineHeight: 1 }}>
+        {sym[1]}
+      </span>
     </div>
-  )
+  );
 }
 
-
+/* ── Single pattern piece (visual only) ──────────────────────────── */
 function PieceShape({ piece, scale }) {
-  const pw = piece.widthCm * scale
-  const ph = piece.heightCm * scale
-  const seam = Math.min(4, pw * 0.07, ph * 0.07)
-  const isCircular = piece.shape === 'circle' || piece.shape === 'ring'
-  const innerPct = piece.shape === 'ring'
-    ? Math.round((piece.innerRadiusCm / piece.outerRadiusCm) * 100) : 0
+  const pw = piece.widthCm * scale;
+  const ph = piece.heightCm * scale;
+  const seam = Math.min(3, pw * 0.07, ph * 0.07);
+  const isCircular = piece.shape === "circle" || piece.shape === "ring";
 
   const outerStyle = {
-    width: pw, height: ph,
-    position: 'relative',
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center',
-    boxSizing: 'border-box',
-    ...(piece.shape === 'rect'      && { borderRadius: 1 }),
-    ...(piece.shape === 'trapezoid' && { clipPath: 'polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)', border: 'none' }),
-    ...(piece.shape === 'circle'    && { borderRadius: '50%' }),
-    ...(piece.shape === 'ring'      && { borderRadius: '50%' }),
-  }
-
+    width: pw,
+    height: ph,
+    position: "relative",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    boxSizing: "border-box",
+    ...(piece.shape === "rect" && { borderRadius: 1 }),
+    ...(piece.shape === "trapezoid" && {
+      clipPath: "polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)",
+      border: "none",
+    }),
+    ...(piece.shape === "circle" && { borderRadius: "50%" }),
+    ...(piece.shape === "ring" && { borderRadius: "50%" }),
+  };
   const outerClass = [
-    'bg-primary-50 shadow-sm',
-    piece.shape !== 'trapezoid' && 'border border-primary-900',
-    piece.shape === 'ring' && 'outline outline-1 outline-primary-900',
-  ].filter(Boolean).join(' ')
+    "bg-primary-50 shadow-sm",
+    piece.shape !== "trapezoid" && "border border-primary-900",
+    piece.shape === "ring" && "outline outline-1 outline-primary-900",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div style={outerStyle} className={outerClass}>
-      {piece.shape === 'trapezoid' && (
-        <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} width={pw} height={ph} viewBox={`0 0 ${pw} ${ph}`}>
-          <polygon points={`${pw*0.08},0 ${pw*0.92},0 ${pw},${ph} 0,${ph}`} className="fill-primary-50 stroke-primary-900" strokeWidth="1.5" />
-          <polygon points={`${pw*0.08+seam},${seam} ${pw*0.92-seam},${seam} ${pw-seam},${ph-seam} ${seam},${ph-seam}`}
-            fill="none" className="stroke-primary-500" strokeWidth="0.7" strokeDasharray="3,2" />
+      {piece.shape === "trapezoid" && (
+        <svg
+          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+          width={pw}
+          height={ph}
+          viewBox={`0 0 ${pw} ${ph}`}
+        >
+          <polygon
+            points={`${pw * 0.08},0 ${pw * 0.92},0 ${pw},${ph} 0,${ph}`}
+            className="fill-primary-50 stroke-primary-900"
+            strokeWidth="1.5"
+          />
+          <polygon
+            points={`${pw * 0.08 + seam},${seam} ${pw * 0.92 - seam},${seam} ${pw - seam},${ph - seam} ${seam},${ph - seam}`}
+            fill="none"
+            className="stroke-primary-500"
+            strokeWidth="0.7"
+            strokeDasharray="3,2"
+          />
         </svg>
       )}
-      {piece.shape !== 'trapezoid' && !isCircular && (
-        <div className="absolute border border-dashed border-primary-500" style={{ inset: seam, borderRadius: 1, pointerEvents: 'none' }} />
+      {piece.shape !== "trapezoid" && !isCircular && (
+        <div
+          className="absolute border border-dashed border-primary-500"
+          style={{ inset: seam, borderRadius: 1, pointerEvents: "none" }}
+        />
       )}
       <GrainArrow angle={piece.grainAngleDeg} pw={pw} ph={ph} />
-      <div style={{ position: 'absolute', bottom: seam + 1, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
-        <div className="text-primary-900 font-bold font-mono" style={{ fontSize: 7, lineHeight: 1.3 }}>{piece.label}</div>
-        <div className="text-primary-600 font-mono" style={{ fontSize: 6, lineHeight: 1.2 }}>{piece.widthCm}×{piece.heightCm}cm</div>
+      <div
+        style={{
+          position: "absolute",
+          bottom: seam + 1,
+          left: 0,
+          right: 0,
+          textAlign: "center",
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          className="text-primary-900 font-bold font-mono"
+          style={{ fontSize: 6, lineHeight: 1.3 }}
+        >
+          {piece.label}
+        </div>
+        <div
+          className="text-primary-600 font-mono"
+          style={{ fontSize: 5, lineHeight: 1.2 }}
+        >
+          {piece.widthCm}×{piece.heightCm}cm
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
+export default function PatternLayoutScreen({
+  navigate,
+  template: templateId,
+  measurements,
+  segmentation,
+  uploadedImage,
+}) {
+  const template = templates[templateId];
+  const { garmentLayout } = mockAnalysis;
+  const { grainAngleDeg } = garmentLayout;
 
-export default function PatternLayoutScreen({ navigate, template: templateId }) {
-  const template = templates[templateId]
-  const { garmentLayout } = mockAnalysis
-  const { grainAngleDeg } = garmentLayout
+  const panelW =
+    measurements?.panels?.frontPanel?.widthCm ?? garmentLayout.widthCm;
+  const panelH =
+    measurements?.panels?.frontPanel?.heightCm ?? garmentLayout.heightCm;
 
-  const scale = Math.min(
-    CANVAS_W / garmentLayout.widthCm,
-    CANVAS_H / garmentLayout.heightCm,
-  )
+  // Panel pixel height is derived from the uploaded image's own aspect ratio
+  // so the background photo fills the panel without distortion.
+  // Falls back to the cm ratio (then to 1.6) only when no image is available.
+  const [imgAspect, setImgAspect] = useState(null); // ih / iw of the photo
+  useEffect(() => {
+    if (!uploadedImage) return;
+    const probe = new Image();
+    probe.onload = () => setImgAspect(probe.naturalHeight / probe.naturalWidth);
+    probe.src = uploadedImage;
+  }, [uploadedImage]);
 
+  const panelPxH = Math.round(
+    PANEL_W * (imgAspect ?? (panelW > 0 && panelH > 0 ? panelH / panelW : 1.6)),
+  );
+
+  const scale = Math.min(PANEL_W / panelW, panelPxH / panelH);
+
+  /* ── generate masked garment photo ── */
+  const [maskedImageUrl, setMaskedImageUrl] = useState(null);
+
+  useEffect(() => {
+    if (!uploadedImage) {
+      setMaskedImageUrl(null);
+      return;
+    }
+    // No segmentation available → show the raw photo as a dim reference
+    if (!segmentation?.regions) {
+      setMaskedImageUrl(uploadedImage);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: iw, naturalHeight: ih } = img;
+      const anyMask = Object.values(segmentation.regions).find((r) => r?.mask);
+      if (!anyMask) {
+        // Masks present in object but all null → fall back to raw photo
+        setMaskedImageUrl(uploadedImage);
+        return;
+      }
+
+      const maskLen = anyMask.mask.length;
+      const maskW = Math.round(Math.sqrt(maskLen * (iw / ih)));
+      const maskH = Math.round(maskLen / maskW);
+
+      const combined = new Uint8Array(maskLen);
+      for (const region of Object.values(segmentation.regions)) {
+        if (!region?.mask) continue;
+        const m = region.mask;
+        for (let i = 0; i < maskLen; i++) {
+          if (m[i]) combined[i] = 1;
+        }
+      }
+
+      const c = document.createElement("canvas");
+      c.width = iw;
+      c.height = ih;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0, iw, ih);
+      const imageData = ctx.getImageData(0, 0, iw, ih);
+      const px = imageData.data;
+      for (let y = 0; y < ih; y++) {
+        for (let x = 0; x < iw; x++) {
+          const mx = Math.floor((x / iw) * maskW);
+          const my = Math.floor((y / ih) * maskH);
+          if (!combined[my * maskW + mx]) px[(y * iw + x) * 4 + 3] = 0;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+      setMaskedImageUrl(c.toDataURL("image/png"));
+    };
+    img.src = uploadedImage;
+  }, [uploadedImage, segmentation]);
+
+  /* ── piece state: x, y, rotation, panel per piece ── */
   const [positions, setPositions] = useState(() =>
     Object.fromEntries(
-      template.patternPieces.map(p => [
+      template.patternPieces.map((p) => [
         p.id,
-        { x: (p.defaultX / 100) * CANVAS_W, y: (p.defaultY / 100) * CANVAS_H },
-      ])
-    )
-  )
-  const [dragging, setDragging] = useState(null)
-  const [showAiBadge, setShowAiBadge] = useState(true)
-  const canvasRef = useRef()
+        {
+          x: (p.defaultX / 100) * PANEL_W,
+          y: (p.defaultY / 100) * panelPxH,
+          rotation: 0,
+          panel: p.panel === "back" ? "back" : "front",
+        },
+      ]),
+    ),
+  );
 
-  function getPointerPos(e) {
-    const rect = canvasRef.current.getBoundingClientRect()
-    return { px: e.clientX - rect.left, py: e.clientY - rect.top }
+  const [dragging, setDragging] = useState(null);
+  const [dragOverPanel, setDragOverPanel] = useState(null);
+  const [showAiBadge, setShowAiBadge] = useState(true);
+  const [showHint, setShowHint] = useState(true);
+  const frontRef = useRef();
+  const backRef = useRef();
+  const lastTapRef = useRef({ id: null, time: 0 });
+  // tracks current pointer page coords during a drag for cross-panel detection
+  const dragPointerPageRef = useRef({ x: 0, y: 0 });
+
+  function getPointerPos(e, panelRef) {
+    const rect = panelRef.current.getBoundingClientRect();
+    return { px: e.clientX - rect.left, py: e.clientY - rect.top };
   }
 
-  function handlePointerDown(e) {
-    const { px, py } = getPointerPos(e)
-    for (const piece of [...template.patternPieces].reverse()) {
-      const pos = positions[piece.id]
-      const pw = piece.widthCm * scale
-      const ph = piece.heightCm * scale
-      if (px >= pos.x && px <= pos.x + pw && py >= pos.y && py <= pos.y + ph) {
-        e.currentTarget.setPointerCapture(e.pointerId)
-        setDragging({ id: piece.id, startPointerX: px, startPointerY: py, startPieceX: pos.x, startPieceY: pos.y })
-        break
+  function findPieceAt(px, py, panelKey) {
+    const pieces = template.patternPieces.filter(
+      (p) => positions[p.id].panel === panelKey,
+    );
+    for (const piece of [...pieces].reverse()) {
+      const pos = positions[piece.id];
+      const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
+      if (px >= pos.x && px <= pos.x + ew && py >= pos.y && py <= pos.y + eh) {
+        return piece;
       }
     }
+    return null;
+  }
+
+  function handlePointerDown(e, panelRef, panelKey) {
+    const { px, py } = getPointerPos(e, panelRef);
+    const piece = findPieceAt(px, py, panelKey);
+    if (!piece) return;
+    const pos = positions[piece.id];
+
+    // Double-tap detection → rotate
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last.id === piece.id && now - last.time < 350) {
+      const newRot = (pos.rotation + 90) % 360;
+      const { ew: newEw, eh: newEh } = effectiveSize(piece, scale, newRot);
+      setPositions((prev) => ({
+        ...prev,
+        [piece.id]: {
+          ...prev[piece.id],
+          x: Math.max(0, Math.min(PANEL_W - newEw, pos.x)),
+          y: Math.max(0, Math.min(panelPxH - newEh, pos.y)),
+          rotation: newRot,
+        },
+      }));
+      lastTapRef.current = { id: null, time: 0 };
+      if (showAiBadge) setShowAiBadge(false);
+      return;
+    }
+    lastTapRef.current = { id: piece.id, time: now };
+
+    dragPointerPageRef.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging({
+      id: piece.id,
+      panelRef,
+      panelKey,
+      startPointerX: px,
+      startPointerY: py,
+      startPieceX: pos.x,
+      startPieceY: pos.y,
+    });
   }
 
   function handlePointerMove(e) {
-    if (!dragging) return
-    const { px, py } = getPointerPos(e)
-    const dx = px - dragging.startPointerX
-    const dy = py - dragging.startPointerY
-    const piece = template.patternPieces.find(p => p.id === dragging.id)
-    const pw = piece.widthCm * scale
-    const ph = piece.heightCm * scale
-    const newX = Math.max(0, Math.min(CANVAS_W - pw, dragging.startPieceX + dx))
-    const newY = Math.max(0, Math.min(CANVAS_H - ph, dragging.startPieceY + dy))
-    setPositions(prev => ({ ...prev, [dragging.id]: { x: newX, y: newY } }))
+    if (!dragging) return;
+    dragPointerPageRef.current = { x: e.clientX, y: e.clientY };
+    const { px, py } = getPointerPos(e, dragging.panelRef);
+    const dx = px - dragging.startPointerX;
+    const dy = py - dragging.startPointerY;
+    const piece = template.patternPieces.find((p) => p.id === dragging.id);
+    const pos = positions[piece.id];
+    const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
+    const newX = Math.max(0, Math.min(PANEL_W - ew, dragging.startPieceX + dx));
+    const newY = Math.max(
+      0,
+      Math.min(panelPxH - eh, dragging.startPieceY + dy),
+    );
+    setPositions((prev) => ({
+      ...prev,
+      [dragging.id]: { ...prev[dragging.id], x: newX, y: newY },
+    }));
+    // Highlight the other panel when the pointer hovers over it
+    const otherRef = dragging.panelKey === "front" ? backRef : frontRef;
+    const otherKey = dragging.panelKey === "front" ? "back" : "front";
+    if (otherRef.current) {
+      const rect = otherRef.current.getBoundingClientRect();
+      const over =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom;
+      setDragOverPanel(over ? otherKey : null);
+    }
   }
 
-  function handlePointerUp() {
-    if (dragging && showAiBadge) setShowAiBadge(false)
-    setDragging(null)
+  function handlePointerUp(e) {
+    if (dragging) {
+      if (showAiBadge) setShowAiBadge(false);
+      // Check if the pointer was released over the other panel
+      const otherRef = dragging.panelKey === "front" ? backRef : frontRef;
+      const otherKey = dragging.panelKey === "front" ? "back" : "front";
+      if (otherRef.current) {
+        const otherRect = otherRef.current.getBoundingClientRect();
+        const cx = e.clientX ?? dragPointerPageRef.current.x;
+        const cy = e.clientY ?? dragPointerPageRef.current.y;
+        if (
+          cx >= otherRect.left &&
+          cx <= otherRect.right &&
+          cy >= otherRect.top &&
+          cy <= otherRect.bottom
+        ) {
+          // Move piece to the other panel, clamped to its bounds
+          const piece = template.patternPieces.find(
+            (p) => p.id === dragging.id,
+          );
+          const pos = positions[piece.id];
+          const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
+          const dropX = Math.max(
+            0,
+            Math.min(PANEL_W - ew, cx - otherRect.left - ew / 2),
+          );
+          const dropY = Math.max(
+            0,
+            Math.min(panelPxH - eh, cy - otherRect.top - eh / 2),
+          );
+          setPositions((prev) => ({
+            ...prev,
+            [dragging.id]: {
+              ...prev[dragging.id],
+              x: dropX,
+              y: dropY,
+              panel: otherKey,
+            },
+          }));
+        }
+      }
+    }
+    setDragOverPanel(null);
+    setDragging(null);
+  }
+
+  /* ── Move a piece to a specific panel (used by legend buttons) ── */
+  function movePieceToPanel(pieceId, newPanel) {
+    const piece = template.patternPieces.find((p) => p.id === pieceId);
+    const pos = positions[pieceId];
+    const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
+    // Stack below existing pieces in the target panel
+    const others = template.patternPieces.filter(
+      (p) => p.id !== pieceId && positions[p.id].panel === newPanel,
+    );
+    const maxY = others.reduce((acc, p) => {
+      const ppos = positions[p.id];
+      const { eh: peh } = effectiveSize(p, scale, ppos.rotation);
+      return Math.max(acc, ppos.y + peh + 4);
+    }, 4);
+    const x = Math.max(0, Math.min(PANEL_W - ew, (PANEL_W - ew) / 2));
+    const y = Math.max(0, Math.min(panelPxH - eh, maxY));
+    setPositions((prev) => ({
+      ...prev,
+      [pieceId]: { ...prev[pieceId], x, y, panel: newPanel },
+    }));
+  }
+
+  /* ── Render a single panel ── */
+  function renderPanel(panelLabel, panelKey, ref, imageUrl, imgOpacity) {
+    const pieces = template.patternPieces.filter(
+      (p) => positions[p.id].panel === panelKey,
+    );
+    return (
+      <div
+        ref={ref}
+        className={`border rounded-xl overflow-hidden transition-colors ${
+          dragOverPanel === panelKey
+            ? "border-secondary-400 ring-2 ring-secondary-400/50"
+            : "border-primary-600"
+        }`}
+        style={{
+          position: "relative",
+          width: PANEL_W,
+          height: panelPxH,
+          touchAction: "none",
+          flexShrink: 0,
+        }}
+        onPointerDown={(e) => handlePointerDown(e, ref, panelKey)}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      >
+        <PanelBackground
+          label={panelLabel}
+          panelW={PANEL_W}
+          panelH={panelPxH}
+          imageUrl={imageUrl}
+          opacity={imgOpacity}
+        />
+
+        {pieces.map((piece) => {
+          const pos = positions[piece.id];
+          const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
+          const misaligned = isMisaligned(
+            (piece.grainAngleDeg + pos.rotation) % 360,
+            grainAngleDeg,
+          );
+          return (
+            <div
+              key={piece.id}
+              style={{
+                position: "absolute",
+                left: pos.x,
+                top: pos.y,
+                width: ew,
+                height: eh,
+                cursor: dragging?.id === piece.id ? "grabbing" : "grab",
+                userSelect: "none",
+                zIndex: dragging?.id === piece.id ? 10 : 5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                style={{
+                  transform: `rotate(${pos.rotation}deg)`,
+                  transformOrigin: "center center",
+                }}
+              >
+                <PieceShape piece={piece} scale={scale} />
+              </div>
+              {misaligned && (
+                <div
+                  className="absolute bg-secondary-500 text-white flex items-center justify-center font-bold"
+                  style={{
+                    top: -4,
+                    right: -4,
+                    width: 12,
+                    height: 12,
+                    borderRadius: "50%",
+                    fontSize: 7,
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  !
+                </div>
+              )}
+              {pos.rotation !== 0 && (
+                <div
+                  className="absolute bg-primary-600 text-primary-50 flex items-center justify-center"
+                  style={{
+                    bottom: -4,
+                    left: -4,
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    fontSize: 6,
+                    fontWeight: 700,
+                    pointerEvents: "none",
+                  }}
+                >
+                  {pos.rotation}°
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   return (
@@ -204,115 +590,134 @@ export default function PatternLayoutScreen({ navigate, template: templateId }) 
       {/* Header */}
       <div className="flex items-center px-5 pt-8 pb-3">
         <button
-          onClick={() => navigate('templateSelect')}
+          onClick={() => navigate("templateSelect")}
           className="w-9 h-9 bg-primary-700 rounded-full border border-primary-600 flex items-center justify-center text-primary-100 shadow-sm mr-3"
         >
           ←
         </button>
         <div className="flex-1">
           <h2 className="font-semibold text-primary-50">Pattern Layout</h2>
-          <p className="text-primary-100 text-xs mt-0.5">Drag pieces onto the garment</p>
+          <p className="text-primary-100 text-xs mt-0.5">
+            Drag · double-tap rotates · tap →B/→F to flip side
+          </p>
         </div>
       </div>
 
       {/* Garment info strip */}
       <div className="mx-5 mb-3 flex items-center gap-2 bg-primary-700 rounded-xl px-3 py-2 border border-primary-600">
         <span className="text-[11px] text-primary-300">
-          Each panel: <span className="font-semibold text-primary-100">{garmentLayout.widthCm} × {garmentLayout.heightCm} cm</span>
+          Each panel:{" "}
+          <span className="font-semibold text-primary-100">
+            {panelW} × {panelH} cm
+          </span>
         </span>
         <span className="mx-1 text-primary-600">·</span>
         <span className="text-[11px] text-primary-300">
-          Grain: <span className="font-semibold text-primary-100">{grainLabel(grainAngleDeg)}</span>
+          Grain:{" "}
+          <span className="font-semibold text-primary-100">
+            {grainLabel(grainAngleDeg)}
+          </span>
         </span>
       </div>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto pb-4">
-        {/* Canvas */}
-        <div className="flex justify-center px-2.5 mb-4">
-          <div
-            ref={canvasRef}
-            className="border border-primary-600 rounded-xl overflow-hidden"
-            style={{
-              position: 'relative',
-              width: CANVAS_W,
-              height: CANVAS_H,
-              touchAction: 'none',
-            }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
-          >
-            <GarmentBackground grainAngleDeg={grainAngleDeg} />
-
-            {template.patternPieces.map(piece => {
-              const pos = positions[piece.id]
-              const misaligned = isMisaligned(piece.grainAngleDeg, grainAngleDeg)
-              return (
-                <div
-                  key={piece.id}
-                  style={{
-                    position: 'absolute',
-                    left: pos.x,
-                    top: pos.y,
-                    cursor: dragging?.id === piece.id ? 'grabbing' : 'grab',
-                    userSelect: 'none',
-                    zIndex: dragging?.id === piece.id ? 10 : 5,
-                  }}
-                >
-                  <PieceShape piece={piece} scale={scale} />
-                  {misaligned && (
-                    <div className="absolute bg-secondary-500 text-white flex items-center justify-center font-bold"
-                      style={{
-                        top: -4, right: -4,
-                        width: 14, height: 14, borderRadius: '50%',
-                        fontSize: 8,
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                        pointerEvents: 'none',
-                      }}>!</div>
-                  )}
-                </div>
-              )
-            })}
-
-            {showAiBadge && (
-              <div className="absolute bg-primary-600 text-primary-50 font-semibold rounded-full px-3 whitespace-nowrap"
-                style={{
-                  top: 8, left: '50%', transform: 'translateX(-50%)',
-                  zIndex: 20, pointerEvents: 'none',
-                  fontSize: 11,
-                  padding: '4px 12px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                }}>
-                ✨ AI Suggested Layout — drag to adjust
-              </div>
-            )}
-          </div>
+        {/* Front then back, stacked vertically */}
+        <div className="flex flex-col items-center px-2.5 gap-3 mb-4">
+          {renderPanel("FRONT", "front", frontRef, maskedImageUrl, 0.8)}
+          {renderPanel("BACK", "back", backRef, maskedImageUrl, 0.35)}
         </div>
 
+        {showAiBadge && (
+          <div
+            className="mx-5 mb-3 bg-primary-600 text-primary-50 font-semibold rounded-full text-center"
+            style={{
+              fontSize: 11,
+              padding: "4px 12px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            }}
+          >
+            ✨ AI Suggested Layout — drag to adjust, double-tap to rotate
+          </div>
+        )}
+
+        {showHint && (
+          <div className="mx-5 mb-3 bg-primary-700 border border-primary-600 rounded-xl px-3 py-2.5 flex items-start gap-2">
+            <span className="text-base leading-none mt-0.5">💡</span>
+            <p className="flex-1 text-[11px] text-primary-100 leading-4">
+              <span className="font-semibold">
+                To move a piece to the other side:
+              </span>{" "}
+              drag it into the other panel, or tap{" "}
+              <span className="font-semibold bg-primary-600 rounded px-1">
+                →B
+              </span>{" "}
+              /{" "}
+              <span className="font-semibold bg-primary-600 rounded px-1">
+                →F
+              </span>{" "}
+              next to its name below.
+            </p>
+            <button
+              onClick={() => setShowHint(false)}
+              className="text-primary-400 text-sm leading-none mt-0.5 shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Warning note */}
-        {template.patternPieces.some(p => isMisaligned(p.grainAngleDeg, grainAngleDeg)) && (
+        {template.patternPieces.some((p) => {
+          const r = positions[p.id]?.rotation ?? 0;
+          return isMisaligned((p.grainAngleDeg + r) % 360, grainAngleDeg);
+        }) && (
           <div className="mx-5 mb-3 bg-secondary-100 border border-secondary-200 rounded-xl px-3 py-2 flex items-start gap-2">
             <span className="text-secondary-500 text-sm mt-0.5">⚠</span>
             <p className="text-[11px] text-secondary-800 leading-4">
-              Pieces marked <span className="font-bold">!</span> have a different grain direction — intentional for the design.
+              Pieces marked <span className="font-bold">!</span> have a
+              different grain direction — intentional for the design.
             </p>
           </div>
         )}
 
         {/* Legend */}
         <div className="mx-5">
-          <p className="text-[11px] font-semibold text-primary-100 uppercase tracking-wider mb-2">Pattern Pieces</p>
+          <p className="text-[11px] font-semibold text-primary-100 uppercase tracking-wider mb-2">
+            Pattern Pieces
+          </p>
           <div className="grid grid-cols-2 gap-1.5">
-            {template.patternPieces.map(piece => (
-              <div key={piece.id} className="flex items-center gap-2 bg-primary-700 rounded-xl px-2.5 py-1.5 border border-primary-600">
-                <div className="bg-primary-50 border border-primary-900 shrink-0"
+            {template.patternPieces.map((piece) => (
+              <div
+                key={piece.id}
+                className="flex items-center gap-2 bg-primary-700 rounded-xl px-2.5 py-1.5 border border-primary-600"
+              >
+                <div
+                  className="bg-primary-50 border border-primary-900 shrink-0"
                   style={{
-                    width: 10, height: 10,
-                    borderRadius: piece.shape === 'circle' || piece.shape === 'ring' ? '50%' : 1,
-                  }} />
-                <span className="text-[11px] text-primary-200 truncate font-mono">{piece.label}</span>
+                    width: 10,
+                    height: 10,
+                    borderRadius:
+                      piece.shape === "circle" || piece.shape === "ring"
+                        ? "50%"
+                        : 1,
+                  }}
+                />
+                <span className="text-[11px] text-primary-200 truncate font-mono">
+                  {piece.label}
+                </span>
+                <button
+                  onClick={() => {
+                    const cur = positions[piece.id]?.panel ?? "front";
+                    movePieceToPanel(
+                      piece.id,
+                      cur === "front" ? "back" : "front",
+                    );
+                  }}
+                  className="ml-auto text-[9px] text-primary-200 font-mono bg-primary-600 border border-primary-500 rounded px-1.5 py-0.5 active:bg-primary-500 shrink-0"
+                >
+                  {positions[piece.id]?.panel === "back" ? "→F" : "→B"}
+                </button>
               </div>
             ))}
           </div>
@@ -322,18 +727,18 @@ export default function PatternLayoutScreen({ navigate, template: templateId }) 
       {/* CTA */}
       <div className="px-5 pb-5 pt-2 border-t border-primary-700 bg-primary-800 space-y-2">
         <button
-          onClick={() => navigate('arPattern')}
+          onClick={() => navigate("arPattern")}
           className="w-full bg-primary-700 border border-primary-500 text-primary-100 py-3 rounded-2xl font-semibold text-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
         >
           <span>📷</span> Try on Garment (AR View)
         </button>
         <button
-          onClick={() => navigate('stepGuide')}
+          onClick={() => navigate("stepGuide")}
           className="w-full bg-secondary-300 text-white py-4 rounded-2xl font-bold active:scale-[0.98] transition-transform shadow-md shadow-black/20"
         >
           Confirm Layout →
         </button>
       </div>
     </div>
-  )
+  );
 }

@@ -26,8 +26,14 @@ function effectiveSize(piece, scale, rotation) {
 }
 
 /* ── Panel background (grid + optional garment image) ────────────── */
-function PanelBackground({ label, panelW, panelH, imageUrl, opacity }) {
+function PanelBackground({ label, panelW, panelH, imageUrl, opacity, bboxFraction }) {
   const gridId = `grid-${label}`;
+
+  const imgW = bboxFraction ? panelW / bboxFraction.w : panelW;
+  const imgH = bboxFraction ? panelH / bboxFraction.h : panelH;
+  const imgX = bboxFraction ? -(bboxFraction.x * imgW) : 0;
+  const imgY = bboxFraction ? -(bboxFraction.y * imgH) : 0;
+
   return (
     <svg
       style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
@@ -59,11 +65,11 @@ function PanelBackground({ label, panelW, panelH, imageUrl, opacity }) {
       {imageUrl && (
         <image
           href={imageUrl}
-          x="0"
-          y="0"
-          width={panelW}
-          height={panelH}
-          preserveAspectRatio="xMidYMid meet"
+          x={imgX}
+          y={imgY}
+          width={imgW}
+          height={imgH}
+          preserveAspectRatio="none"
           opacity={opacity ?? 0.8}
         />
       )}
@@ -221,6 +227,7 @@ export default function PatternLayoutScreen({
     measurements?.panels?.frontPanel?.widthCm ?? garmentLayout.widthCm;
   const panelH =
     measurements?.panels?.frontPanel?.heightCm ?? garmentLayout.heightCm;
+  const bboxFraction = measurements?.bboxFraction ?? null;
 
   // Panel pixel height is derived from the uploaded image's own aspect ratio
   // so the background photo fills the panel without distortion.
@@ -233,11 +240,11 @@ export default function PatternLayoutScreen({
     probe.src = uploadedImage;
   }, [uploadedImage]);
 
-  const panelPxH = Math.round(
-    PANEL_W * (imgAspect ?? (panelW > 0 && panelH > 0 ? panelH / panelW : 1.6)),
-  );
+  const scalePxPerCm = PANEL_W / panelW;
 
-  const scale = Math.min(PANEL_W / panelW, panelPxH / panelH);
+  const panelPxH = Math.round(panelH * scalePxPerCm);
+
+  const scale = panelPxH / panelH;
 
   /* ── generate masked garment photo ── */
   const [maskedImageUrl, setMaskedImageUrl] = useState(null);
@@ -510,6 +517,7 @@ export default function PatternLayoutScreen({
           panelH={panelPxH}
           imageUrl={imageUrl}
           opacity={imgOpacity}
+          bboxFraction={bboxFraction}
         />
 
         {pieces.map((piece) => {

@@ -161,6 +161,10 @@ export function useAnalysisPipeline() {
         ? Math.round(firstMask.mask.length / maskW)
         : imgH;
 
+      console.log("imgW/imgH", imgW, imgH);
+      console.log("maskW/maskH", maskW, maskH);
+      console.log("mask length", firstMask.mask.length);
+
       // Persist segResult + mask dims so submitLongestSide can resume.
       _pendingRef.current = { segResult, maskW, maskH };
 

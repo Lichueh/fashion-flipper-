@@ -19,6 +19,7 @@ export default function App() {
   const [longestSideCm, setLongestSideCm] = useState(null);
   const [measurements, setMeasurements] = useState(null);
   const [segmentation, setSegmentation] = useState(null);
+  const [feasibleTemplates, setFeasibleTemplates] = useState(null);
 
   const navigate = (to, data = {}) => {
     if (data.image !== undefined) setUploadedImage(data.image);
@@ -27,6 +28,8 @@ export default function App() {
     if (data.longestSideCm !== undefined) setLongestSideCm(data.longestSideCm);
     if (data.measurements !== undefined) setMeasurements(data.measurements);
     if (data.segmentation !== undefined) setSegmentation(data.segmentation);
+    if (data.feasibleTemplates !== undefined)
+      setFeasibleTemplates(data.feasibleTemplates);
     setScreen(to);
   };
 
@@ -43,7 +46,12 @@ export default function App() {
         longestSideCm={longestSideCm}
       />
     ),
-    templateSelect: <TemplateSelectScreen navigate={navigate} />,
+    templateSelect: (
+      <TemplateSelectScreen
+        navigate={navigate}
+        feasibleTemplates={feasibleTemplates}
+      />
+    ),
     patternLayout: (
       <PatternLayoutScreen
         navigate={navigate}

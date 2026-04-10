@@ -31,12 +31,10 @@ export function computeMeasurements(
   if (!frontRegion?.mask) return null;
 
   const frontBbox = _boundingBox(frontRegion.mask, maskWidth, maskHeight);
-  if (!frontBbox || Math.max(frontBbox.widthPx, frontBbox.heightPx) === 0)
-    return null;
+  if (!frontBbox || frontBbox.heightPx === 0) return null;
 
   // 1 pixel = this many centimetres
-  const scaleCmPerPx =
-    longestSideCm / Math.max(frontBbox.widthPx, frontBbox.heightPx);
+  const scaleCmPerPx = longestSideCm / frontBbox.heightPx;
 
   function measureRegion(region) {
     if (!region?.mask) return null;
@@ -59,10 +57,18 @@ export function computeMeasurements(
     (sleeveLeft?.areaCm2 ?? 0) +
     (sleeveRight?.areaCm2 ?? 0);
 
+  const bboxFraction = {
+    x: frontBbox.minCol / maskWidth, 
+    y: frontBbox.minRow / maskHeight,
+    w: frontBbox.widthPx / maskWidth,
+    h: frontBbox.heightPx / maskHeight,
+  };
+
   return {
     totalAreaCm2,
     scaleCmPerPx: _round4(scaleCmPerPx),
     panels: { frontPanel, sleeveLeft, sleeveRight },
+    bboxFraction,
   };
 }
 
@@ -75,7 +81,7 @@ export function computeMeasurements(
  * @param   {Uint8Array} mask
  * @param   {number}     maskW
  * @param   {number}     maskH
- * @returns {{ widthPx: number, heightPx: number } | null}
+ * @returns {{ widthPx: number, heightPx: number, minCol: number, minRow: number } | null}
  */
 function _boundingBox(mask, maskW, maskH) {
   let minRow = maskH,
@@ -97,6 +103,8 @@ function _boundingBox(mask, maskW, maskH) {
   return {
     widthPx: maxCol - minCol + 1,
     heightPx: maxRow - minRow + 1,
+    minCol,
+    minRow,
   };
 }
 

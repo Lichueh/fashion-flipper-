@@ -41,74 +41,6 @@ export default function AnalysisScreen({
   if (phase === "scanning") {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-primary-900 px-6">
-        {/* DEV: remove before shipping */}
-        <div
-          style={{
-            width: "100%",
-            background: "#1e1e1e",
-            color: "#d4d4d4",
-            padding: "10px 12px",
-            marginBottom: 12,
-            borderRadius: 8,
-            fontFamily: "monospace",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 8,
-            }}
-          >
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files[0];
-                if (f) run(f);
-              }}
-              style={{ color: "#d4d4d4", fontSize: 12 }}
-            />
-            <span style={{ fontWeight: "bold", fontSize: 13 }}>{status}</span>
-            <button
-              onClick={retry}
-              style={{
-                marginLeft: "auto",
-                padding: "2px 10px",
-                fontSize: 12,
-                cursor: "pointer",
-                borderRadius: 4,
-                border: "1px solid #555",
-                background: "#333",
-                color: "#eee",
-              }}
-            >
-              Retry
-            </button>
-          </div>
-          <pre
-            style={{
-              fontSize: 11,
-              overflow: "auto",
-              maxHeight: 400,
-              margin: 0,
-            }}
-          >
-            {JSON.stringify(
-              {
-                status,
-                progress: pipelineProgress,
-                needsManualInput,
-                needsScaleInput,
-                feasibleTemplates,
-              },
-              null,
-              2,
-            )}
-          </pre>
-        </div>
-        {/* END DEV */}
         <div className="relative w-60 h-60 rounded-3xl overflow-hidden mb-8">
           {uploadedImage ? (
             <img
@@ -251,10 +183,6 @@ export default function AnalysisScreen({
               { label: "Condition", value: mockAnalysis.fabric.condition },
               { label: "Weight", value: mockAnalysis.fabric.weight },
               { label: "Weave", value: mockAnalysis.fabric.texture },
-              { label: "Color", value: mockAnalysis.fabric.color },
-              { label: "Condition", value: mockAnalysis.fabric.condition },
-              { label: "Weight", value: mockAnalysis.fabric.weight },
-              { label: "Weave", value: mockAnalysis.fabric.texture },
               {
                 label: "Grain Direction",
                 value:
@@ -339,7 +267,11 @@ export default function AnalysisScreen({
 
         <button
           onClick={() =>
-            navigate("templateSelect", { measurements, segmentation })
+            navigate("templateSelect", {
+              measurements,
+              segmentation,
+              feasibleTemplates,
+            })
           }
           className="w-full bg-secondary-300 text-white py-4 rounded-2xl font-bold active:scale-[0.98] transition-transform shadow-md shadow-black/20"
         >

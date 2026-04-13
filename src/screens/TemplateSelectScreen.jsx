@@ -67,18 +67,16 @@ export default function TemplateSelectScreen({ navigate, feasibleTemplates }) {
                   <div
                     className={`w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden ${template.accentColor}`}
                   >
-                    {template.id === "bag" ? (
+                    {template.resultImage ? (
                       <img
-                        src="/bag-result.png"
-                        alt="Tote Bag"
+                        src={template.resultImage}
+                        alt={template.name}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <img
-                        src="/hat-result.png"
-                        alt="Bucket Hat"
-                        className="w-full h-full object-cover"
-                      />
+                      <span className="text-4xl flex items-center justify-center w-full h-full">
+                        {template.emoji}
+                      </span>
                     )}
                   </div>
                   <div className="flex-1">

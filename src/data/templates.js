@@ -11,6 +11,7 @@ export const templates = {
     description:
       "A simple, practical everyday tote — perfect for shopping or commuting",
     accentColor: "bg-amber-50",
+    resultImage: "/bag-result.png",
     patternPieces: [
       // FRONT shirt (body y≈75–225px, canvas H≈528)
       {
@@ -142,6 +143,7 @@ export const templates = {
     description:
       "A casual, vintage-style bucket hat — sun protection with personality",
     accentColor: "bg-sky-50",
+    resultImage: "/hat-result.png",
     patternPieces: [
       // areaCm2 for trapezoid = (topWidth + bottomWidth) / 2 * height = (8+12)/2*14 = 140
       {
@@ -316,6 +318,165 @@ export const templates = {
           "Press the seam allowance toward the crown. From the right side of the crown, topstitch ~0.2 cm from the seam to secure the seam allowance and add a clean finish. Optionally, topstitch around the outer brim edge for extra stiffness and style.",
         tip: "Slow down your machine speed on curves and gently guide the fabric for even stitching",
         duration: "15 min",
+      },
+    ],
+  },
+  boatneck: {
+    id: "boatneck",
+    name: "Boatneck Top",
+    emoji: "👚",
+    difficulty: 2,
+    maxDifficulty: 3,
+    difficultyLabel: "Beginner+",
+    time: "About 2–3 hrs",
+    matchScore: 80,
+    description:
+      "A classic boat neckline top upcycled from a men's dress shirt — timeless silhouette with optional button front",
+    accentColor: "bg-rose-50",
+    resultImage: "/boatneck-result.png",
+    patternPieces: [
+      // areaCm2 for rectangle = 46 * 60 = 2760
+      {
+        id: "front-bodice",
+        label: "Front Bodice",
+        widthCm: 46,
+        heightCm: 60,
+        areaCm2: 2760,
+        shape: "rectangle",
+        color: "#fda4af",
+        grainAngleDeg: 90,
+        panel: "front",
+        defaultX: 3,
+        defaultY: 3,
+      },
+      // areaCm2 for rectangle = 46 * 58 = 2668
+      {
+        id: "back-bodice",
+        label: "Back Bodice",
+        widthCm: 46,
+        heightCm: 58,
+        areaCm2: 2668,
+        shape: "rectangle",
+        color: "#fb7185",
+        grainAngleDeg: 90,
+        panel: "back",
+        defaultX: 3,
+        defaultY: 3,
+      },
+      // areaCm2 for rectangle = 50 * 6 = 300
+      {
+        id: "neck-binding",
+        label: "Neck Binding",
+        widthCm: 50,
+        heightCm: 6,
+        areaCm2: 300,
+        shape: "rectangle",
+        color: "#fecdd3",
+        grainAngleDeg: 45, // cut on bias (or cross-grain if fabric has stretch)
+        panel: "front",
+        defaultX: 3,
+        defaultY: 68,
+      },
+      // areaCm2 for rectangle = 42 * 6 = 252 (x2, one per armhole)
+      {
+        id: "armhole-binding-left",
+        label: "Armhole Binding (Left)",
+        widthCm: 42,
+        heightCm: 6,
+        areaCm2: 252,
+        shape: "rectangle",
+        color: "#fecdd3",
+        grainAngleDeg: 45, // cut on bias
+        panel: "front",
+        defaultX: 3,
+        defaultY: 80,
+      },
+      {
+        id: "armhole-binding-right",
+        label: "Armhole Binding (Right)",
+        widthCm: 42,
+        heightCm: 6,
+        areaCm2: 252,
+        shape: "rectangle",
+        color: "#fecdd3",
+        grainAngleDeg: 45,
+        panel: "back",
+        defaultX: 3,
+        defaultY: 68,
+      },
+      // optional button tab to cover bottom buttonhole, areaCm2 = 8 * 3 = 24
+      {
+        id: "button-tab",
+        label: "Button Tab (Optional)",
+        widthCm: 8,
+        heightCm: 3,
+        areaCm2: 24,
+        shape: "rectangle",
+        color: "#fda4af",
+        grainAngleDeg: 90,
+        optional: true,
+        panel: "back",
+        defaultX: 3,
+        defaultY: 80,
+      },
+    ],
+    materials: [
+      "Men's dress shirt (size L–XL recommended for size S–M output)",
+      "Matching thread",
+      "Fabric scissors",
+      "Boatneck top sewing pattern (sized to fit)",
+      "Needle or sewing machine",
+      "Pins or clips",
+      "Iron + ironing board",
+      "Disappearing-ink fabric marker",
+      "Seam ripper",
+    ],
+    optionalMaterials: [
+      "Buttons (only if shirt has none or you want to replace them)",
+    ],
+    steps: [
+      {
+        title: "Prep & Layout",
+        description:
+          "Unbutton the shirt and lay it flat, taping down the placket so it lies straight. Place the front bodice pattern piece on top, aligning the center front line with the center of the existing buttons. Mark the top of the pattern on both sides. Adjust button placement — ideally the last button should align with the end of the front dart, not too close to the hem.",
+        tip: "If the last button sits too close to the hem, you can cover the buttonhole with a fabric tab later — no need to unpick anything",
+        duration: "15 min",
+      },
+      {
+        title: "Cut the Pieces",
+        description:
+          "Cut out the front bodice using the existing buttons as a guide. For the back bodice, clip open the back pleats so the fabric lies flat, fold in half along center back, tape the fold, and cut on fold. Cut neck binding on bias (or cross-grain if your fabric has natural stretch). Cut armhole binding on bias — fold each piece in half and cut two strips per armhole, then join with a diagonal seam.",
+        tip: "Save the sleeve fabric for extra binding or a matching scrunchie — no waste!",
+        duration: "30 min",
+      },
+      {
+        title: "Mark & Sew Darts",
+        description:
+          "Mark all dart placements using a fabric pen through small holes poked in the pattern, and clip the edges. Sew bust darts and back darts starting from the seam allowance, narrowing to the dart point. For front darts, start at the midpoint (not the hem) so the hem flares naturally. Leave several inches of thread at each dart point and knot by hand.",
+        tip: "Don't skip pressing — press back darts toward side seams, and press front darts into an inverted box pleat shape for a clean finish",
+        duration: "25 min",
+      },
+      {
+        title: "Sew Seams & Hem",
+        description:
+          "Sew shoulder seams and side seams right sides together. Prepare a double-folded hem by folding the raw edge 6 mm toward the wrong side, then again to conceal the raw edge, and press well. Before stitching the hem, trim excess bulk around the placket, back darts, and side seams — unfold the pressed hem to see the crease marks and carefully trim only double-layered areas.",
+        tip: "Start hemstitching slightly past the placket and stitch back over the thick section in the opposite direction — your machine will feed the thick material much more smoothly",
+        duration: "25 min",
+      },
+      {
+        title: "Attach Neck & Armhole Binding",
+        description:
+          "Fold each binding strip in half wrong sides together and press (French binding technique). For the neckline, align center back first, then extend each front end ~1 cm beyond the edge for a clean turn-in. For armholes, close the binding into a loop first with a diagonal seam, then clip to the armhole. Stitch all binding in place, grade the seam allowance (trim inner layer to ~3 mm, outer to ~6 mm) to reduce bulk, press open, then fold over and edge-stitch from the right side.",
+        tip: "Press the seam open before folding the binding over — it creates a crisp fold line and makes edge-stitching much easier",
+        duration: "35 min",
+      },
+      {
+        title: "Finish the Placket",
+        description:
+          "If using the existing shirt buttons: simply stitch down the hem around the placket area. If the bottom buttonhole sits awkwardly close to the hem, cut a small fabric tab from leftover material, stitch around its edges, flip right-side out, and tack it over the buttonhole on the inner placket. If your shirt has no buttons, fold in the placket edges and topstitch both sides down flat for a clean button-free front.",
+        tip: "This no-button approach skips all buttonhole sewing — a huge time saver for beginners",
+        duration: "15 min",
+        optional: false,
       },
     ],
   },

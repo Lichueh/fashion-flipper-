@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import SegmentationWorkerClass from "../workers/segmentation.worker.js?worker";
 import { computeMeasurements } from "../services/measurements.js";
 import { checkFeasibility } from "../services/feasibility.js";
+import { analyzeFabric } from "../services/fabricAnalysis.js";
 import { templates } from "../data/templates.js";
 import { mockAnalysis } from "../data/mockAnalysis.js";
 
@@ -73,6 +74,7 @@ export function useAnalysisPipeline() {
   const [segmentation, setSegmentation] = useState(null);
   const [measurements, setMeasurements] = useState(null);
   const [feasibleTemplates, setFeasibleTemplates] = useState(null);
+  const [fabric, setFabric] = useState(mockAnalysis.fabric);
   const [needsManualInput, setNeedsManualInput] = useState(false);
   const [needsScaleInput, setNeedsScaleInput] = useState(false);
   const [error, setError] = useState(null);
@@ -87,6 +89,7 @@ export function useAnalysisPipeline() {
     setSegmentation(null);
     setMeasurements(null);
     setFeasibleTemplates(null);
+    setFabric(mockAnalysis.fabric);
     setNeedsManualInput(false);
     setNeedsScaleInput(false);
     setError(null);
@@ -137,7 +140,14 @@ export function useAnalysisPipeline() {
       setStatus("segmenting");
       setProgress(10);
 
-      const segResult = await _runSegmentationInWorker(imageFile);
+      // Run fabric analysis and segmentation in parallel — both are independent.
+      // analyzeFabric never throws (returns null on any failure).
+      const [fabricResult, segResult] = await Promise.all([
+        analyzeFabric(imageFile),
+        _runSegmentationInWorker(imageFile),
+      ]);
+
+      if (fabricResult) setFabric(fabricResult);
 
       if (segResult.error || segResult.lowConfidence) {
         setNeedsManualInput(true);
@@ -202,7 +212,7 @@ export function useAnalysisPipeline() {
     segmentation,
     measurements,
     feasibleTemplates,
-    fabric: mockAnalysis.fabric, // real fabric data comes from a future CV step
+    fabric,
     needsManualInput,
     needsScaleInput,
     error,

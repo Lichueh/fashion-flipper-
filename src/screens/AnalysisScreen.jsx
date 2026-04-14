@@ -16,6 +16,7 @@ export default function AnalysisScreen({
     segmentation,
     measurements,
     feasibleTemplates,
+    fabric,
     run,
     submitLongestSide,
     retry,
@@ -150,10 +151,10 @@ export default function AnalysisScreen({
                 Detected Material
               </p>
               <p className="text-xl font-bold text-primary-900">
-                {mockAnalysis.fabric.type}
+                {fabric.type}
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {mockAnalysis.tags.map((tag) => (
+                {(fabric.tags ?? mockAnalysis.tags).map((tag) => (
                   <span
                     key={tag}
                     className="bg-primary-200 text-primary-800 text-[11px] px-2 py-0.5 rounded-full font-medium"
@@ -175,14 +176,14 @@ export default function AnalysisScreen({
             {[
               {
                 label: "Composition",
-                value: mockAnalysis.fabric.composition
+                value: fabric.composition
                   .map((c) => `${c.material} ${c.percentage}%`)
                   .join(" · "),
               },
-              { label: "Color", value: mockAnalysis.fabric.color },
-              { label: "Condition", value: mockAnalysis.fabric.condition },
-              { label: "Weight", value: mockAnalysis.fabric.weight },
-              { label: "Weave", value: mockAnalysis.fabric.texture },
+              { label: "Color", value: fabric.color },
+              { label: "Condition", value: fabric.condition },
+              { label: "Weight", value: fabric.weight },
+              { label: "Weave", value: fabric.texture },
               {
                 label: "Grain Direction",
                 value:

@@ -20,6 +20,7 @@ export default function App() {
   const [measurements, setMeasurements] = useState(null);
   const [segmentation, setSegmentation] = useState(null);
   const [feasibleTemplates, setFeasibleTemplates] = useState(null);
+  const [fabric, setFabric] = useState(null);
 
   const navigate = (to, data = {}) => {
     if (data.image !== undefined) setUploadedImage(data.image);
@@ -30,6 +31,7 @@ export default function App() {
     if (data.segmentation !== undefined) setSegmentation(data.segmentation);
     if (data.feasibleTemplates !== undefined)
       setFeasibleTemplates(data.feasibleTemplates);
+    if (data.fabric !== undefined) setFabric(data.fabric);
     setScreen(to);
   };
 
@@ -50,6 +52,7 @@ export default function App() {
       <TemplateSelectScreen
         navigate={navigate}
         feasibleTemplates={feasibleTemplates}
+        fabric={fabric}
       />
     ),
     patternLayout: (
@@ -69,6 +72,7 @@ export default function App() {
         navigate={navigate}
         template={selectedTemplate}
         uploadedImage={uploadedImage}
+        fabric={fabric}
       />
     ),
     learn: <BasicTutorialScreen navigate={navigate} />,

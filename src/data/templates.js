@@ -1,7 +1,8 @@
 export const templates = {
   bag: {
     id: "bag",
-    name: "Tote Bag",
+    name: "Tote Bag with chain",
+    style: "Cool, streetwear-inspired, standing rectangle-shaped",
     emoji: "👜",
     difficulty: 1,
     maxDifficulty: 3,
@@ -134,6 +135,7 @@ export const templates = {
   hat: {
     id: "hat",
     name: "Bucket Hat",
+    style: "Casual, bucket-shaped, classic, street-wear-inspired",
     emoji: "🧢",
     difficulty: 2,
     maxDifficulty: 3,
@@ -324,6 +326,7 @@ export const templates = {
   boatneck: {
     id: "boatneck",
     name: "Boatneck Top",
+    style: "structured fitted short-sleeve button-down",
     emoji: "👚",
     difficulty: 2,
     maxDifficulty: 3,

@@ -1,8 +1,33 @@
+import { useState, useEffect } from "react";
 import { templates } from "../data/templates";
 import { mockAnalysis } from "../data/mockAnalysis";
+import { generatePreview } from "../services/previewGeneration";
 
-export default function TemplateSelectScreen({ navigate, feasibleTemplates }) {
+export default function TemplateSelectScreen({
+  navigate,
+  feasibleTemplates,
+  fabric,
+}) {
   const items = Object.values(templates);
+  const [previews, setPreviews] = useState({});
+
+  useEffect(() => {
+    if (!fabric) return;
+    const timeoutIds = [];
+    // Generate previews for all templates in parallel; update state as each resolves
+    items.forEach((template, idx) => {
+      const id = setTimeout(() => {
+        generatePreview(fabric, template).then((dataUrl) => {
+          if (dataUrl) {
+            setPreviews((prev) => ({ ...prev, [template.id]: dataUrl }));
+          }
+        });
+      }, idx * 800);
+      timeoutIds.push(id);
+    });
+    // Cleanup: cancel pending timeouts if effect re-runs
+    return () => timeoutIds.forEach((id) => clearTimeout(id));
+  }, [fabric]);
 
   // Build a lookup for match scores: prefer feasibleTemplates (pipeline), fall back to mockAnalysis
   const scoreSource = feasibleTemplates ?? mockAnalysis.recommendations;
@@ -67,7 +92,13 @@ export default function TemplateSelectScreen({ navigate, feasibleTemplates }) {
                   <div
                     className={`w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden ${template.accentColor}`}
                   >
-                    {template.resultImage ? (
+                    {previews[template.id] ? (
+                      <img
+                        src={previews[template.id]}
+                        alt={template.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : template.resultImage ? (
                       <img
                         src={template.resultImage}
                         alt={template.name}

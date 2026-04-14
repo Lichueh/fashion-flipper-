@@ -272,6 +272,7 @@ export default function AnalysisScreen({
               measurements,
               segmentation,
               feasibleTemplates,
+              fabric,
             })
           }
           className="w-full bg-secondary-300 text-white py-4 rounded-2xl font-bold active:scale-[0.98] transition-transform shadow-md shadow-black/20"

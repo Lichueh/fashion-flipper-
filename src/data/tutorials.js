@@ -141,7 +141,7 @@ export const tutorials = [
     accentClass: "bg-secondary-300",
     bgClass: "bg-primary-100",
     stepClass: "bg-primary-300",
-    video: "/zipper.mov",
+    video: "/videos/zipper.mov",
     steps: [
       {
         id: "zipper-1",

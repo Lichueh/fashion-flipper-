@@ -12,7 +12,7 @@ export const templates = {
     description:
       "A simple, practical everyday tote — perfect for shopping or commuting",
     accentColor: "bg-amber-50",
-    resultImage: "/bag-result.png",
+    resultImage: "/images/results/bag-result.png",
     patternPieces: [
       // FRONT shirt (body y≈75–225px, canvas H≈528)
       {
@@ -91,7 +91,7 @@ export const templates = {
     ],
     steps: [
       {
-        image: "/bag-step1.png",
+        image: "/images/templates/bag-step1.png",
         title: "Cut the Fabric",
         description:
           "Wash and lay the garment flat. Cut two 35×40 cm rectangles for the bag body and one 8×60 cm strip for the handles. Mark the outlines on the fabric reverse side with chalk before cutting.",
@@ -99,7 +99,7 @@ export const templates = {
         duration: "15 min",
       },
       {
-        image: "/bag-step2.png",
+        image: "/images/templates/bag-step2.png",
         title: "Make the Handles",
         description:
           "Fold the long strip in half lengthwise. Fold each side inward by 1 cm, then fold in half again to form a ~2 cm wide strap. Stitch along both edges to secure. Cut into two 30 cm pieces.",
@@ -107,7 +107,7 @@ export const templates = {
         duration: "15 min",
       },
       {
-        image: "/bag-step3.png",
+        image: "/images/templates/bag-step3.png",
         title: "Sew the Bag Body",
         description:
           "Place the two body pieces right sides together. Stitch three sides (both side seams + bottom), leaving the top open. Clip small notches at the corners — this helps the corners turn out sharp when flipped.",
@@ -115,7 +115,7 @@ export const templates = {
         duration: "20 min",
       },
       {
-        image: "/bag-step4.png",
+        image: "/images/templates/bag-step4.png",
         title: "Turn Right-Side Out & Shape",
         description:
           "Turn the bag right-side out through the top opening. Use a blunt tool (e.g., chopstick) to push the corners out fully. Press with an iron to flatten and shape the bag.",
@@ -123,7 +123,7 @@ export const templates = {
         duration: "10 min",
       },
       {
-        image: "/bag-step5.png",
+        image: "/images/templates/bag-step5.png",
         title: "Attach Handles & Finish Top Edge",
         description:
           'Position the handles 8 cm from each side edge and pin in place. Fold the top edge inward by 2 cm and stitch all the way around to close and finish the opening. Reinforce the handle attachment points with an "X" stitch for extra strength.',
@@ -145,7 +145,7 @@ export const templates = {
     description:
       "A casual, vintage-style bucket hat — sun protection with personality",
     accentColor: "bg-sky-50",
-    resultImage: "/hat-result.png",
+    resultImage: "/images/results/hat-result.png",
     patternPieces: [
       // areaCm2 for trapezoid = (topWidth + bottomWidth) / 2 * height = (8+12)/2*14 = 140
       {
@@ -336,7 +336,7 @@ export const templates = {
     description:
       "A classic boat neckline top upcycled from a men's dress shirt — timeless silhouette with optional button front",
     accentColor: "bg-rose-50",
-    resultImage: "/boatneck-result.png",
+    resultImage: "/images/results/boatneck-result.png",
     patternPieces: [
       // areaCm2 for rectangle = 46 * 60 = 2760
       {

@@ -1,0 +1,90 @@
+import { Simon } from "@freesewing/simon";
+import { cisMaleAdult42 } from "@freesewing/models";
+
+// brian.back, brian.front, library.sleeve, simon.front are base/intermediate pieces — skipped
+export default {
+  Design: Simon,
+  measurements: cisMaleAdult42,
+  parts: {
+    "simon.frontRight": {
+      label: "Front Right",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 1,
+      color: "#e0f2fe",
+      cutCount: 1,
+    },
+    "simon.frontLeft": {
+      label: "Front Left",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 1,
+      color: "#bae6fd",
+      cutCount: 1,
+    },
+    "simon.collar": {
+      label: "Collar",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 55,
+      color: "#7dd3fc",
+      cutCount: 1,
+    },
+    "simon.collarStand": {
+      label: "Collar Stand",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 55,
+      color: "#7dd3fc",
+      cutCount: 2,
+    },
+    "simon.cuff": {
+      label: "Cuff",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 75,
+      color: "#bae6fd",
+      cutCount: 2,
+    },
+    "simon.sleevePlacketOverlap": {
+      label: "Placket Overlap",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 75,
+      color: "#e0f2fe",
+      cutCount: 2,
+    },
+    "simon.sleevePlacketUnderlap": {
+      label: "Placket Underlap",
+      panel: "front",
+      defaultX: 75,
+      defaultY: 75,
+      color: "#e0f2fe",
+      cutCount: 2,
+    },
+    "simon.back": {
+      label: "Back",
+      panel: "back",
+      defaultX: 2,
+      defaultY: 1,
+      color: "#e0f2fe",
+      cutCount: 2,
+    },
+    "simon.yoke": {
+      label: "Yoke",
+      panel: "back",
+      defaultX: 52,
+      defaultY: 1,
+      color: "#bae6fd",
+      cutCount: 2,
+    },
+    "simon.sleeve": {
+      label: "Sleeve",
+      panel: "back",
+      defaultX: 2,
+      defaultY: 55,
+      color: "#7dd3fc",
+      cutCount: 2,
+    },
+  },
+};

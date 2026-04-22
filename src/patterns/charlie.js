@@ -1,0 +1,106 @@
+import { Charlie } from "@freesewing/charlie";
+import { cisMaleAdult42 } from "@freesewing/models";
+
+// titan.back and titan.front are base blocks — skipped in favour of charlie.front/back
+export default {
+  Design: Charlie,
+  measurements: cisMaleAdult42,
+  parts: {
+    "charlie.front": {
+      label: "Front",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 1,
+      color: "#e0e7ff",
+      cutCount: 2,
+    },
+    "charlie.waistband": {
+      label: "Waistband",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 1,
+      color: "#a5b4fc",
+      cutCount: 1,
+    },
+    "charlie.flyFacing": {
+      label: "Fly Facing",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 55,
+      color: "#818cf8",
+      cutCount: 1,
+    },
+    "charlie.flyExtension": {
+      label: "Fly Extension",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 55,
+      color: "#818cf8",
+      cutCount: 1,
+    },
+    "charlie.frontPocketBag": {
+      label: "Front Pocket Bag",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 75,
+      color: "#c7d2fe",
+      cutCount: 2,
+    },
+    "charlie.frontPocketFacing": {
+      label: "Front Pocket Facing",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 75,
+      color: "#c7d2fe",
+      cutCount: 2,
+    },
+    "charlie.beltLoops": {
+      label: "Belt Loops",
+      panel: "front",
+      defaultX: 80,
+      defaultY: 55,
+      color: "#a5b4fc",
+      cutCount: 8, // 8 belt loops cut from one strip
+    },
+    "charlie.back": {
+      label: "Back",
+      panel: "back",
+      defaultX: 2,
+      defaultY: 1,
+      color: "#c7d2fe",
+      cutCount: 2,
+    },
+    "charlie.backPocketBag": {
+      label: "Back Pocket Bag",
+      panel: "back",
+      defaultX: 52,
+      defaultY: 1,
+      color: "#c7d2fe",
+      cutCount: 2,
+    },
+    "charlie.backPocketFacing": {
+      label: "Back Pocket Facing",
+      panel: "back",
+      defaultX: 2,
+      defaultY: 55,
+      color: "#e0e7ff",
+      cutCount: 2,
+    },
+    "charlie.backPocketWelt": {
+      label: "Back Pocket Welt",
+      panel: "back",
+      defaultX: 52,
+      defaultY: 55,
+      color: "#a5b4fc",
+      cutCount: 2,
+    },
+    "charlie.backPocketInterfacing": {
+      label: "Back Pocket Interfacing",
+      panel: "back",
+      defaultX: 2,
+      defaultY: 75,
+      color: "#e0e7ff",
+      cutCount: 2,
+    },
+  },
+};

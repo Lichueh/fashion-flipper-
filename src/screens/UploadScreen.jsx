@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { analyzeFabric } from "../services/fabricAnalysis";
 
 export default function UploadScreen({ navigate }) {
   const [preview, setPreview] = useState(null);
@@ -11,6 +12,8 @@ export default function UploadScreen({ navigate }) {
     if (!file) return;
     setUploadedFile(file);
     setPreview(URL.createObjectURL(file));
+    // Pre-warm the fabric analysis cache so AnalysisScreen gets an instant hit
+    analyzeFabric(file);
   };
 
   return (

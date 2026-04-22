@@ -129,7 +129,7 @@ export default function AnalysisScreen({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 pt-0 pb-4 space-y-4">
         {/* Fabric type card */}
         <div className="bg-primary-100 rounded-3xl p-4 border border-primary-200 fade-in">
           <div className="flex gap-4 items-center">
@@ -212,60 +212,90 @@ export default function AnalysisScreen({
           <p className="text-[11px] font-semibold text-primary-100 uppercase tracking-wider mb-3 px-1">
             AI Upcycling Recommendations
           </p>
-          {(feasibleTemplates ?? mockAnalysis.recommendations).map(
-            (rec, idx) => {
-              // rec comes from feasibleTemplates (pipeline) or mockAnalysis (fallback)
-              const isFeasible = rec.feasible ?? true;
-              const score =
-                rec.feasible !== undefined
-                  ? Math.round((rec.fitScore ?? 0) * 100)
-                  : rec.matchScore;
-              const name = rec.name;
-              const reason =
-                rec.feasible !== undefined
-                  ? isFeasible
-                    ? `Fits your garment — uses ${Math.round(rec.usedAreaPct)}% of available fabric`
-                    : rec.failReason === "area"
-                      ? "Not enough fabric area for this pattern"
+          {(feasibleTemplates
+            ? [...feasibleTemplates].sort((a, b) => {
+                // Three-tier: clean-feasible → needs-interfacing → infeasible
+                const tierA = !a.feasible ? 2 : a.needsInterfacing ? 1 : 0;
+                const tierB = !b.feasible ? 2 : b.needsInterfacing ? 1 : 0;
+                if (tierA !== tierB) return tierA - tierB;
+                return (
+                  (b.compositeScore ?? b.fitScore ?? 0) -
+                  (a.compositeScore ?? a.fitScore ?? 0)
+                );
+              })
+            : mockAnalysis.recommendations
+          ).map((rec, idx) => {
+            // rec comes from feasibleTemplates (pipeline) or mockAnalysis (fallback)
+            const isFeasible = rec.feasible ?? true;
+            const score =
+              rec.feasible !== undefined
+                ? Math.round((rec.fitScore ?? 0) * 100)
+                : rec.matchScore;
+            const name = rec.name;
+            const reason =
+              rec.feasible !== undefined
+                ? isFeasible
+                  ? `Fits your garment — uses ${Math.round(rec.usedAreaPct)}% of available fabric${
+                      rec.needsInterfacing && rec.fabricNote
+                        ? ` · ${rec.fabricNote}`
+                        : ""
+                    }`
+                  : rec.failReason === "area"
+                    ? "Not enough fabric area for this pattern"
+                    : rec.failReason === "fabric" && rec.fabricNote
+                      ? rec.fabricNote
                       : "Some pieces are too large to fit on your garment panels"
-                  : rec.reason;
+                : rec.reason;
 
-              return (
-                <div
-                  key={rec.id}
-                  className={`bg-primary-100 rounded-3xl p-4 mb-3 border ${isFeasible ? "border-primary-200" : "border-secondary-200 opacity-70"}`}
-                >
-                  {idx === 0 && isFeasible && (
-                    <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2">
-                      ✨ Top Pick
-                    </span>
-                  )}
-                  {!isFeasible && (
-                    <span className="inline-block bg-red-100 text-red-700 text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2">
-                      ✕ Not feasible
-                    </span>
-                  )}
-                  <div className="flex justify-between items-center mb-1.5">
-                    <p className="font-semibold text-primary-900">{name}</p>
-                    <span
-                      className={`text-sm font-bold ${isFeasible ? "text-primary-700" : "text-red-500"}`}
-                    >
-                      {score}%
-                    </span>
-                  </div>
-                  <div className="h-2 bg-primary-200 rounded-full overflow-hidden mb-2">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${isFeasible ? "bg-primary-500" : "bg-red-400"}`}
-                      style={{ width: `${score}%` }}
-                    />
-                  </div>
-                  <p className="text-primary-600 text-xs leading-4">{reason}</p>
+            return (
+              <div
+                key={rec.id}
+                className={`bg-primary-100 rounded-3xl p-4 mb-3 border ${isFeasible ? "border-primary-200" : "border-secondary-200 opacity-70"}`}
+              >
+                {idx === 0 && isFeasible && !rec.needsInterfacing && (
+                  <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2">
+                    ✨ Top Pick
+                  </span>
+                )}
+                {rec.needsInterfacing && (
+                  <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2">
+                    ⚠️ Needs interfacing
+                  </span>
+                )}
+                {!isFeasible && (
+                  <span className="inline-block bg-red-100 text-red-700 text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2">
+                    ✕ Not feasible
+                  </span>
+                )}
+                <div className="flex justify-between items-center mb-1.5">
+                  <p className="font-semibold text-primary-900">{name}</p>
+                  <span
+                    className={`text-sm font-bold ${isFeasible ? "text-primary-700" : "text-red-500"}`}
+                  >
+                    {score}%
+                  </span>
                 </div>
-              );
-            },
-          )}
+                <div className="h-2 bg-primary-200 rounded-full overflow-hidden mb-2">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      rec.needsInterfacing
+                        ? "bg-amber-400"
+                        : isFeasible
+                          ? "bg-primary-500"
+                          : "bg-red-400"
+                    }`}
+                    style={{ width: `${score}%` }}
+                  />
+                </div>
+                <p className="text-primary-600 text-xs leading-4">{reason}</p>
+              </div>
+            );
+          })}
         </div>
+      </div>
 
+      {/* Pinned CTA — always visible, never buried in the scroll */}
+      <div className="px-5 pb-6 pt-3 bg-primary-800">
         <button
           onClick={() =>
             navigate("templateSelect", {

@@ -10,6 +10,9 @@ import CommunityScreen from "./screens/CommunityScreen";
 import PatternLayoutScreen from "./screens/PatternLayoutScreen";
 import BasicTutorialScreen from "./screens/BasicTutorialScreen";
 import CameraPatternScreen from "./screens/CameraPatternScreen";
+import ProfilesScreen from "./screens/ProfilesScreen";
+import ProfileEditorScreen from "./screens/ProfileEditorScreen";
+import useProfiles from "./hooks/useProfiles";
 
 export default function App() {
   const [screen, setScreen] = useState("home");
@@ -22,6 +25,25 @@ export default function App() {
   const [feasibleTemplates, setFeasibleTemplates] = useState(null);
   const [fabric, setFabric] = useState(null);
 
+  const {
+    profiles,
+    activeProfileId,
+    activeProfile,
+    addProfile,
+    updateProfile,
+    deleteProfile,
+    setActiveProfile,
+  } = useProfiles();
+
+  // Which profile is open in the editor (null = new profile)
+  const [editingProfileId, setEditingProfileId] = useState(null);
+
+  // Per-navigation profile override — reset on every screen change
+  const [sessionProfileOverride, setSessionProfileOverride] = useState(null);
+
+  // Where the user came from before patternLayout (for back button)
+  const [patternLayoutFrom, setPatternLayoutFrom] = useState("templateSelect");
+
   const navigate = (to, data = {}) => {
     if (data.image !== undefined) setUploadedImage(data.image);
     if (data.imageFile !== undefined) setUploadedFile(data.imageFile);
@@ -32,13 +54,20 @@ export default function App() {
     if (data.feasibleTemplates !== undefined)
       setFeasibleTemplates(data.feasibleTemplates);
     if (data.fabric !== undefined) setFabric(data.fabric);
+    if (to === "profileEditor") {
+      setEditingProfileId(data.profileId ?? null);
+    }
+    if (to === "patternLayout") {
+      setPatternLayoutFrom(data.from ?? "templateSelect");
+    }
+    setSessionProfileOverride(null);
     setScreen(to);
   };
 
   const commonProps = { navigate, uploadedImage, template: selectedTemplate };
 
   const screens = {
-    home: <HomeScreen navigate={navigate} />,
+    home: <HomeScreen navigate={navigate} activeProfile={activeProfile} />,
     upload: <UploadScreen navigate={navigate} />,
     analysis: (
       <AnalysisScreen
@@ -53,6 +82,11 @@ export default function App() {
         navigate={navigate}
         feasibleTemplates={feasibleTemplates}
         fabric={fabric}
+        activeProfile={activeProfile}
+        sessionProfileOverride={sessionProfileOverride}
+        setSessionProfileOverride={setSessionProfileOverride}
+        profiles={profiles}
+        updateProfile={updateProfile}
       />
     ),
     patternLayout: (
@@ -62,6 +96,12 @@ export default function App() {
         measurements={measurements}
         segmentation={segmentation}
         uploadedImage={uploadedImage}
+        activeProfile={activeProfile}
+        sessionProfileOverride={sessionProfileOverride}
+        setSessionProfileOverride={setSessionProfileOverride}
+        profiles={profiles}
+        updateProfile={updateProfile}
+        from={patternLayoutFrom}
       />
     ),
     stepGuide: (
@@ -75,7 +115,9 @@ export default function App() {
         fabric={fabric}
       />
     ),
-    learn: <BasicTutorialScreen navigate={navigate} />,
+    learn: (
+      <BasicTutorialScreen navigate={navigate} activeProfile={activeProfile} />
+    ),
     arPattern: (
       <CameraPatternScreen
         navigate={navigate}
@@ -83,7 +125,28 @@ export default function App() {
         longestSideCm={longestSideCm}
       />
     ),
-    community: <CommunityScreen navigate={navigate} />,
+    community: (
+      <CommunityScreen navigate={navigate} activeProfile={activeProfile} />
+    ),
+    profiles: (
+      <ProfilesScreen
+        profiles={profiles}
+        activeProfileId={activeProfileId}
+        activeProfile={activeProfile}
+        addProfile={addProfile}
+        deleteProfile={deleteProfile}
+        setActiveProfile={setActiveProfile}
+        navigate={navigate}
+      />
+    ),
+    profileEditor: (
+      <ProfileEditorScreen
+        profile={profiles.find((p) => p.id === editingProfileId) ?? null}
+        addProfile={addProfile}
+        updateProfile={updateProfile}
+        navigate={navigate}
+      />
+    ),
   };
 
   return <PhoneFrame>{screens[screen] ?? screens.home}</PhoneFrame>;

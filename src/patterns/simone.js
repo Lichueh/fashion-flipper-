@@ -1,0 +1,98 @@
+import { Simone } from "@freesewing/simone";
+import { cisFemaleAdult42 } from "@freesewing/models";
+
+// brian.back, brian.front, library.sleeve, simon.front are base/intermediate pieces — skipped
+export default {
+  Design: Simone,
+  measurements: cisFemaleAdult42,
+  parts: {
+    "simon.frontRight": {
+      label: "Front Right",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 1,
+      color: "#ffe4e6",
+      cutCount: 1,
+    },
+    "simon.frontLeft": {
+      label: "Front Left",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 1,
+      color: "#fecdd3",
+      cutCount: 1,
+    },
+    "simone.fbaFront": {
+      label: "FBA Front",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 55,
+      color: "#fda4af",
+      cutCount: 1,
+    },
+    "simon.collar": {
+      label: "Collar",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 55,
+      color: "#fb7185",
+      cutCount: 1,
+    },
+    "simon.collarStand": {
+      label: "Collar Stand",
+      panel: "front",
+      defaultX: 2,
+      defaultY: 75,
+      color: "#fda4af",
+      cutCount: 2,
+    },
+    "simon.cuff": {
+      label: "Cuff",
+      panel: "front",
+      defaultX: 52,
+      defaultY: 75,
+      color: "#fecdd3",
+      cutCount: 2,
+    },
+    "simon.sleevePlacketOverlap": {
+      label: "Placket Overlap",
+      panel: "front",
+      defaultX: 75,
+      defaultY: 75,
+      color: "#ffe4e6",
+      cutCount: 2,
+    },
+    "simon.sleevePlacketUnderlap": {
+      label: "Placket Underlap",
+      panel: "front",
+      defaultX: 75,
+      defaultY: 85,
+      color: "#ffe4e6",
+      cutCount: 2,
+    },
+    "simon.back": {
+      label: "Back",
+      panel: "back",
+      defaultX: 2,
+      defaultY: 1,
+      color: "#ffe4e6",
+      cutCount: 2,
+    },
+    "simon.yoke": {
+      label: "Yoke",
+      panel: "back",
+      defaultX: 52,
+      defaultY: 1,
+      color: "#fecdd3",
+      cutCount: 2,
+    },
+    "simon.sleeve": {
+      label: "Sleeve",
+      panel: "back",
+      defaultX: 2,
+      defaultY: 55,
+      color: "#fda4af",
+      cutCount: 2,
+    },
+  },
+};

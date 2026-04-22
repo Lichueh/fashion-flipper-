@@ -100,7 +100,7 @@ const tabs = [
   { id: "following", label: "Following" },
 ];
 
-export default function CommunityScreen({ navigate }) {
+export default function CommunityScreen({ navigate, activeProfile }) {
   const [tab, setTab] = useState("featured");
   const [liked, setLiked] = useState({});
 
@@ -209,7 +209,11 @@ export default function CommunityScreen({ navigate }) {
         )}
       </div>
 
-      <BottomNav current="community" navigate={navigate} />
+      <BottomNav
+        current="community"
+        navigate={navigate}
+        activeProfile={activeProfile}
+      />
     </div>
   );
 }

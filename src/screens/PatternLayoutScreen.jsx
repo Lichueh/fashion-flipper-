@@ -1,9 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { templates } from "../data/templates";
-import { mockAnalysis } from "../data/mockAnalysis";
+import freesewingPatterns from "../data/freesewingPatterns.json";
+import { extractPatternPieces } from "../utils/extractFreeSewingPieces";
+import patternMeasurements from "../data/patternMeasurements";
+import MeasurementsModal from "../components/MeasurementsModal";
 
 /* ── Layout constants ────────────────────────────────────────────── */
 const PANEL_W = 290; // each panel takes the full available width
+
+// TODO: replace DEFAULT_GRAIN_ANGLE with real fabric data from user input
+const DEFAULT_GRAIN_ANGLE = 90; // degrees
 
 function grainLabel(angle) {
   if (angle === 90) return "Vertical (Warp)";
@@ -26,7 +32,14 @@ function effectiveSize(piece, scale, rotation) {
 }
 
 /* ── Panel background (grid + optional garment image) ────────────── */
-function PanelBackground({ label, panelW, panelH, imageUrl, opacity, bboxFraction }) {
+function PanelBackground({
+  label,
+  panelW,
+  panelH,
+  imageUrl,
+  opacity,
+  bboxFraction,
+}) {
   const gridId = `grid-${label}`;
 
   const imgW = bboxFraction ? panelW / bboxFraction.w : panelW;
@@ -130,6 +143,54 @@ function PieceShape({ piece, scale }) {
   const seam = Math.min(3, pw * 0.07, ph * 0.07);
   const isCircular = piece.shape === "circle" || piece.shape === "ring";
 
+  // FreeSewing-sourced pieces: render the extracted SVG seam path directly
+  if (piece.shape === "svgpath") {
+    return (
+      <div style={{ width: pw, height: ph, position: "relative" }}>
+        <svg viewBox={piece.viewBox} width={pw} height={ph}>
+          <path
+            d={piece.svgPath}
+            fill={piece.color}
+            stroke="#1e3a5f"
+            strokeWidth="1"
+          />
+        </svg>
+        <GrainArrow angle={piece.grainAngleDeg} pw={pw} ph={ph} />
+        <div
+          style={{
+            position: "absolute",
+            bottom: seam + 1,
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            className="text-primary-900 font-bold font-mono"
+            style={{ fontSize: 6, lineHeight: 1.3 }}
+          >
+            {piece.label}
+          </div>
+          {(piece.cutCount ?? 1) > 1 && (
+            <div
+              className="text-secondary-700 font-bold font-mono"
+              style={{ fontSize: 6, lineHeight: 1.3 }}
+            >
+              Cut ×{piece.cutCount}
+            </div>
+          )}
+          <div
+            className="text-primary-600 font-mono"
+            style={{ fontSize: 5, lineHeight: 1.2 }}
+          >
+            {piece.widthCm}×{piece.heightCm}cm
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const outerStyle = {
     width: pw,
     height: ph,
@@ -201,6 +262,14 @@ function PieceShape({ piece, scale }) {
         >
           {piece.label}
         </div>
+        {(piece.cutCount ?? 1) > 1 && (
+          <div
+            className="text-secondary-700 font-bold font-mono"
+            style={{ fontSize: 6, lineHeight: 1.3 }}
+          >
+            Cut ×{piece.cutCount}
+          </div>
+        )}
         <div
           className="text-primary-600 font-mono"
           style={{ fontSize: 5, lineHeight: 1.2 }}
@@ -218,15 +287,58 @@ export default function PatternLayoutScreen({
   measurements,
   segmentation,
   uploadedImage,
+  activeProfile,
+  sessionProfileOverride,
+  setSessionProfileOverride,
+  profiles = [],
+  updateProfile,
+  from = "templateSelect",
 }) {
   const template = templates[templateId];
-  const { garmentLayout } = mockAnalysis;
-  const { grainAngleDeg } = garmentLayout;
+  const grainAngleDeg =
+    measurements?.garmentLayout?.grainAngleDeg ?? DEFAULT_GRAIN_ANGLE;
 
-  const panelW =
-    measurements?.panels?.frontPanel?.widthCm ?? garmentLayout.widthCm;
-  const panelH =
-    measurements?.panels?.frontPanel?.heightCm ?? garmentLayout.heightCm;
+  // ── Measurements modal (auto-opens when arriving from home with no profile) ──
+  const effectiveProfile = sessionProfileOverride ?? activeProfile ?? null;
+  const requiredKeys =
+    patternMeasurements[templateId]?.requiredMeasurements ?? [];
+  const missingKeys = effectiveProfile
+    ? requiredKeys.filter((k) => effectiveProfile.measurements?.[k] == null)
+    : requiredKeys;
+
+  const [showMeasModal, setShowMeasModal] = useState(false);
+
+  // ── Runtime FreeSewing extraction state ─────────────────────────────────
+  const [fsLoading, setFsLoading] = useState(false);
+  const [fsError, setFsError] = useState(null); // null | 'load' | 'extract'
+  const [runtimePieces, setRuntimePieces] = useState(null);
+  const [fsRetry, setFsRetry] = useState(0);
+
+  // Derive panel dimensions from the actual pattern pieces so the layout
+  // scales correctly for both small shirts and full-length skirts.
+  // Width: widest piece + 30% breathing room. Height: tallest piece + 20%.
+  const { w: defaultW, h: defaultH } = useMemo(() => {
+    const pieces =
+      freesewingPatterns[templateId] ?? template.patternPieces ?? [];
+    if (!pieces.length) return { w: 50, h: 70 };
+    const maxW = Math.max(...pieces.map((p) => p.widthCm ?? 10));
+    const maxH = Math.max(...pieces.map((p) => p.heightCm ?? 5));
+    return {
+      w: Math.max(30, Math.ceil(maxW * 1.3)),
+      h: Math.max(40, Math.ceil(maxH * 1.2)),
+    };
+  }, [templateId, template]);
+
+  // Auto-open on mount if from home and no profile / missing measurements
+  useEffect(() => {
+    if (from === "home" && missingKeys.length > 0) {
+      setShowMeasModal(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const panelW = measurements?.panels?.frontPanel?.widthCm ?? defaultW;
+  const panelH = measurements?.panels?.frontPanel?.heightCm ?? defaultH;
   const bboxFraction = measurements?.bboxFraction ?? null;
 
   // Panel pixel height is derived from the uploaded image's own aspect ratio
@@ -321,11 +433,95 @@ export default function PatternLayoutScreen({
   const [dragOverPanel, setDragOverPanel] = useState(null);
   const [showAiBadge, setShowAiBadge] = useState(true);
   const [showHint, setShowHint] = useState(true);
+  const activePieces =
+    template.patternSource === "freesewing"
+      ? (runtimePieces ??
+        freesewingPatterns[templateId] ??
+        template.patternPieces)
+      : template.patternPieces;
   const frontRef = useRef();
   const backRef = useRef();
   const lastTapRef = useRef({ id: null, time: 0 });
   // tracks current pointer page coords during a drag for cross-panel detection
   const dragPointerPageRef = useRef({ x: 0, y: 0 });
+
+  // For FreeSewing templates, seed positions from the pre-extracted JSON on mount.
+  useEffect(() => {
+    if (template.patternSource !== "freesewing") return;
+    const pieces = freesewingPatterns[templateId] ?? [];
+    setPositions(
+      Object.fromEntries(
+        pieces.map((p) => [
+          p.id,
+          {
+            x: (p.defaultX / 100) * PANEL_W,
+            y: (p.defaultY / 100) * panelPxH,
+            rotation: 0,
+            panel: p.panel === "back" ? "back" : "front",
+          },
+        ]),
+      ),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId]);
+
+  // ── Runtime pattern extraction when a profile is active ─────────────────
+  useEffect(() => {
+    if (template.patternSource !== "freesewing") return;
+    if (!effectiveProfile) return;
+
+    let cancelled = false;
+    setFsLoading(true);
+    setFsError(null);
+    setRuntimePieces(null);
+
+    import(`../patterns/${templateId}.js`)
+      .then(async (mod) => {
+        if (cancelled) return;
+        const {
+          Design,
+          measurements: defaultMeasurements,
+          parts,
+        } = mod.default ?? mod;
+        const mergedMeasurements = {
+          ...defaultMeasurements,
+          ...effectiveProfile.measurements,
+        };
+        const pieces = await extractPatternPieces(
+          Design,
+          mergedMeasurements,
+          parts,
+        );
+        if (!cancelled) {
+          setRuntimePieces(pieces);
+          setPositions(
+            Object.fromEntries(
+              pieces.map((p) => [
+                p.id,
+                {
+                  x: (p.defaultX / 100) * PANEL_W,
+                  y: (p.defaultY / 100) * panelPxH,
+                  rotation: 0,
+                  panel: p.panel === "back" ? "back" : "front",
+                },
+              ]),
+            ),
+          );
+          setFsError(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFsError("load");
+      })
+      .finally(() => {
+        if (!cancelled) setFsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId, effectiveProfile, fsRetry]);
 
   function getPointerPos(e, panelRef) {
     const rect = panelRef.current.getBoundingClientRect();
@@ -333,8 +529,8 @@ export default function PatternLayoutScreen({
   }
 
   function findPieceAt(px, py, panelKey) {
-    const pieces = template.patternPieces.filter(
-      (p) => positions[p.id].panel === panelKey,
+    const pieces = activePieces.filter(
+      (p) => positions[p.id]?.panel === panelKey,
     );
     for (const piece of [...pieces].reverse()) {
       const pos = positions[piece.id];
@@ -392,7 +588,7 @@ export default function PatternLayoutScreen({
     const { px, py } = getPointerPos(e, dragging.panelRef);
     const dx = px - dragging.startPointerX;
     const dy = py - dragging.startPointerY;
-    const piece = template.patternPieces.find((p) => p.id === dragging.id);
+    const piece = activePieces.find((p) => p.id === dragging.id);
     const pos = positions[piece.id];
     const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
     const newX = Math.max(0, Math.min(PANEL_W - ew, dragging.startPieceX + dx));
@@ -435,9 +631,7 @@ export default function PatternLayoutScreen({
           cy <= otherRect.bottom
         ) {
           // Move piece to the other panel, clamped to its bounds
-          const piece = template.patternPieces.find(
-            (p) => p.id === dragging.id,
-          );
+          const piece = activePieces.find((p) => p.id === dragging.id);
           const pos = positions[piece.id];
           const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
           const dropX = Math.max(
@@ -466,12 +660,12 @@ export default function PatternLayoutScreen({
 
   /* ── Move a piece to a specific panel (used by legend buttons) ── */
   function movePieceToPanel(pieceId, newPanel) {
-    const piece = template.patternPieces.find((p) => p.id === pieceId);
+    const piece = activePieces.find((p) => p.id === pieceId);
     const pos = positions[pieceId];
     const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
     // Stack below existing pieces in the target panel
-    const others = template.patternPieces.filter(
-      (p) => p.id !== pieceId && positions[p.id].panel === newPanel,
+    const others = activePieces.filter(
+      (p) => p.id !== pieceId && positions[p.id]?.panel === newPanel,
     );
     const maxY = others.reduce((acc, p) => {
       const ppos = positions[p.id];
@@ -488,8 +682,8 @@ export default function PatternLayoutScreen({
 
   /* ── Render a single panel ── */
   function renderPanel(panelLabel, panelKey, ref, imageUrl, imgOpacity) {
-    const pieces = template.patternPieces.filter(
-      (p) => positions[p.id].panel === panelKey,
+    const pieces = activePieces.filter(
+      (p) => positions[p.id]?.panel === panelKey,
     );
     return (
       <div
@@ -594,11 +788,11 @@ export default function PatternLayoutScreen({
   }
 
   return (
-    <div className="h-full flex flex-col bg-primary-800">
+    <div className="relative h-full flex flex-col bg-primary-800">
       {/* Header */}
       <div className="flex items-center px-5 pt-8 pb-3">
         <button
-          onClick={() => navigate("templateSelect")}
+          onClick={() => navigate(from)}
           className="w-9 h-9 bg-primary-700 rounded-full border border-primary-600 flex items-center justify-center text-primary-100 shadow-sm mr-3"
         >
           ←
@@ -630,6 +824,29 @@ export default function PatternLayoutScreen({
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto pb-4">
+        {/* Error banner */}
+        {fsError && !fsLoading && (
+          <div className="mx-5 mb-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex flex-col gap-2">
+            <p className="text-sm font-semibold text-red-800">
+              {fsError === "load"
+                ? "Could not load pattern file."
+                : "Pattern generation failed."}
+            </p>
+            <p className="text-xs text-red-600">
+              Showing default sizing instead.
+            </p>
+            <button
+              onClick={() => {
+                setFsError(null);
+                setRuntimePieces(null);
+                setFsRetry((n) => n + 1);
+              }}
+              className="self-start text-xs font-semibold text-red-700 underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {/* Front then back, stacked vertically */}
         <div className="flex flex-col items-center px-2.5 gap-3 mb-4">
           {renderPanel("FRONT", "front", frontRef, maskedImageUrl, 0.8)}
@@ -676,7 +893,7 @@ export default function PatternLayoutScreen({
         )}
 
         {/* Warning note */}
-        {template.patternPieces.some((p) => {
+        {activePieces.some((p) => {
           const r = positions[p.id]?.rotation ?? 0;
           return isMisaligned((p.grainAngleDeg + r) % 360, grainAngleDeg);
         }) && (
@@ -695,7 +912,7 @@ export default function PatternLayoutScreen({
             Pattern Pieces
           </p>
           <div className="grid grid-cols-2 gap-1.5">
-            {template.patternPieces.map((piece) => (
+            {activePieces.map((piece) => (
               <div
                 key={piece.id}
                 className="flex items-center gap-2 bg-primary-700 rounded-xl px-2.5 py-1.5 border border-primary-600"
@@ -747,6 +964,30 @@ export default function PatternLayoutScreen({
           Confirm Layout →
         </button>
       </div>
+
+      {/* Loading overlay for runtime extraction */}
+      {fsLoading && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-primary-900/60">
+          <div className="bg-primary-700 rounded-2xl px-6 py-5 flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-primary-300 border-t-transparent rounded-full animate-spin" />
+            <p className="text-primary-100 text-sm font-medium">
+              Generating your pattern…
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Measurements modal (auto-shows from home with no profile) ──── */}
+      <MeasurementsModal
+        open={showMeasModal}
+        onClose={() => setShowMeasModal(false)}
+        templateId={templateId}
+        profiles={profiles}
+        activeProfile={activeProfile}
+        sessionProfileOverride={sessionProfileOverride}
+        setSessionProfileOverride={setSessionProfileOverride}
+        updateProfile={updateProfile}
+      />
     </div>
   );
 }

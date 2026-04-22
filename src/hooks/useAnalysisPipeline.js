@@ -5,6 +5,19 @@ import { checkFeasibility } from "../services/feasibility.js";
 import { analyzeFabric } from "../services/fabricAnalysis.js";
 import { templates } from "../data/templates.js";
 import { mockAnalysis } from "../data/mockAnalysis.js";
+import freesewingPatterns from "../data/freesewingPatterns.json";
+
+// Merge FreeSewing piece data into templates so checkFeasibility sees real areas.
+// Templates with patternSource: "freesewing" have patternPieces: [] in templates.js;
+// the actual pieces live in freesewingPatterns.json.
+const templatesWithPieces = Object.fromEntries(
+  Object.entries(templates).map(([id, t]) => [
+    id,
+    t.patternSource === "freesewing" && freesewingPatterns[id]
+      ? { ...t, patternPieces: freesewingPatterns[id] }
+      : t,
+  ]),
+);
 
 /**
  * Orchestrates the full analysis pipeline for a garment image.
@@ -67,6 +80,10 @@ async function _runSegmentationInWorker(imageFile) {
   });
 }
 
+// Eagerly create the worker (and trigger model download) as soon as this
+// module is imported — i.e. when the app first loads, not when Analyze is tapped.
+_getSegWorker();
+
 // ─────────────────────────────────────────────────────────────────────────────
 export function useAnalysisPipeline() {
   const [status, setStatus] = useState("idle");
@@ -82,6 +99,9 @@ export function useAnalysisPipeline() {
   // Holds segResult + mask dimensions between the segmenting and measuring stages
   // so submitLongestSide() can resume without re-running segmentation.
   const _pendingRef = useRef(null);
+  // Mirrors the fabric state so _measureAndCheck (a plain function, not a hook)
+  // can read the latest value without a stale closure.
+  const fabricRef = useRef(mockAnalysis.fabric);
 
   const reset = () => {
     setStatus("idle");
@@ -90,6 +110,7 @@ export function useAnalysisPipeline() {
     setMeasurements(null);
     setFeasibleTemplates(null);
     setFabric(mockAnalysis.fabric);
+    fabricRef.current = mockAnalysis.fabric;
     setNeedsManualInput(false);
     setNeedsScaleInput(false);
     setError(null);
@@ -126,7 +147,11 @@ export function useAnalysisPipeline() {
     setStatus("checking");
     setProgress(85);
 
-    const feasibility = checkFeasibility(measResult, templates);
+    const feasibility = checkFeasibility(
+      measResult,
+      templatesWithPieces,
+      fabricRef.current,
+    );
     setFeasibleTemplates(feasibility);
     setProgress(100);
     setStatus("done");
@@ -140,14 +165,21 @@ export function useAnalysisPipeline() {
       setStatus("segmenting");
       setProgress(10);
 
-      // Run fabric analysis and segmentation in parallel — both are independent.
-      // analyzeFabric never throws (returns null on any failure).
+      // Downscale for segmentation (≤800 px longest side) to cut decode/transfer
+      // overhead. SegFormer only needs the outline, not full camera resolution.
+      // fabricAnalysis receives the original file for maximum quality.
+      // Both chains run fully in parallel.
       const [fabricResult, segResult] = await Promise.all([
         analyzeFabric(imageFile),
-        _runSegmentationInWorker(imageFile),
+        _downscaleForSegmentation(imageFile, 800).then((sf) =>
+          _runSegmentationInWorker(sf),
+        ),
       ]);
 
-      if (fabricResult) setFabric(fabricResult);
+      if (fabricResult) {
+        setFabric(fabricResult);
+        fabricRef.current = fabricResult;
+      }
 
       if (segResult.error || segResult.lowConfidence) {
         setNeedsManualInput(true);
@@ -170,10 +202,6 @@ export function useAnalysisPipeline() {
       const maskH = firstMask
         ? Math.round(firstMask.mask.length / maskW)
         : imgH;
-
-      console.log("imgW/imgH", imgW, imgH);
-      console.log("maskW/maskH", maskW, maskH);
-      console.log("mask length", firstMask.mask.length);
 
       // Persist segResult + mask dims so submitLongestSide can resume.
       _pendingRef.current = { segResult, maskW, maskH };
@@ -223,6 +251,38 @@ export function useAnalysisPipeline() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Downscale an image file so its longest side is ≤ maxPx, preserving aspect
+ * ratio. If the image is already smaller it is returned as-is (no canvas work).
+ * Returns a File/Blob suitable for transfer to the segmentation worker.
+ */
+function _downscaleForSegmentation(file, maxPx = 800) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { naturalWidth: w, naturalHeight: h } = img;
+      if (w <= maxPx && h <= maxPx) {
+        // Already small enough — skip re-encoding.
+        resolve(file);
+        return;
+      }
+      const scale = maxPx / Math.max(w, h);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file); // fall back to original on error
+    };
+    img.src = url;
+  });
+}
 
 function _loadImageDimensions(file) {
   return new Promise((resolve, reject) => {

@@ -36,7 +36,7 @@ const communityPreviews = [
   },
 ];
 
-export default function HomeScreen({ navigate }) {
+export default function HomeScreen({ navigate, activeProfile }) {
   return (
     <div className="h-full flex flex-col bg-primary-800">
       <div className="flex-1 overflow-y-auto pb-1 scrollbar-hide">
@@ -149,7 +149,9 @@ export default function HomeScreen({ navigate }) {
             {Object.values(templates).map((t) => (
               <div
                 key={t.id}
-                onClick={() => navigate("upload")}
+                onClick={() =>
+                  navigate("patternLayout", { template: t.id, from: "home" })
+                }
                 className="bg-primary-50 border border-primary-200 rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform"
               >
                 <span className="text-4xl">{t.emoji}</span>
@@ -164,7 +166,11 @@ export default function HomeScreen({ navigate }) {
           </div>
         </div>
       </div>
-      <BottomNav current="home" navigate={navigate} />
+      <BottomNav
+        current="home"
+        navigate={navigate}
+        activeProfile={activeProfile}
+      />
     </div>
   );
 }

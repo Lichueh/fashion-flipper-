@@ -2,7 +2,7 @@ import { useState } from "react";
 import { tutorials } from "../data/tutorials";
 import BottomNav from "../components/BottomNav";
 
-export default function BasicTutorialScreen({ navigate }) {
+export default function BasicTutorialScreen({ navigate, activeProfile }) {
   const [checked, setChecked] = useState(new Set());
   const [expanded, setExpanded] = useState(null);
 
@@ -75,7 +75,9 @@ export default function BasicTutorialScreen({ navigate }) {
                 onClick={() => toggleCategory(tutorial.id)}
                 className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-primary-600 transition-colors"
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${tutorial.bgClass}`}>
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${tutorial.bgClass}`}
+                >
                   {tutorial.emoji}
                 </div>
 
@@ -199,7 +201,11 @@ export default function BasicTutorialScreen({ navigate }) {
         })}
       </div>
 
-      <BottomNav current="learn" navigate={navigate} />
+      <BottomNav
+        current="learn"
+        navigate={navigate}
+        activeProfile={activeProfile}
+      />
     </div>
   );
 }

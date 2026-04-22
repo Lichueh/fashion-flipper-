@@ -11,7 +11,14 @@
  *                 | { id: number, ok: false, error: string }
  */
 
-import { segmentGarment } from "../services/segmentation.js";
+import {
+  segmentGarment,
+  getSegmentationPipeline,
+} from "../services/segmentation.js";
+
+// Start loading the ONNX model immediately when the worker is created,
+// so it's ready (or nearly ready) by the time the user taps Analyze.
+getSegmentationPipeline();
 
 self.onmessage = async ({ data: { id, arrayBuffer, mimeType } }) => {
   try {

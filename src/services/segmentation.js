@@ -24,7 +24,7 @@ import { pipeline } from "@huggingface/transformers";
 // Module-level cache – loaded once per page, reused on every subsequent call.
 let _segmentationPipeline = null;
 
-async function getSegmentationPipeline() {
+export async function getSegmentationPipeline() {
   if (!_segmentationPipeline) {
     _segmentationPipeline = await pipeline(
       "image-segmentation",

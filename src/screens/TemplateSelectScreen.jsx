@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { templates } from "../data/templates";
 import { mockAnalysis } from "../data/mockAnalysis";
 import { generatePreview } from "../services/previewGeneration";
@@ -17,11 +17,13 @@ import {
   cmToMm,
   unitLabel,
 } from "../utils/measurementValidation";
+import { interpolatePatternArea } from "../services/feasibility";
 
 export default function TemplateSelectScreen({
   navigate,
   feasibleTemplates,
   fabric,
+  measurements,
   activeProfile,
   sessionProfileOverride,
   setSessionProfileOverride,
@@ -29,27 +31,114 @@ export default function TemplateSelectScreen({
   updateProfile,
 }) {
   // Build a feasibility lookup so we can sort feasible templates first.
-  const feasibilityById = Object.fromEntries(
-    (feasibleTemplates ?? []).map((r) => [r.id, r]),
+  const feasibilityById = useMemo(
+    () => Object.fromEntries((feasibleTemplates ?? []).map((r) => [r.id, r])),
+    [feasibleTemplates],
   );
 
-  const items = Object.values(templates).sort((a, b) => {
-    const fa = feasibilityById[a.id];
-    const fb = feasibilityById[b.id];
-    if (fa && fb) {
-      // Three-tier: clean-feasible → needs-interfacing → infeasible
-      const tierA = !fa.feasible ? 2 : fa.needsInterfacing ? 1 : 0;
-      const tierB = !fb.feasible ? 2 : fb.needsInterfacing ? 1 : 0;
-      if (tierA !== tierB) return tierA - tierB;
-      return (
-        (fb.compositeScore ?? fb.fitScore ?? 0) -
-        (fa.compositeScore ?? fa.fitScore ?? 0)
+  const profileFeasibility = useMemo(() => {
+    const ep = sessionProfileOverride ?? activeProfile ?? null;
+
+    // No profile or no garment measurement → use original results unchanged
+    if (!ep || !measurements?.totalAreaCm2) return feasibilityById;
+
+    const chest_mm = ep.measurements?.chest;
+    if (!chest_mm) return feasibilityById;
+
+    // Re-score each template with profile-adjusted piece area
+    const rescored = { ...feasibilityById };
+    for (const [id, original] of Object.entries(feasibilityById)) {
+      // Fabric incompatibility cannot be fixed by area re-scoring — keep original
+      if (
+        original.failReason === "fabric" ||
+        original.failReason === "piece_fit"
+      )
+        continue;
+
+      const interpolatedArea = interpolatePatternArea(id, chest_mm);
+      if (interpolatedArea === null) continue; // no data → keep original
+
+      const feasible = interpolatedArea * 1.1 <= measurements.totalAreaCm2;
+      const usedAreaPct = Math.round(
+        (interpolatedArea / measurements.totalAreaCm2) * 100,
       );
+
+      // Compute a proper compositeScore so re-scored feasible items sort correctly.
+      // Stage 2 (bounding-box fit) not re-run — assumes pieces fit if area fits.
+      const reuseScore = Math.min(usedAreaPct / 100, 1);
+      const compositeScore = feasible ? 0.5 * 1 + 0.5 * reuseScore : 0;
+
+      rescored[id] = {
+        ...original,
+        feasible,
+        usedAreaPct,
+        compositeScore,
+        fitScore: compositeScore,
+        failReason: feasible ? null : "area",
+      };
     }
-    return 0;
-  });
+    return rescored;
+  }, [feasibilityById, activeProfile, sessionProfileOverride, measurements]);
+
+  const items = useMemo(() => {
+    const sorted = Object.values(templates)
+      .slice()
+      .sort((a, b) => {
+        const fa = profileFeasibility[a.id];
+        const fb = profileFeasibility[b.id];
+
+        // Four-tier: feasible(0) → needs-interfacing(0.5) → no-data/accessories(1) → infeasible(2)
+        const tierA = !fa
+          ? 1
+          : !fa.feasible
+            ? 2
+            : fa.needsInterfacing
+              ? 0.5
+              : 0;
+        const tierB = !fb
+          ? 1
+          : !fb.feasible
+            ? 2
+            : fb.needsInterfacing
+              ? 0.5
+              : 0;
+
+        if (tierA !== tierB) return tierA - tierB;
+        return (
+          (fb.compositeScore ?? fb.fitScore ?? 0) -
+          (fa.compositeScore ?? fa.fitScore ?? 0)
+        );
+      });
+    console.log(
+      "[TemplateSelect] sorted order:",
+      sorted.map((t) => {
+        const f = profileFeasibility[t.id];
+        const tier = !f ? 1 : !f.feasible ? 2 : f.needsInterfacing ? 0.5 : 0;
+        return `${t.id}(tier=${tier},score=${(f?.compositeScore ?? 0).toFixed(2)},feasible=${f?.feasible})`;
+      }),
+    );
+    return sorted;
+  }, [profileFeasibility]);
 
   const [previews, setPreviews] = useState({});
+  const [showAllGenders, setShowAllGenders] = useState(false);
+
+  // Derive profile gender — non-binary and no-profile both mean show all
+  const profileGender = useMemo(() => {
+    const ep = sessionProfileOverride ?? activeProfile ?? null;
+    return ep?.gender ?? null; // "female" | "male" | "nonbinary" | null
+  }, [sessionProfileOverride, activeProfile]);
+
+  // Apply gender filter on top of the sorted items
+  const visibleItems = useMemo(() => {
+    // No filtering when toggled off, no profile, or profile is non-binary
+    if (showAllGenders || !profileGender || profileGender === "nonbinary") {
+      return items;
+    }
+    return items.filter(
+      (t) => t.forGender === "any" || t.forGender === profileGender,
+    );
+  }, [items, showAllGenders, profileGender]);
 
   // ── Measurements modal state ────────────────────────────────────────────
   // modalTemplate: the template object the user tapped; null = modal closed
@@ -236,12 +325,15 @@ export default function TemplateSelectScreen({
     };
   }, [fabric]);
 
-  // Build a lookup for match scores and feasibility: prefer feasibleTemplates (pipeline), fall back to mockAnalysis
+  // Build a lookup for match scores and feasibility: prefer feasibleTemplates (pipeline), fall back to mockAnalysis.
+  // Overlay profileFeasibility so badge rendering reflects profile-adjusted scores.
   const scoreSource = feasibleTemplates ?? mockAnalysis.recommendations;
-  const recById = Object.fromEntries(scoreSource.map((rec) => [rec.id, rec]));
+  const recById = Object.fromEntries(
+    scoreSource.map((rec) => [rec.id, profileFeasibility[rec.id] ?? rec]),
+  );
   const scoreById = Object.fromEntries(
-    scoreSource.map((rec) => [
-      rec.id,
+    Object.entries(recById).map(([id, rec]) => [
+      id,
       rec.feasible !== undefined
         ? Math.round((rec.compositeScore ?? rec.fitScore ?? 0) * 100)
         : rec.matchScore,
@@ -274,12 +366,53 @@ export default function TemplateSelectScreen({
           step-by-step guidance
         </p>
 
-        {items.map((template, idx) => {
+        {profileFeasibility !== feasibilityById && (
+          <div className="mx-0 mb-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-xl flex items-center gap-2">
+            <span className="text-sm">📐</span>
+            <p className="text-xs text-primary-100">
+              Results adjusted for your measurements
+            </p>
+          </div>
+        )}
+
+        {/* Gender filter toggle — only shown when profile has a binary gender */}
+        {profileGender && profileGender !== "nonbinary" && (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs text-primary-300">
+              Showing{" "}
+              {showAllGenders ? "all patterns" : `${profileGender} patterns`}
+            </span>
+            <button
+              onClick={() => setShowAllGenders((v) => !v)}
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+                showAllGenders
+                  ? "bg-primary-600 border-primary-500 text-primary-100"
+                  : "bg-secondary-200 border-secondary-300 text-secondary-900"
+              }`}
+            >
+              {showAllGenders ? "Showing all" : "Show all patterns"}
+            </button>
+          </div>
+        )}
+
+        {visibleItems.map((template, idx) => {
           const rec = recById[template.id];
           const isFeasible = rec?.feasible ?? true;
           const needsInterfacing = rec?.needsInterfacing ?? false;
           const isCleanTop = idx === 0 && isFeasible && !needsInterfacing;
           const matchScore = scoreById[template.id] ?? template.matchScore;
+          const failReason = !isFeasible
+            ? rec?.failReason === "area"
+              ? "Not enough fabric area for this pattern"
+              : rec?.failReason === "piece_fit"
+                ? "Some pieces are too large to fit on your garment"
+                : rec?.failReason === "fabric"
+                  ? (rec.fabricNote ??
+                    "Fabric type is not compatible with this pattern")
+                  : rec?.failReason
+                    ? "Not feasible with this garment"
+                    : "Not enough fabric area for this pattern"
+            : null;
           return (
             <div
               key={template.id}
@@ -312,6 +445,11 @@ export default function TemplateSelectScreen({
                   <span className="inline-block bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
                     ✕ Not feasible
                   </span>
+                )}
+                {failReason && (
+                  <p className="text-red-600 text-[11px] leading-4 mb-3">
+                    {failReason}
+                  </p>
                 )}
                 <div className="flex items-center gap-4">
                   <div
@@ -375,6 +513,42 @@ export default function TemplateSelectScreen({
                   />
                 </div>
               </div>
+
+              {/* Fabric usage */}
+              {rec?.usedAreaPct != null && (
+                <div className="px-5 pt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] text-primary-500">
+                      Fabric used
+                    </span>
+                    <span
+                      className={`text-[11px] font-semibold ${
+                        !isFeasible
+                          ? "text-red-500"
+                          : rec.usedAreaPct > 90
+                            ? "text-amber-600"
+                            : "text-primary-700"
+                      }`}
+                    >
+                      {Math.min(Math.round(rec.usedAreaPct), 100)}%
+                    </span>
+                  </div>
+                  <div className="h-1 bg-primary-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        !isFeasible
+                          ? "bg-red-300"
+                          : rec.usedAreaPct > 90
+                            ? "bg-amber-400"
+                            : "bg-primary-400"
+                      }`}
+                      style={{
+                        width: `${Math.min(Math.round(rec.usedAreaPct), 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Description & meta */}
               <div className="px-5 pt-3 pb-4">

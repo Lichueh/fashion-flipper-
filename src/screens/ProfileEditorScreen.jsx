@@ -39,6 +39,7 @@ export default function ProfileEditorScreen({
   }
 
   const [name, setName] = useState(profile?.name ?? "");
+  const [gender, setGender] = useState(profile?.gender ?? null);
   const [fields, setFields] = useState(initialFields);
   const [errors, setErrors] = useState({}); // key → error string
   const [collapsed, setCollapsed] = useState({}); // group → bool
@@ -137,18 +138,17 @@ export default function ProfileEditorScreen({
         // First save: create the profile
         const newProfile = addProfile(name.trim());
         createdProfileIdRef.current = newProfile.id;
-        if (Object.keys(measurements).length > 0) {
-          updateProfile(newProfile.id, { measurements });
-        }
+        updateProfile(newProfile.id, { gender, measurements });
       } else {
         // Re-save after "Add now" — profile already exists, just update it
         updateProfile(createdProfileIdRef.current, {
           name: name.trim(),
+          gender,
           measurements,
         });
       }
     } else {
-      updateProfile(profile.id, { name: name.trim(), measurements });
+      updateProfile(profile.id, { name: name.trim(), gender, measurements });
     }
 
     if (Object.keys(measurements).length === 0) {
@@ -204,6 +204,32 @@ export default function ProfileEditorScreen({
               Name cannot be blank
             </p>
           )}
+        </div>
+
+        {/* Gender */}
+        <div className="bg-primary-100 rounded-3xl px-4 py-4">
+          <label className="block text-[11px] font-semibold text-primary-500 uppercase tracking-wider mb-3">
+            Gender
+          </label>
+          <div className="flex gap-2">
+            {[
+              { value: "female", label: "Female" },
+              { value: "male", label: "Male" },
+              { value: "nonbinary", label: "Non-binary" },
+            ].map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setGender((g) => (g === value ? null : value))}
+                className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                  gender === value
+                    ? "bg-secondary-300 text-secondary-900 border-secondary-400"
+                    : "bg-primary-50 text-primary-600 border-primary-200"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Preset picker */}

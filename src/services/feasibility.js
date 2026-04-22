@@ -3,6 +3,9 @@ import {
   FABRIC_REQUIREMENTS,
   NATURAL_FIBERS,
 } from "../data/fabricRequirements.js";
+import patternAreasBySize, {
+  ANCHOR_CHEST,
+} from "../data/patternAreasBySize.js";
 
 /**
  * Determines which upcycling templates are achievable from a segmented garment.
@@ -274,4 +277,69 @@ function _collectFabricIssues(profile, req) {
 
 function _capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// ── Profile-aware area estimation ────────────────────────────────────────────
+
+/**
+ * Infer whether a chest measurement is closer to female or male anchor sizes.
+ * Returns 'female' | 'male'.
+ */
+export function inferGender(chest_mm) {
+  const femaleEntries = Object.entries(ANCHOR_CHEST).filter(([k]) =>
+    k.startsWith("cisFemale"),
+  );
+  const maleEntries = Object.entries(ANCHOR_CHEST).filter(([k]) =>
+    k.startsWith("cisMale"),
+  );
+
+  const closestFemale = Math.min(
+    ...femaleEntries.map(([, v]) => Math.abs(v - chest_mm)),
+  );
+  const closestMale = Math.min(
+    ...maleEntries.map(([, v]) => Math.abs(v - chest_mm)),
+  );
+
+  return closestFemale <= closestMale ? "female" : "male";
+}
+
+/**
+ * Interpolate total pattern piece area (cm²) for a given template and chest
+ * measurement, using the nearest anchor size data for the inferred gender.
+ * Returns null if the template has no anchor data.
+ */
+export function interpolatePatternArea(templateId, chest_mm) {
+  const templateData = patternAreasBySize[templateId];
+  if (!templateData) return null;
+
+  const gender = inferGender(chest_mm);
+  const prefix = gender === "female" ? "cisFemale" : "cisMale";
+
+  // Get anchor entries for this gender, sorted by chest ascending, excluding nulls.
+  const anchors = Object.entries(ANCHOR_CHEST)
+    .filter(([k]) => k.startsWith(prefix))
+    .map(([k, chestMm]) => ({ key: k, chestMm, area: templateData[k] ?? null }))
+    .filter((a) => a.area !== null)
+    .sort((a, b) => a.chestMm - b.chestMm);
+
+  if (anchors.length === 0) return null;
+
+  // Clamp below lower bound
+  if (chest_mm <= anchors[0].chestMm) return anchors[0].area;
+
+  // Clamp above upper bound
+  if (chest_mm >= anchors[anchors.length - 1].chestMm)
+    return anchors[anchors.length - 1].area;
+
+  // Find bracketing pair and linear-interpolate
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const lo = anchors[i];
+    const hi = anchors[i + 1];
+    if (chest_mm >= lo.chestMm && chest_mm <= hi.chestMm) {
+      const t = (chest_mm - lo.chestMm) / (hi.chestMm - lo.chestMm);
+      return lo.area + t * (hi.area - lo.area);
+    }
+  }
+
+  return null;
 }

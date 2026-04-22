@@ -13,6 +13,7 @@ export const templates = {
       "A simple, practical everyday tote — perfect for shopping or commuting",
     accentColor: "bg-amber-50",
     resultImage: "/images/results/bag-result.png",
+    forGender: "any",
     patternPieces: [
       // FRONT shirt (body y≈75–225px, canvas H≈528)
       {
@@ -146,6 +147,7 @@ export const templates = {
       "A casual, vintage-style bucket hat — sun protection with personality",
     accentColor: "bg-sky-50",
     resultImage: "/images/results/hat-result.png",
+    forGender: "any",
     patternPieces: [
       // areaCm2 for trapezoid = (topWidth + bottomWidth) / 2 * height = (8+12)/2*14 = 140
       {
@@ -337,6 +339,7 @@ export const templates = {
       "A simple sleeveless tank top — great for lightweight knit fabrics",
     accentColor: "bg-green-50",
     resultImage: "/images/results/aaron-result.png",
+    forGender: "any",
     patternSource: "freesewing",
     patternPieces: [], // populated at runtime by PatternLayoutScreen
     materials: [
@@ -365,6 +368,7 @@ export const templates = {
       "A fitted womenswear bodice block — the foundation for tops, dresses, and jackets",
     accentColor: "bg-pink-50",
     resultImage: "/images/results/bella-result.png",
+    forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -391,6 +395,7 @@ export const templates = {
       "A classic coat/jacket block with a two-part sleeve — ideal for tailored outerwear",
     accentColor: "bg-amber-50",
     resultImage: "/images/results/bent-result.png",
+    forGender: "male",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -417,6 +422,7 @@ export const templates = {
       "A fitted menswear shirt block — the base for Brian-derived patterns like Simon and Wahid",
     accentColor: "bg-blue-50",
     resultImage: "/images/results/brian-result.png",
+    forGender: "male",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -443,6 +449,7 @@ export const templates = {
       "Slim chinos with front and back pockets, fly closure, and belt loops",
     accentColor: "bg-indigo-50",
     resultImage: "/images/results/charlie-result.png",
+    forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -469,6 +476,7 @@ export const templates = {
     description: "A comfortable raglan-sleeve top or dress in woven fabric",
     accentColor: "bg-purple-50",
     resultImage: "/images/results/diana-result.png",
+    forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -495,6 +503,7 @@ export const templates = {
       "A structured handbag with zipper closure, shoulder strap, and inner reinforcement",
     accentColor: "bg-orange-50",
     resultImage: "/images/results/hortensia-result.png",
+    forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -522,6 +531,7 @@ export const templates = {
       "A fitted knee-length pencil skirt with back vent and invisible zipper",
     accentColor: "bg-teal-50",
     resultImage: "/images/results/penelope-result.png",
+    forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -547,6 +557,7 @@ export const templates = {
       "A tailored button-up shirt with collar, yoke, cuffs, and sleeve plackets",
     accentColor: "bg-sky-50",
     resultImage: "/images/results/simon-result.png",
+    forGender: "male",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -574,6 +585,7 @@ export const templates = {
       "A tailored button-up shirt for women with full bust adjustment, collar, yoke, and cuffs",
     accentColor: "bg-rose-50",
     resultImage: "/images/results/simone-result.png",
+    forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -601,6 +613,7 @@ export const templates = {
       "A simple two-panel garment with a relaxed fit — great for beginners",
     accentColor: "bg-green-50",
     resultImage: "/images/results/sophie-result.png",
+    forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -627,6 +640,7 @@ export const templates = {
       "A classic crew-neck T-shirt with set-in sleeves — perfect for jersey fabric",
     accentColor: "bg-yellow-50",
     resultImage: "/images/results/teagan-result.png",
+    forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -653,6 +667,7 @@ export const templates = {
       "Comfortable wrap pants inspired by Thai fashion, with tie waistband and optional pockets",
     accentColor: "bg-lime-50",
     resultImage: "/images/results/waralee-result.png",
+    forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [
@@ -678,6 +693,7 @@ export const templates = {
       "A tailored waistcoat (vest) with front facings, lining, and welt pockets",
     accentColor: "bg-amber-50",
     resultImage: "/images/results/wahid-result.png",
+    forGender: "male",
     patternSource: "freesewing",
     patternPieces: [],
     materials: [

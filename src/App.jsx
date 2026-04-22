@@ -82,6 +82,7 @@ export default function App() {
         navigate={navigate}
         feasibleTemplates={feasibleTemplates}
         fabric={fabric}
+        measurements={measurements}
         activeProfile={activeProfile}
         sessionProfileOverride={sessionProfileOverride}
         setSessionProfileOverride={setSessionProfileOverride}

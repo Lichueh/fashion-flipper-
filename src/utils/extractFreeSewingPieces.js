@@ -107,6 +107,85 @@ function pathBBox(ops) {
 }
 
 /**
+ * Parse annotation paths for one part from the pattern's rendered SVG string.
+ *
+ * FreeSewing renders each part into a <g id="fs-stack-{key}-part-{key}"> group.
+ * Within that group, elements are categorised by CSS class and marker-start URL:
+ *
+ *   class "fabric"              → seam outline — skipped here (captured as svgPath)
+ *   class "note" + cutonfold marker → "cutonfold"
+ *   class "note" + grainline marker → "grainline"
+ *   class "note" (no marker)   → "note"
+ *   class "mark"               → "mark"
+ *   class "lining"             → "lining"
+ *   anything else non-fabric   → "various"  (help, dotted, dashed, contrast, …)
+ *
+ * <line> elements are converted to "M x1,y1 L x2,y2" path strings.
+ * Returns an object with only the categories that have at least one path.
+ */
+function extractAnnotationsFromSvg(svg, partKey) {
+  const groupId = `fs-stack-${partKey}-part-${partKey}`;
+  const startIdx = svg.indexOf(`<g id="${groupId}"`);
+  if (startIdx === -1) return {};
+
+  // Part groups are flat — no nested <g> — so the first </g> closes this group.
+  const endIdx = svg.indexOf("</g>", startIdx);
+  if (endIdx === -1) return {};
+  const groupContent = svg.slice(startIdx, endIdx + 4);
+
+  const annotationPaths = {};
+
+  for (const m of groupContent.matchAll(/<(path|line)\s([^>]*?)(?:\/>|>)/g)) {
+    const tag = m[1];
+    const attrs = m[2];
+
+    const cls = (attrs.match(/class="([^"]+)"/) || [])[1] || "";
+    const classes = new Set(cls.split(/\s+/));
+
+    // Skip seam/fabric (already in svgPath), hidden/scalebox/logo noise
+    if (
+      classes.has("fabric") ||
+      classes.has("hidden") ||
+      classes.has("scalebox") ||
+      classes.has("logo")
+    )
+      continue;
+
+    // Resolve path data — <path d="..."> or <line x1 y1 x2 y2>
+    let d = (attrs.match(/\bd="([^"]+)"/) || [])[1];
+    if (!d && tag === "line") {
+      const x1 = (attrs.match(/\bx1="([^"]+)"/) || [])[1];
+      const y1 = (attrs.match(/\by1="([^"]+)"/) || [])[1];
+      const x2 = (attrs.match(/\bx2="([^"]+)"/) || [])[1];
+      const y2 = (attrs.match(/\by2="([^"]+)"/) || [])[1];
+      if (x1 && y1 && x2 && y2) d = `M ${x1},${y1} L ${x2},${y2}`;
+    }
+    if (!d) continue;
+
+    // Determine category
+    const markerStart =
+      (attrs.match(/marker-start="url\(#([^)]+)\)"/) || [])[1] || "";
+    let category;
+    if (classes.has("note")) {
+      if (markerStart.includes("cutonfold")) category = "cutonfold";
+      else if (markerStart.includes("grainline")) category = "grainline";
+      else category = "note";
+    } else if (classes.has("mark")) {
+      category = "mark";
+    } else if (classes.has("lining")) {
+      category = "lining";
+    } else {
+      category = "various";
+    }
+
+    if (!annotationPaths[category]) annotationPaths[category] = [];
+    annotationPaths[category].push(d);
+  }
+
+  return annotationPaths;
+}
+
+/**
  * Generic FreeSewing pattern extractor. Works with any FreeSewing Design.
  *
  * @param {Function} Design      - A FreeSewing Design class (e.g. Aaron, Sandy)
@@ -120,6 +199,9 @@ function pathBBox(ops) {
 export function extractPatternPieces(Design, measurements, parts) {
   const pattern = new Design({ measurements });
   pattern.draft();
+  // render() is called to get the full SVG for annotation extraction.
+  // The seam path is still read from part.paths.seam (unchanged).
+  const svg = pattern.render();
   const draftedParts = pattern.parts?.[0];
 
   const result = [];
@@ -133,11 +215,14 @@ export function extractPatternPieces(Design, measurements, parts) {
 
     const { minX, minY, wMm, hMm } = pathBBox(seamPath.ops);
 
+    const annotationPaths = extractAnnotationsFromSvg(svg, key);
+
     result.push({
       id: key.replace(".", "-"),
       label: config.label,
       shape: "svgpath",
       svgPath: opsToD(seamPath.ops),
+      ...(Object.keys(annotationPaths).length > 0 && { annotationPaths }),
       viewBox: `${minX.toFixed(2)} ${minY.toFixed(2)} ${wMm.toFixed(2)} ${hMm.toFixed(2)}`,
       widthCm: parseFloat((wMm / 10).toFixed(1)),
       heightCm: parseFloat((hMm / 10).toFixed(1)),

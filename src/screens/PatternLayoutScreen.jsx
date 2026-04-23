@@ -145,6 +145,46 @@ function PieceShape({ piece, scale }) {
 
   // FreeSewing-sourced pieces: render the extracted SVG seam path directly
   if (piece.shape === "svgpath") {
+    const annotationStyle = {
+      cutonfold: {
+        stroke: "#1e3a5f",
+        strokeWidth: "1",
+        strokeDasharray: "8 4",
+        fill: "none",
+      },
+      grainline: { stroke: "#1e3a5f", strokeWidth: "1", fill: "none" },
+      lining: {
+        stroke: "#4a90d9",
+        strokeWidth: "1",
+        strokeDasharray: "4 4",
+        fill: "none",
+      },
+      mark: {
+        stroke: "#1e3a5f",
+        strokeWidth: "0.8",
+        strokeDasharray: "4 2",
+        fill: "none",
+      },
+      help: {
+        stroke: "#999999",
+        strokeWidth: "0.7",
+        strokeDasharray: "2 2",
+        fill: "none",
+      },
+      dotted: {
+        stroke: "#1e3a5f",
+        strokeWidth: "0.7",
+        strokeDasharray: "2 3",
+        fill: "none",
+      },
+      dashed: {
+        stroke: "#1e3a5f",
+        strokeWidth: "0.8",
+        strokeDasharray: "6 3",
+        fill: "none",
+      },
+      various: { stroke: "#999999", strokeWidth: "0.7", fill: "none" },
+    };
     return (
       <div style={{ width: pw, height: ph, position: "relative" }}>
         <svg viewBox={piece.viewBox} width={pw} height={ph}>
@@ -154,6 +194,15 @@ function PieceShape({ piece, scale }) {
             stroke="#1e3a5f"
             strokeWidth="1"
           />
+          {Object.entries(piece.annotationPaths ?? {}).map(([cat, paths]) =>
+            paths.map((d, i) => (
+              <path
+                key={`${cat}-${i}`}
+                d={d}
+                {...(annotationStyle[cat] ?? annotationStyle.various)}
+              />
+            )),
+          )}
         </svg>
         <GrainArrow angle={piece.grainAngleDeg} pw={pw} ph={ph} />
         <div

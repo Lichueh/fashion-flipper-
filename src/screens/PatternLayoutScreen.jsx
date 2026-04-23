@@ -313,6 +313,7 @@ export default function PatternLayoutScreen({
   const [fsError, setFsError] = useState(null); // null | 'load' | 'extract'
   const [runtimePieces, setRuntimePieces] = useState(null);
   const [fsRetry, setFsRetry] = useState(0);
+  const [customPieces, setCustomPieces] = useState(null);
 
   // Derive panel dimensions from the actual pattern pieces so the layout
   // scales correctly for both small shirts and full-length skirts.
@@ -438,7 +439,9 @@ export default function PatternLayoutScreen({
       ? (runtimePieces ??
         freesewingPatterns[templateId] ??
         template.patternPieces)
-      : template.patternPieces;
+      : template.patternSource === "custom"
+        ? (customPieces ?? template.patternPieces)
+        : template.patternPieces;
   const frontRef = useRef();
   const backRef = useRef();
   const lastTapRef = useRef({ id: null, time: 0 });
@@ -462,6 +465,30 @@ export default function PatternLayoutScreen({
         ]),
       ),
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId]);
+
+  // For custom templates (bag, hat), load pieces from the pattern file on mount.
+  useEffect(() => {
+    if (template.patternSource !== "custom") return;
+    import(`../patterns/${templateId}.js`).then((mod) => {
+      const { patternPieces } = mod.default ?? mod;
+      if (!patternPieces?.length) return;
+      setCustomPieces(patternPieces);
+      setPositions(
+        Object.fromEntries(
+          patternPieces.map((p) => [
+            p.id,
+            {
+              x: (p.defaultX / 100) * PANEL_W,
+              y: (p.defaultY / 100) * panelPxH,
+              rotation: 0,
+              panel: p.panel === "back" ? "back" : "front",
+            },
+          ]),
+        ),
+      );
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
 

@@ -557,7 +557,7 @@ export default function TemplateSelectScreen({
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex gap-3 text-xs text-primary-500">
-                    <span>{template.steps.length} steps</span>
+                    <span>{template.steps?.length || "?"} steps</span>
                     <span>·</span>
                     <span>{template.materials.length} materials</span>
                   </div>

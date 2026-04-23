@@ -45,7 +45,16 @@ export function checkFeasibility(measurements, templates, fabric = null) {
     const totalPieces = pieces.length;
 
     // ── Stage 1: area check ──────────────────────────────────────────────────
-    const totalRequiredArea = pieces.reduce((sum, p) => sum + p.areaCm2, 0);
+    // For patterns whose pieces are loaded dynamically (patternPieces: []),
+    // fall back to the pre-computed anchor area from patternAreasBySize.
+    const anchorAreaData = patternAreasBySize[template.id];
+    const fallbackArea = anchorAreaData
+      ? Math.max(...Object.values(anchorAreaData))
+      : null;
+    const totalRequiredArea =
+      totalPieces > 0
+        ? pieces.reduce((sum, p) => sum + p.areaCm2, 0)
+        : (fallbackArea ?? 0);
     const totalRequiredWithBuffer = totalRequiredArea * 1.1;
     const usedAreaPct = Math.min(
       (totalRequiredArea / measurements.totalAreaCm2) * 100,
@@ -66,7 +75,9 @@ export function checkFeasibility(measurements, templates, fabric = null) {
     }
 
     // ── Stage 2: bounding-box fit check ─────────────────────────────────────
-    let piecesFit = 0;
+    // Skipped when pieces are loaded dynamically (totalPieces === 0);
+    // the fallback area check above is sufficient for those patterns.
+    let piecesFit = totalPieces === 0 ? 0 : 0;
     for (const piece of pieces) {
       const pw = piece.widthCm;
       const ph = piece.heightCm;
@@ -79,8 +90,8 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       if (fits) piecesFit++;
     }
 
-    const pieceFitScore = totalPieces > 0 ? piecesFit / totalPieces : 0;
-    if (piecesFit < totalPieces) {
+    const pieceFitScore = totalPieces > 0 ? piecesFit / totalPieces : 1;
+    if (totalPieces > 0 && piecesFit < totalPieces) {
       return {
         ...template,
         feasible: false,

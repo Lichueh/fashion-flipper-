@@ -229,12 +229,6 @@ function PieceShape({ piece, scale }) {
               Cut ×{piece.cutCount}
             </div>
           )}
-          <div
-            className="text-primary-600 font-mono"
-            style={{ fontSize: 5, lineHeight: 1.2 }}
-          >
-            {piece.widthCm}×{piece.heightCm}cm
-          </div>
         </div>
       </div>
     );
@@ -756,6 +750,34 @@ export default function PatternLayoutScreen({
     }));
   }
 
+  /* ── FreeSewing print URL ── */
+  function handlePrint() {
+    try {
+      const measurements = effectiveProfile?.measurements ?? {};
+      const stateObject = {
+        design: templateId,
+        settings: {
+          measurements,
+          units: "metric",
+          metadata: { setName: "Fashion Flipper" },
+          embed: false,
+        },
+        view: "draft",
+      };
+
+      const state = JSON.stringify(stateObject);
+      const url = `https://freesewing.eu/editor/#s=${encodeURIComponent(state)}`;
+      console.log("[FreeSewing Print] URL:", url);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      window.open(
+        `https://freesewing.eu/editor/from/scratch?design=${templateId}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+  }
+
   /* ── Render a single panel ── */
   function renderPanel(panelLabel, panelKey, ref, imageUrl, imgOpacity) {
     const pieces = activePieces.filter(
@@ -879,6 +901,15 @@ export default function PatternLayoutScreen({
             Drag · double-tap rotates · tap →B/→F to flip side
           </p>
         </div>
+        {template.patternSource === "freesewing" && (
+          <button
+            onClick={handlePrint}
+            title="Opens FreeSewing.eu with your measurements pre-loaded"
+            className="ml-2 h-9 px-3 bg-primary-700 border border-primary-600 rounded-full text-primary-100 text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform whitespace-nowrap"
+          >
+            🖨 Print Pattern
+          </button>
+        )}
       </div>
 
       {/* Garment info strip */}

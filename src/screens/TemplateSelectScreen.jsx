@@ -109,14 +109,7 @@ export default function TemplateSelectScreen({
           (fa.compositeScore ?? fa.fitScore ?? 0)
         );
       });
-    console.log(
-      "[TemplateSelect] sorted order:",
-      sorted.map((t) => {
-        const f = profileFeasibility[t.id];
-        const tier = !f ? 1 : !f.feasible ? 2 : f.needsInterfacing ? 0.5 : 0;
-        return `${t.id}(tier=${tier},score=${(f?.compositeScore ?? 0).toFixed(2)},feasible=${f?.feasible})`;
-      }),
-    );
+    
     return sorted;
   }, [profileFeasibility]);
 

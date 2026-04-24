@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import { templates } from "../data/templates";
+import { usePatternInstructions } from "../hooks/usePatternInstructions";
+import GLOSSARY from "../data/glossary";
 
 export default function StepGuideScreen({ navigate, template: templateId }) {
   const template = templates[templateId] || templates.bag;
@@ -17,6 +20,15 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
   }, [templateId]);
 
   const [stepIdx, setStepIdx] = useState(-1);
+  const [instructionsEnabled, setInstructionsEnabled] = useState(false);
+  const {
+    markdown,
+    loading: instrLoading,
+    error: instrError,
+  } = usePatternInstructions(
+    templateId,
+    template.patternSource === "freesewing" && instructionsEnabled,
+  );
 
   const totalSteps = steps.length;
   const progressPct =
@@ -94,6 +106,110 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
                 </div>
               ))}
             </div>
+
+            {/* Sewing Instructions — FreeSewing only */}
+            {template.patternSource === "freesewing" && (
+              <div className="mt-5">
+                {!instructionsEnabled ? (
+                  <button
+                    onClick={() => setInstructionsEnabled(true)}
+                    className="w-full py-3 rounded-2xl bg-primary-700 border border-primary-600 text-primary-100 font-semibold text-sm active:scale-[0.97] transition-transform"
+                  >
+                    📖 View Sewing Instructions
+                  </button>
+                ) : instrLoading ? (
+                  <div className="flex items-center gap-3 py-4 justify-center">
+                    <div className="w-5 h-5 border-2 border-primary-300 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-primary-300 text-sm">
+                      Loading instructions…
+                    </span>
+                  </div>
+                ) : instrError ? (
+                  <div className="bg-primary-700 border border-primary-600 rounded-2xl px-4 py-3 flex items-center justify-between">
+                    <span className="text-primary-300 text-sm">
+                      Could not load instructions.
+                    </span>
+                    <button
+                      onClick={() => {
+                        setInstructionsEnabled(false);
+                        setTimeout(() => setInstructionsEnabled(true), 50);
+                      }}
+                      className="text-xs text-secondary-300 font-semibold underline ml-3"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-primary-700 border border-primary-600 rounded-2xl overflow-hidden">
+                    <div
+                      className="overflow-y-auto px-4 py-4"
+                      style={{ maxHeight: "60vh" }}
+                    >
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ children }) => (
+                            <h1 className="text-primary-50 font-semibold text-lg mb-3 mt-4 first:mt-0">
+                              {children}
+                            </h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-primary-50 font-semibold text-base mb-2 mt-4 first:mt-0">
+                              {children}
+                            </h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-primary-50 font-semibold text-sm mb-2 mt-3 first:mt-0">
+                              {children}
+                            </h3>
+                          ),
+                          p: ({ children }) => (
+                            <p className="text-primary-100 text-sm leading-relaxed mb-3">
+                              {children}
+                            </p>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="text-primary-100 text-sm list-disc pl-5 mb-3 space-y-1">
+                              {children}
+                            </ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="text-primary-100 text-sm list-decimal pl-5 mb-3 space-y-1">
+                              {children}
+                            </ol>
+                          ),
+                          li: ({ children }) => (
+                            <li className="leading-relaxed">{children}</li>
+                          ),
+                          hr: () => <hr className="border-primary-600 my-4" />,
+                          a: ({ href, children }) => (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-secondary-300 underline"
+                            >
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {markdown}
+                      </ReactMarkdown>
+                    </div>
+                    <div className="border-t border-primary-600 px-4 py-2.5">
+                      <a
+                        href="https://freesewing.org"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-primary-100 hover:text-primary-300"
+                      >
+                        Instructions from FreeSewing.eu — freesewing.org
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           /* Step content */

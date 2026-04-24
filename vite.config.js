@@ -143,5 +143,8 @@ export default defineConfig(({ mode }) => {
         },
       },
     ],
+    resolve: {
+      dedupe: ["react", "react-dom"],
+    },
   };
 });

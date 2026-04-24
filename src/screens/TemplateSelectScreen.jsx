@@ -112,7 +112,22 @@ export default function TemplateSelectScreen({
     return sorted;
   }, [profileFeasibility]);
 
-  const [previews, setPreviews] = useState({});
+  const [previews, setPreviews] = useState(() => {
+    try {
+      const result = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("preview_v1_")) {
+          const value = localStorage.getItem(key);
+          const templateId = key.slice(28); // skip "preview_v1_{16charHash}_"
+          if (value && templateId) result[templateId] = value;
+        }
+      }
+      return result;
+    } catch {
+      return {};
+    }
+  });
   const [showAllGenders, setShowAllGenders] = useState(false);
 
   // Derive profile gender — non-binary and no-profile both mean show all
@@ -464,9 +479,7 @@ export default function TemplateSelectScreen({
                         loading="lazy"
                       />
                     ) : (
-                      <span className="text-4xl flex items-center justify-center w-full h-full">
-                        {template.emoji}
-                      </span>
+                      <div className="w-full h-full bg-primary-200 animate-pulse rounded-2xl" />
                     )}
                   </div>
                   <div className="flex-1">

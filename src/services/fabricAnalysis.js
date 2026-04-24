@@ -17,6 +17,7 @@
  */
 
 const CACHE_PREFIX = "fabric_analysis_v1_";
+const _inFlight = new Map();
 
 /**
  * Generates a short hex hash of the first 64 KB of the file.
@@ -74,45 +75,67 @@ function _cropCenter(file, size = 300) {
   });
 }
 
+async function _doAnalyze(imageFile, cacheKey) {
+  const cropped = await _cropCenter(imageFile);
+  const base64 = await _fileToBase64(cropped);
+
+  const response = await fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageBase64: base64, mimeType: "image/jpeg" }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    console.error("[fabricAnalysis] API error body:", body);
+    return null;
+  }
+
+  const parsed = await response.json();
+
+  if (!parsed.type || !parsed.color || !Array.isArray(parsed.composition)) {
+    console.warn("[fabricAnalysis] validation failed:", parsed);
+    return null;
+  }
+
+  try {
+    sessionStorage.setItem(cacheKey, JSON.stringify(parsed));
+  } catch (e) {
+    console.warn("[fabricAnalysis] sessionStorage write failed:", e.message);
+  }
+
+  return parsed;
+}
+
 export async function analyzeFabric(imageFile) {
   try {
-    // Check sessionStorage cache before calling the API (keyed on original file)
     const hash = await _fileHash(imageFile);
     const cacheKey = CACHE_PREFIX + hash;
-    const cached = localStorage.getItem(cacheKey);
-    // const cached = sessionStorage.getItem(cacheKey);
-    if (cached) return JSON.parse(cached);
 
-    // Crop to center square before encoding — reduces payload ~95% with no quality loss for fabric detection
-    const cropped = await _cropCenter(imageFile);
-    const base64 = await _fileToBase64(cropped);
-    const mimeType = "image/jpeg";
-
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageBase64: base64, mimeType }),
-    });
-
-    if (!response.ok) return null;
-
-    const parsed = await response.json();
-
-    // Validate minimum required fields before trusting the response
-    if (!parsed.type || !parsed.color || !Array.isArray(parsed.composition)) {
-      return null;
+    // 1. Return cached result if available
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
     }
 
-    // Store in sessionStorage — persists for the browser tab session only
+    // 2. If already in flight for this image, wait for that promise instead
+    if (_inFlight.has(hash)) {
+      console.log("[fabricAnalysis] deduplicating in-flight request");
+      return await _inFlight.get(hash);
+    }
+
+    // 3. Start the request and register it
+    const promise = _doAnalyze(imageFile, cacheKey);
+    _inFlight.set(hash, promise);
     try {
-      localStorage.setItem(cacheKey, JSON.stringify(parsed));
-      // sessionStorage.setItem(cacheKey, JSON.stringify(parsed));
-    } catch {
-      // sessionStorage full or unavailable — proceed without caching
+      return await promise;
+    } finally {
+      _inFlight.delete(hash);
     }
-
-    return parsed;
-  } catch {
+  } catch (err) {
+    console.error("[fabricAnalysis] unexpected error:", err);
     return null;
   }
 }
+
+

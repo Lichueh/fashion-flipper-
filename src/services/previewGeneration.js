@@ -10,24 +10,22 @@
  */
 
 const CACHE_PREFIX = "preview_v1_";
+const _inFlight = new Map(); // deduplicates concurrent calls for same template+fabric
+let _queue = Promise.resolve(); // ensures only 1 request goes to the API at a time
+const DELAY_BETWEEN_REQUESTS_MS = 1000;
 
-/**
- * Hashes the fabric object to a 16-char hex string.
- * Same technique as fabricAnalysis._fileHash but operates on a plain object.
- */
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 async function _hashFabric(fabric) {
   const json = JSON.stringify(fabric);
   const buffer = new TextEncoder().encode(json);
   const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
   return Array.from(new Uint8Array(hashBuffer))
-    .slice(0, 8) // 8 bytes → 16 hex chars
+    .slice(0, 8)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
-/**
- * Builds a Pollinations-friendly text prompt from fabric data and a template.
- */
 function _buildPrompt(fabric, template) {
   const composition =
     fabric.composition
@@ -35,12 +33,55 @@ function _buildPrompt(fabric, template) {
       .join(", ") ?? fabric.type;
 
   return [
-    `A ${template.style ?? ''} ${template.name} in ${fabric.color} ${fabric.type}, ${fabric.texture} 
-    weave, ${fabric.weight} weight. Made from ${composition}. Laid flat on a 
-    clean white surface, soft diffused studio lighting, sharp fabric texture 
-    detail, minimal fashion editorial style.`,
+    `Product photography of ${template.visualDescription ?? template.name}, flat lay on a pure white background.`,
+    `Fabric: ${fabric.color} ${fabric.type}, ${fabric.texture}, ${fabric.weight} weight, ${composition}.`,
+    `No person, no model, no mannequin, no body parts, no hands.`,
+    `Garment laid completely flat, overhead shot, soft even studio lighting, sharp fabric texture detail.`,
   ].join(" ");
 }
+
+// Fetches the image — always runs inside the queue so only 1 runs at a time
+async function _fetchPreview(fabric, template, cacheKey, fabricHash) {
+  const prompt = _buildPrompt(fabric, template);
+  const seed = parseInt(fabricHash.slice(0, 8), 16) % 2147483647;
+  const url = `/api/preview?prompt=${encodeURIComponent(prompt)}&seed=${seed}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`[preview] ${response.status} for ${template.id}`);
+      return null;
+    }
+
+    const blob = await response.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    try {
+      localStorage.setItem(cacheKey, dataUrl);
+    } catch {}
+    return dataUrl;
+  } catch {
+    return null;
+  }
+}
+
+// Adds a fetch to the sequential queue so requests don't fire concurrently
+function _enqueue(fabric, template, cacheKey, fabricHash) {
+  const result = _queue.then(async () => {
+    // Wait between requests to avoid rate limiting
+    await new Promise((r) => setTimeout(r, DELAY_BETWEEN_REQUESTS_MS));
+    return _fetchPreview(fabric, template, cacheKey, fabricHash);
+  });
+  _queue = result.catch(() => {}); // never let one failure break the queue
+  return result;
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
 
 export async function generatePreview(fabric, template) {
   if (!fabric || !template) return null;
@@ -49,7 +90,7 @@ export async function generatePreview(fabric, template) {
     const fabricHash = await _hashFabric(fabric);
     const cacheKey = CACHE_PREFIX + fabricHash + "_" + template.id;
 
-    // Return cached dataURL immediately if available
+    // 1. Return cached result immediately if available
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) return cached;
@@ -57,34 +98,19 @@ export async function generatePreview(fabric, template) {
       // localStorage unavailable — proceed without cache
     }
 
-    const prompt = _buildPrompt(fabric, template);
-
-    // Deterministic seed so same fabric always generates same image
-    const seed = parseInt(fabricHash.slice(0, 8), 16) % 2147483647;
-
-    const url = `/api/preview?prompt=${encodeURIComponent(prompt)}&seed=${seed}`;
-
-    const response = await fetch(url);
-    if (!response.ok) return null;
-
-    const blob = await response.blob();
-
-    // Convert blob to base64 dataURL for storage and rendering
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-
-    // Cache in localStorage — persist across refreshes since generation is slow
-    try {
-      localStorage.setItem(cacheKey, dataUrl);
-    } catch {
-      // localStorage full or blocked — proceed without caching
+    // 2. If the same template+fabric is already being fetched, wait for it
+    if (_inFlight.has(cacheKey)) {
+      return await _inFlight.get(cacheKey);
     }
 
-    return dataUrl;
+    // 3. Queue the request and register it as in-flight
+    const promise = _enqueue(fabric, template, cacheKey, fabricHash);
+    _inFlight.set(cacheKey, promise);
+    try {
+      return await promise;
+    } finally {
+      _inFlight.delete(cacheKey);
+    }
   } catch {
     return null;
   }

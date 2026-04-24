@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { mockAnalysis } from "../data/mockAnalysis";
 import { useAnalysisPipeline } from "../hooks/useAnalysisPipeline";
 
@@ -25,8 +25,12 @@ export default function AnalysisScreen({
   // Kick off the pipeline as soon as the file is available.
   // longestSideCm is passed directly so the hook can skip the
   // awaiting_scale pause and proceed straight to measurement.
+  const hasRun = useRef(false);
+
   useEffect(() => {
-    if (uploadedFile) run(uploadedFile, longestSideCm);
+    if (!uploadedFile || hasRun.current) return;
+    hasRun.current = true;
+    run(uploadedFile, longestSideCm);
   }, [uploadedFile]);
 
   const [phase, setPhase] = useState("scanning");

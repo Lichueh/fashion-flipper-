@@ -98,14 +98,6 @@ export default function ProfileEditorScreen({
   // ── Save ────────────────────────────────────────────────────────────────
 
   function handleSave() {
-    console.log("[ProfileEditor] handleSave called", {
-      name,
-      saveDisabled,
-      nameBlank,
-      hasValidationErrors,
-      errors,
-      fieldsCount: Object.values(fields).filter(Boolean).length,
-    });
     // Run validation on all filled fields
     const newErrors = {};
     let anyError = false;

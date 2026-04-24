@@ -13,6 +13,30 @@ const SYSTEM_PROMPT = `You are a fabric analysis assistant. When given an image 
 For tags, pick 2–4 relevant labels from: Natural Fiber, Synthetic, Blended, Machine Washable, Hand Wash Only, Dye-friendly, Stretch, Woven, Knit.
 Composition percentages must sum to 100.`;
 
+// ── Retry helper ──────────────────────────────────────────────────────────────
+// Retries on transient server errors (502/503/504) with exponential backoff.
+// Does NOT retry on client errors (400, 401, 429) since those won't self-resolve.
+async function fetchWithRetry(url, options, retries = 3, baseDelayMs = 800) {
+  let lastError;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, baseDelayMs * 2 ** (attempt - 1)));
+    }
+    try {
+      const res = await fetch(url, options);
+      if ([502, 503, 504].includes(res.status)) {
+        lastError = new Error(`HTTP ${res.status}`);
+        continue; // retry
+      }
+      return res; // success or non-retryable error — return as-is
+    } catch (err) {
+      lastError = err; // network failure — retry
+    }
+  }
+  throw lastError;
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -29,7 +53,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const upstream = await fetch(GITHUB_API_URL, {
+    const upstream = await fetchWithRetry(GITHUB_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -63,13 +87,22 @@ export default async function handler(req, res) {
     });
 
     if (!upstream.ok) {
-      return res.status(upstream.status).json({ error: "Upstream API error" });
+      const body = await upstream.text(); // read raw body
+      console.error("Upstream error:", upstream.status, body);
+      return res
+        .status(upstream.status)
+        .json({
+          error: `Upstream API error: ${upstream.status}`,
+          detail: body,
+        });
     }
 
     const data = await upstream.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) {
-      return res.status(502).json({ error: "Empty response from model" });
+      return res
+        .status(502)
+        .json({ error: "Empty response from model — please try again" });
     }
 
     const parsed = JSON.parse(content);

@@ -2,7 +2,7 @@ export const templates = {
   bag: {
     id: "bag",
     name: "Tote Bag with chain",
-    style: "Cool, streetwear-inspired, standing rectangle-shaped",
+    style: "Cool, streetwear-inspired",
     emoji: "👜",
     difficulty: 1,
     maxDifficulty: 3,
@@ -11,6 +11,7 @@ export const templates = {
     matchScore: 90,
     description:
       "A simple, practical everyday tote — perfect for shopping or commuting",
+    visualDescription: "A structured rectangular tote bag with a strap that is clipped on, standing upright",
     accentColor: "bg-amber-50",
     resultImage: "/images/results/bag-result.png",
     forGender: "any",
@@ -38,6 +39,7 @@ export const templates = {
     matchScore: 75,
     description:
       "A casual, vintage-style bucket hat — sun protection with personality",
+    visualDescription: "A soft bucket hat with a rounded crown and downward-sloping brim, sitting on a flat surface",
     accentColor: "bg-sky-50",
     resultImage: "/images/results/hat-result.png",
     forGender: "any",
@@ -66,6 +68,7 @@ export const templates = {
     matchScore: 80,
     description:
       "A simple sleeveless tank top — great for lightweight knit fabrics",
+    visualDescription: "A simple sleeveless tank top with a round neckline and straight hem",
     accentColor: "bg-green-50",
     resultImage: "/images/results/aaron-result.png",
     forGender: "any",
@@ -86,7 +89,7 @@ export const templates = {
   bella: {
     id: "bella",
     name: "Bella Bodice Block",
-    style: "Womenswear foundation block",
+    style: "Fitted, stylish",
     emoji: "📐",
     difficulty: 1,
     maxDifficulty: 3,
@@ -95,6 +98,7 @@ export const templates = {
     matchScore: 70,
     description:
       "A fitted womenswear bodice block — the foundation for tops, dresses, and jackets",
+    visualDescription: "A fitted, sleeveless womenswear bodice block with darts and seams, laid flat on a surface",
     accentColor: "bg-pink-50",
     resultImage: "/images/results/bella-result.png",
     forGender: "female",
@@ -113,7 +117,7 @@ export const templates = {
   bent: {
     id: "bent",
     name: "Bent Coat Block",
-    style: "Structured outerwear foundation",
+    style: "Stylish, elegant",
     emoji: "🧥",
     difficulty: 2,
     maxDifficulty: 3,
@@ -121,7 +125,8 @@ export const templates = {
     time: "About 3–4 hrs",
     matchScore: 65,
     description:
-      "A classic coat/jacket block with a two-part sleeve — ideal for tailored outerwear",
+      "A classic coat with a two-part sleeve — ideal for tailored outerwear",
+    visualDescription: "A classic suit coat with three buttons in front",
     accentColor: "bg-amber-50",
     resultImage: "/images/results/bent-result.png",
     forGender: "male",
@@ -139,8 +144,8 @@ export const templates = {
 
   brian: {
     id: "brian",
-    name: "Brian Shirt Block",
-    style: "Menswear foundation block",
+    name: "Brian T-Shirt",
+    style: "Tightly fitted, menswear-inspired",
     emoji: "📐",
     difficulty: 1,
     maxDifficulty: 3,
@@ -149,6 +154,7 @@ export const templates = {
     matchScore: 68,
     description:
       "A fitted menswear shirt block — the base for Brian-derived patterns like Simon and Wahid",
+    visualDescription: "A fitted menswear T-shirt with 3/4 sleeves and a round neckline",
     accentColor: "bg-blue-50",
     resultImage: "/images/results/brian-result.png",
     forGender: "male",
@@ -167,7 +173,7 @@ export const templates = {
   charlie: {
     id: "charlie",
     name: "Charlie Chinos",
-    style: "Classic casual trousers",
+    style: "Classic casual Tight",
     emoji: "👖",
     difficulty: 3,
     maxDifficulty: 3,
@@ -176,6 +182,7 @@ export const templates = {
     matchScore: 72,
     description:
       "Slim chinos with front and back pockets, fly closure, and belt loops",
+    visualDescription: "A pair of slim chinos",
     accentColor: "bg-indigo-50",
     resultImage: "/images/results/charlie-result.png",
     forGender: "any",
@@ -194,15 +201,16 @@ export const templates = {
 
   diana: {
     id: "diana",
-    name: "Diana Raglan Top",
-    style: "Casual womenswear, raglan sleeve",
+    name: "Diana Draped Top",
+    style: "Elegant",
     emoji: "👕",
     difficulty: 2,
     maxDifficulty: 3,
     difficultyLabel: "Intermediate",
     time: "About 2–3 hrs",
     matchScore: 74,
-    description: "A comfortable raglan-sleeve top or dress in woven fabric",
+    description: "A comfortable sleeve-less top",
+    visualDescription: "A draped, sleeve-less top with a cowl neckline and asymmetric hem",
     accentColor: "bg-purple-50",
     resultImage: "/images/results/diana-result.png",
     forGender: "female",
@@ -221,7 +229,7 @@ export const templates = {
   hortensia: {
     id: "hortensia",
     name: "Hortensia Handbag",
-    style: "Structured zip bag",
+    style: "Structured, boxy, fashion-forward",
     emoji: "👜",
     difficulty: 2,
     maxDifficulty: 3,
@@ -230,6 +238,7 @@ export const templates = {
     matchScore: 80,
     description:
       "A structured handbag with zipper closure, shoulder strap, and inner reinforcement",
+    visualDescription: "A structured, boxy handbag with zipper closure, shoulder strap with buckles, and inner reinforcement",
     accentColor: "bg-orange-50",
     resultImage: "/images/results/hortensia-result.png",
     forGender: "any",
@@ -249,7 +258,7 @@ export const templates = {
   penelope: {
     id: "penelope",
     name: "Penelope Pencil Skirt",
-    style: "Classic fitted skirt",
+    style: "Classic, Elegant",
     emoji: "👗",
     difficulty: 2,
     maxDifficulty: 3,
@@ -258,6 +267,7 @@ export const templates = {
     matchScore: 76,
     description:
       "A fitted knee-length pencil skirt with back vent and invisible zipper",
+    visualDescription: "A fitted knee-length pencil skirt with back vent and invisible zipper",
     accentColor: "bg-teal-50",
     resultImage: "/images/results/penelope-result.png",
     forGender: "female",
@@ -275,7 +285,7 @@ export const templates = {
   simon: {
     id: "simon",
     name: "Simon Shirt",
-    style: "Classic menswear dress shirt",
+    style: "Classic, Fitted, Formal",
     emoji: "👔",
     difficulty: 3,
     maxDifficulty: 3,
@@ -284,6 +294,7 @@ export const templates = {
     matchScore: 71,
     description:
       "A tailored button-up shirt with collar, yoke, cuffs, and sleeve plackets",
+    visualDescription: "A tailored button-up mens shirt with collar, yoke, cuffs, and sleeve plackets",
     accentColor: "bg-sky-50",
     resultImage: "/images/results/simon-result.png",
     forGender: "male",
@@ -303,7 +314,7 @@ export const templates = {
   simone: {
     id: "simone",
     name: "Simone Shirt",
-    style: "Classic womenswear button-up",
+    style: "Classic, Elegant, Fitted, Formal",
     emoji: "👚",
     difficulty: 3,
     maxDifficulty: 3,
@@ -312,6 +323,7 @@ export const templates = {
     matchScore: 73,
     description:
       "A tailored button-up shirt for women with full bust adjustment, collar, yoke, and cuffs",
+    visualDescription: "A tailored button-up womens shirt with full bust adjustment, collar, yoke, and cuffs",
     accentColor: "bg-rose-50",
     resultImage: "/images/results/simone-result.png",
     forGender: "female",
@@ -330,8 +342,8 @@ export const templates = {
 
   sophie: {
     id: "sophie",
-    name: "Sophie Raglan",
-    style: "Casual two-panel top",
+    name: "Sophie Slip Dress",
+    style: "Stylish, Sexy, Flowy",
     emoji: "👕",
     difficulty: 1,
     maxDifficulty: 3,
@@ -339,7 +351,8 @@ export const templates = {
     time: "About 1–2 hrs",
     matchScore: 78,
     description:
-      "A simple two-panel garment with a relaxed fit — great for beginners",
+      "A simple slip dress with lace details — perfect for lightweight woven fabrics like rayon or silk",
+    visualDescription: "A simple sleeve-less slip dress with lace details underneath bust",
     accentColor: "bg-green-50",
     resultImage: "/images/results/sophie-result.png",
     forGender: "female",
@@ -367,6 +380,7 @@ export const templates = {
     matchScore: 85,
     description:
       "A classic crew-neck T-shirt with set-in sleeves — perfect for jersey fabric",
+    visualDescription: "Classic crew-neck T-shirt with set-in sleeves",
     accentColor: "bg-yellow-50",
     resultImage: "/images/results/teagan-result.png",
     forGender: "any",
@@ -394,6 +408,7 @@ export const templates = {
     matchScore: 77,
     description:
       "Comfortable wrap pants inspired by Thai fashion, with tie waistband and optional pockets",
+    visualDescription: "Comfortable wrap pants inspired by Thai fashion, with tie waistband",
     accentColor: "bg-lime-50",
     resultImage: "/images/results/waralee-result.png",
     forGender: "any",
@@ -411,7 +426,7 @@ export const templates = {
   wahid: {
     id: "wahid",
     name: "Wahid Waistcoat",
-    style: "Classic tailored vest",
+    style: "Classic, Formal, Fitted",
     emoji: "🎩",
     difficulty: 3,
     maxDifficulty: 3,
@@ -420,6 +435,7 @@ export const templates = {
     matchScore: 69,
     description:
       "A tailored waistcoat (vest) with front facings, lining, and welt pockets",
+    visualDescription: "A tailored waistcoat (vest) with front facings, lining, and welt pockets",
     accentColor: "bg-amber-50",
     resultImage: "/images/results/wahid-result.png",
     forGender: "male",

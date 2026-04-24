@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { templates } from "../data/templates";
 import { mockAnalysis } from "../data/mockAnalysis";
 import { generatePreview } from "../services/previewGeneration";
@@ -105,18 +105,10 @@ export default function TemplateSelectScreen({
 
         if (tierA !== tierB) return tierA - tierB;
         return (
-          (fb.compositeScore ?? fb.fitScore ?? 0) -
-          (fa.compositeScore ?? fa.fitScore ?? 0)
+          (fb?.compositeScore ?? fb?.fitScore ?? 0) -
+          (fa?.compositeScore ?? fa?.fitScore ?? 0)
         );
       });
-    console.log(
-      "[TemplateSelect] sorted order:",
-      sorted.map((t) => {
-        const f = profileFeasibility[t.id];
-        const tier = !f ? 1 : !f.feasible ? 2 : f.needsInterfacing ? 0.5 : 0;
-        return `${t.id}(tier=${tier},score=${(f?.compositeScore ?? 0).toFixed(2)},feasible=${f?.feasible})`;
-      }),
-    );
     return sorted;
   }, [profileFeasibility]);
 
@@ -307,10 +299,13 @@ export default function TemplateSelectScreen({
     return grouped;
   }
 
+  const hasGeneratedPreviews = useRef(false);
+
   useEffect(() => {
-    if (!fabric) return;
+    if (!fabric || hasGeneratedPreviews.current) return;
+    hasGeneratedPreviews.current = true;
+
     let cancelled = false;
-    // Generate previews one at a time to avoid rate-limiting the preview API
     (async () => {
       for (const template of items) {
         if (cancelled) break;
@@ -466,6 +461,7 @@ export default function TemplateSelectScreen({
                         src={template.resultImage}
                         alt={template.name}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <span className="text-4xl flex items-center justify-center w-full h-full">

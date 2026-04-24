@@ -116,9 +116,8 @@ export default function UploadScreen({ navigate }) {
           <ul className="space-y-1.5">
             {[
               "Shoot in natural light with high contrast background",
-              "Add a credit card or standard pen for scale",
               "Lay the garment flat to fully expose the fabric",
-              "Get close so AI can clearly see the fabric texture",
+              "Try to get the garment to fill the frame, but avoid cropping out edges",
             ].map((tip) => (
               <li
                 key={tip}

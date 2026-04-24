@@ -57,8 +57,8 @@ export default function App() {
     if (to === "profileEditor") {
       setEditingProfileId(data.profileId ?? null);
     }
-    if (to === "patternLayout") {
-      setPatternLayoutFrom(data.from ?? "templateSelect");
+    if (to === "patternLayout" && data.from !== undefined) {
+      setPatternLayoutFrom(data.from);
     }
     setSessionProfileOverride(null);
     setScreen(to);

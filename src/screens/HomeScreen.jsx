@@ -1,40 +1,8 @@
 import BottomNav from "../components/BottomNav";
 import { templates } from "../data/templates";
+import { communityPosts } from "../data/communityPosts";
 
-const communityPreviews = [
-  {
-    id: 1,
-    user: "Mei",
-    emoji: "👜",
-    bg: "from-amber-100 to-yellow-50",
-    item: "Linen Tote",
-    likes: 142,
-  },
-  {
-    id: 2,
-    user: "Jason",
-    emoji: "🧢",
-    bg: "from-orange-100 to-amber-50",
-    item: "Vintage Bucket Hat",
-    likes: 89,
-  },
-  {
-    id: 3,
-    user: "Lily",
-    emoji: "🛍",
-    bg: "from-lime-100 to-green-50",
-    item: "Plaid Shopper",
-    likes: 234,
-  },
-  {
-    id: 4,
-    user: "Leo",
-    emoji: "🧢",
-    bg: "from-stone-100 to-orange-50",
-    item: "Denim Hat",
-    likes: 67,
-  },
-];
+const communityPreviews = communityPosts.slice(0, 4);
 
 export default function HomeScreen({ navigate, activeProfile }) {
   return (
@@ -124,10 +92,12 @@ export default function HomeScreen({ navigate, activeProfile }) {
           <div className="flex gap-3 overflow-x-auto pb-1 px-5 scrollbar-hide">
             {communityPreviews.map((p) => (
               <div key={p.id} className="flex-shrink-0 w-28">
-                <div
-                  className={`bg-gradient-to-br ${p.bg} rounded-2xl h-28 flex items-center justify-center mb-2 border border-white/60`}
-                >
-                  <span className="text-5xl">{p.emoji}</span>
+                <div className="rounded-2xl h-28 mb-2 overflow-hidden border border-white/60">
+                  <img
+                    src={p.image}
+                    alt={p.item}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <p className="text-xs font-medium text-secondary-100 truncate">
                   {p.item}

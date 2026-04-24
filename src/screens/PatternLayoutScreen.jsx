@@ -889,7 +889,7 @@ export default function PatternLayoutScreen({
               boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
             }}
           >
-            ✨ AI Suggested Layout — drag to adjust, double-tap to rotate
+            Drag to adjust, double-tap to rotate
           </div>
         )}
 
@@ -912,7 +912,7 @@ export default function PatternLayoutScreen({
             </p>
             <button
               onClick={() => setShowHint(false)}
-              className="text-primary-400 text-sm leading-none mt-0.5 shrink-0"
+              className="text-primary-100 text-sm leading-none mt-0.5 shrink-0"
             >
               ✕
             </button>

@@ -6,6 +6,7 @@ import { analyzeFabric } from "../services/fabricAnalysis.js";
 import { templates } from "../data/templates.js";
 import { mockAnalysis } from "../data/mockAnalysis.js";
 import freesewingPatterns from "../data/freesewingPatterns.json";
+import { isPhoneDevice } from "../utils/deviceDetect.js";
 
 // Merge FreeSewing piece data into templates so checkFeasibility sees real areas.
 // Templates with patternSource: "freesewing" have patternPieces: [] in templates.js;
@@ -82,7 +83,7 @@ async function _runSegmentationInWorker(imageFile) {
 
 // Eagerly create the worker (and trigger model download) as soon as this
 // module is imported — i.e. when the app first loads, not when Analyze is tapped.
-_getSegWorker();
+//_getSegWorker();
 
 // ─────────────────────────────────────────────────────────────────────────────
 export function useAnalysisPipeline() {
@@ -95,6 +96,8 @@ export function useAnalysisPipeline() {
   const [needsManualInput, setNeedsManualInput] = useState(false);
   const [needsScaleInput, setNeedsScaleInput] = useState(false);
   const [error, setError] = useState(null);
+  // True when the phone-device path was taken (no segmentation).
+  const [isMobileFlow, setIsMobileFlow] = useState(false);
 
   // Holds segResult + mask dimensions between the segmenting and measuring stages
   // so submitLongestSide() can resume without re-running segmentation.
@@ -113,6 +116,7 @@ export function useAnalysisPipeline() {
     fabricRef.current = mockAnalysis.fabric;
     setNeedsManualInput(false);
     setNeedsScaleInput(false);
+    setIsMobileFlow(false);
     setError(null);
     _pendingRef.current = null;
   };
@@ -158,8 +162,46 @@ export function useAnalysisPipeline() {
   };
 
   // ── Stage 1 + optional auto-continue ────────────────────────────────────────
-  const run = useCallback(async (imageFile, longestSideCm) => {
+  // usableAreaCm2 is only used on the mobile path (no segmentation).
+  const run = useCallback(async (imageFile, longestSideCm, usableAreaCm2) => {
     reset();
+
+    // ── Mobile path: skip ONNX segmentation worker entirely ─────────────────
+    if (isPhoneDevice()) {
+      setIsMobileFlow(true);
+      try {
+        setStatus("segmenting"); // reuse status label; AnalysisScreen shows scan UI
+        setProgress(20);
+        const fabricResult = await analyzeFabric(imageFile);
+        if (fabricResult) {
+          setFabric(fabricResult);
+          fabricRef.current = fabricResult;
+        }
+        setProgress(70);
+        setStatus("checking");
+
+        // Build synthetic measurements when the user provided an area estimate.
+        const mobileMeasurements =
+          usableAreaCm2 > 0
+            ? { totalAreaCm2: usableAreaCm2, panels: {} }
+            : null;
+
+        if (mobileMeasurements) setMeasurements(mobileMeasurements);
+
+        const feasibility = checkFeasibility(
+          mobileMeasurements,
+          templatesWithPieces,
+          fabricRef.current,
+        );
+        setFeasibleTemplates(feasibility);
+        setProgress(100);
+        setStatus("done");
+      } catch (err) {
+        setError(err?.message ?? String(err));
+        setStatus("error");
+      }
+      return;
+    }
 
     try {
       setStatus("segmenting");
@@ -243,6 +285,7 @@ export function useAnalysisPipeline() {
     fabric,
     needsManualInput,
     needsScaleInput,
+    isMobileFlow,
     error,
     run,
     submitLongestSide,

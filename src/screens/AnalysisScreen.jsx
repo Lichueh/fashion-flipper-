@@ -7,6 +7,7 @@ export default function AnalysisScreen({
   uploadedImage,
   uploadedFile,
   longestSideCm,
+  usableAreaCm2,
 }) {
   const {
     status,
@@ -17,6 +18,7 @@ export default function AnalysisScreen({
     measurements,
     feasibleTemplates,
     fabric,
+    isMobileFlow,
     run,
     submitLongestSide,
     retry,
@@ -30,7 +32,7 @@ export default function AnalysisScreen({
   useEffect(() => {
     if (!uploadedFile || hasRun.current) return;
     hasRun.current = true;
-    run(uploadedFile, longestSideCm);
+    run(uploadedFile, longestSideCm, usableAreaCm2);
   }, [uploadedFile]);
 
   const [phase, setPhase] = useState("scanning");
@@ -132,6 +134,15 @@ export default function AnalysisScreen({
           ✓ Analysis Complete
         </span>
       </div>
+
+      {isMobileFlow && (
+        <div className="mx-5 mb-2 px-3 py-2 bg-primary-700 border border-primary-600 rounded-xl flex items-center gap-2">
+          <span className="text-sm">📱</span>
+          <p className="text-xs text-primary-100">
+            Fabric-matched patterns · size check unavailable on mobile
+          </p>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-5 pt-0 pb-4 space-y-4">
         {/* Fabric type card */}

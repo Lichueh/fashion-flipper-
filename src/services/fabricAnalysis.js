@@ -24,13 +24,17 @@ const _inFlight = new Map();
  * Fast enough for UI use; good enough to distinguish different uploads.
  */
 async function _fileHash(file) {
-  const slice = file.slice(0, 65536);
-  const buffer = await slice.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .slice(0, 8) // 8 bytes → 16 hex chars, collision-resistant enough
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const buffer = await file.arrayBuffer();
+
+  if (window.isSecureContext && window.crypto?.subtle) {
+    const hashBuffer = await window.crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  console.warn("[fileHash] crypto.subtle unavailable; using fallback key");
+  return `fallback_${file.name}_${file.size}_${file.lastModified}`;
 }
 
 function _fileToBase64(file) {
@@ -137,5 +141,3 @@ export async function analyzeFabric(imageFile) {
     return null;
   }
 }
-
-

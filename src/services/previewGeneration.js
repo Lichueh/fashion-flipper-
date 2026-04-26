@@ -10,20 +10,62 @@
  */
 
 const CACHE_PREFIX = "preview_v1_";
-const _inFlight = new Map(); // deduplicates concurrent calls for same template+fabric
-let _queue = Promise.resolve(); // ensures only 1 request goes to the API at a time
+const _inFlight = new Map();
+let _queue = Promise.resolve();
 const DELAY_BETWEEN_REQUESTS_MS = 1000;
+
+// ── Debug logger ──────────────────────────────────────────────────────────────
+
+let _reqCounter = 0; // global request counter for correlating logs
+const _timings = []; // stores completed request timings for analysis
+
+function _log(level, event, data = {}) {
+  const entry = {
+    t: Date.now(),
+    event,
+    inFlight: _inFlight.size,
+    queueDepth: _reqCounter,
+    ...data,
+  };
+  if (level === "error") console.error("[preview]", entry);
+  else if (level === "warn") console.warn("[preview]", entry);
+  else console.log("[preview]", entry);
+}
+
+/** Call in the browser console to see a timing summary */
+window.__previewDebug = () => {
+  if (_timings.length === 0) { console.log("[preview] No completed requests yet."); return; }
+  const durations = _timings.map((t) => t.durationMs);
+  const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+  const min = Math.min(...durations);
+  const max = Math.max(...durations);
+  console.table(_timings);
+  console.log(`[preview] Summary — count: ${_timings.length}, avg: ${avg.toFixed(0)}ms, min: ${min}ms, max: ${max}ms`);
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function _hashFabric(fabric) {
   const json = JSON.stringify(fabric);
-  const buffer = new TextEncoder().encode(json);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .slice(0, 8)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+
+  if (window.isSecureContext && window.crypto?.subtle) {
+    const buffer = new TextEncoder().encode(json);
+    const hashBuffer = await window.crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(hashBuffer))
+      .slice(0, 8)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  // Stable fallback: sort keys so property order doesn't matter
+  _log("warn", "hash:fallback", { reason: "crypto.subtle unavailable", isSecureContext: window.isSecureContext });
+  const stable = JSON.stringify(fabric, Object.keys(fabric).sort());
+  let h = 0x811c9dc5;
+  for (let i = 0; i < stable.length; i++) {
+    h ^= stable.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0; // FNV-1a, stays within 32-bit unsigned
+  }
+  return h.toString(16).padStart(8, "0");
 }
 
 function _buildPrompt(fabric, template) {
@@ -40,20 +82,39 @@ function _buildPrompt(fabric, template) {
   ].join(" ");
 }
 
-// Fetches the image — always runs inside the queue so only 1 runs at a time
 async function _fetchPreview(fabric, template, cacheKey, fabricHash) {
+  const reqId = ++_reqCounter;
   const prompt = _buildPrompt(fabric, template);
   const seed = parseInt(fabricHash.slice(0, 8), 16) % 2147483647;
   const url = `/api/preview?prompt=${encodeURIComponent(prompt)}&seed=${seed}`;
 
+  _log("log", "fetch:start", { reqId, templateId: template.id, seed, url });
+  const t0 = performance.now();
+
   try {
     const response = await fetch(url);
-    if (!response.ok) {
-      console.warn(`[preview] ${response.status} for ${template.id}`);
-      return null;
-    }
+    const fetchMs = Math.round(performance.now() - t0);
+
+    _log(response.ok ? "log" : "warn", "fetch:response", {
+      reqId,
+      templateId: template.id,
+      status: response.status,
+      fetchMs,
+      contentType: response.headers.get("content-type"),
+      contentLength: response.headers.get("content-length"),
+    });
+
+    if (!response.ok) return null;
 
     const blob = await response.blob();
+    const blobMs = Math.round(performance.now() - t0);
+    _log("log", "fetch:blob", {
+      reqId,
+      templateId: template.id,
+      blobSizeKB: Math.round(blob.size / 1024),
+      blobMs,
+    });
+
     const dataUrl = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
@@ -61,23 +122,42 @@ async function _fetchPreview(fabric, template, cacheKey, fabricHash) {
       reader.readAsDataURL(blob);
     });
 
+    const totalMs = Math.round(performance.now() - t0);
+    _log("log", "fetch:done", {
+      reqId,
+      templateId: template.id,
+      dataUrlLengthKB: Math.round(dataUrl.length / 1024),
+      totalMs,
+    });
+
+    _timings.push({ reqId, templateId: template.id, durationMs: totalMs, status: response.status });
+
     try {
       localStorage.setItem(cacheKey, dataUrl);
-    } catch {}
+      _log("log", "cache:write", { reqId, templateId: template.id, cacheKey });
+    } catch (e) {
+      _log("warn", "cache:write:failed", { reqId, reason: e?.message });
+    }
+
     return dataUrl;
-  } catch {
+  } catch (e) {
+    const totalMs = Math.round(performance.now() - t0);
+    _log("error", "fetch:error", { reqId, templateId: template.id, error: e?.message, totalMs });
     return null;
   }
 }
 
-// Adds a fetch to the sequential queue so requests don't fire concurrently
 function _enqueue(fabric, template, cacheKey, fabricHash) {
+  _log("log", "queue:enqueue", { templateId: template.id, currentInFlight: _inFlight.size });
+
   const result = _queue.then(async () => {
-    // Wait between requests to avoid rate limiting
+    _log("log", "queue:delay:start", { templateId: template.id, delayMs: DELAY_BETWEEN_REQUESTS_MS });
     await new Promise((r) => setTimeout(r, DELAY_BETWEEN_REQUESTS_MS));
+    _log("log", "queue:delay:done", { templateId: template.id });
     return _fetchPreview(fabric, template, cacheKey, fabricHash);
   });
-  _queue = result.catch(() => {}); // never let one failure break the queue
+
+  _queue = result.catch(() => {});
   return result;
 }
 
@@ -90,28 +170,35 @@ export async function generatePreview(fabric, template) {
     const fabricHash = await _hashFabric(fabric);
     const cacheKey = CACHE_PREFIX + fabricHash + "_" + template.id;
 
-    // 1. Return cached result immediately if available
+    // 1. Cache hit
     try {
       const cached = localStorage.getItem(cacheKey);
-      if (cached) return cached;
+      if (cached) {
+        _log("log", "cache:hit", { templateId: template.id, cacheKey });
+        return cached;
+      }
     } catch {
-      // localStorage unavailable — proceed without cache
+      _log("warn", "cache:read:failed", { templateId: template.id });
     }
 
-    // 2. If the same template+fabric is already being fetched, wait for it
+    // 2. Deduplicate in-flight
     if (_inFlight.has(cacheKey)) {
+      _log("log", "inflight:dedup", { templateId: template.id, currentInFlight: _inFlight.size });
       return await _inFlight.get(cacheKey);
     }
 
-    // 3. Queue the request and register it as in-flight
+    // 3. Enqueue
+    _log("log", "generatePreview:enqueue", { templateId: template.id, fabricHash, currentInFlight: _inFlight.size });
     const promise = _enqueue(fabric, template, cacheKey, fabricHash);
     _inFlight.set(cacheKey, promise);
     try {
       return await promise;
     } finally {
       _inFlight.delete(cacheKey);
+      _log("log", "inflight:cleared", { templateId: template.id, remainingInFlight: _inFlight.size });
     }
-  } catch {
+  } catch (e) {
+    _log("error", "generatePreview:error", { templateId: template.id, error: e?.message });
     return null;
   }
 }

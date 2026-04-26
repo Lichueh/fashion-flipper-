@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { templates } from "../data/templates";
 import { mockAnalysis } from "../data/mockAnalysis";
 import { generatePreview } from "../services/previewGeneration";
@@ -29,6 +29,8 @@ export default function TemplateSelectScreen({
   setSessionProfileOverride,
   profiles = [],
   updateProfile,
+  previews,
+  setPreviews,
 }) {
   // Build a feasibility lookup so we can sort feasible templates first.
   const feasibilityById = useMemo(
@@ -112,22 +114,6 @@ export default function TemplateSelectScreen({
     return sorted;
   }, [profileFeasibility]);
 
-  const [previews, setPreviews] = useState(() => {
-    try {
-      const result = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith("preview_v1_")) {
-          const value = localStorage.getItem(key);
-          const templateId = key.slice(28); // skip "preview_v1_{16charHash}_"
-          if (value && templateId) result[templateId] = value;
-        }
-      }
-      return result;
-    } catch {
-      return {};
-    }
-  });
   const [showAllGenders, setShowAllGenders] = useState(false);
 
   // Derive profile gender — non-binary and no-profile both mean show all
@@ -314,26 +300,25 @@ export default function TemplateSelectScreen({
     return grouped;
   }
 
-  const hasGeneratedPreviews = useRef(false);
+useEffect(() => {
+  if (!fabric) return;
 
-  useEffect(() => {
-    if (!fabric || hasGeneratedPreviews.current) return;
-    hasGeneratedPreviews.current = true;
-
-    let cancelled = false;
-    (async () => {
-      for (const template of items) {
-        if (cancelled) break;
-        const dataUrl = await generatePreview(fabric, template);
-        if (dataUrl && !cancelled) {
-          setPreviews((prev) => ({ ...prev, [template.id]: dataUrl }));
-        }
+  let cancelled = false;
+  (async () => {
+    for (const template of items) {
+      if (cancelled) break;
+      const dataUrl = await generatePreview(fabric, template);
+      if (dataUrl && !cancelled) {
+        setPreviews((prev) =>
+          prev[template.id] ? prev : { ...prev, [template.id]: dataUrl }
+        );
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fabric]);
+    }
+  })();
+  return () => {
+    cancelled = true;
+  };
+}, [fabric]);
 
   // Build a lookup for match scores and feasibility: prefer feasibleTemplates (pipeline), fall back to mockAnalysis.
   // Overlay profileFeasibility so badge rendering reflects profile-adjusted scores.
@@ -381,6 +366,16 @@ export default function TemplateSelectScreen({
             <span className="text-sm">📐</span>
             <p className="text-xs text-primary-100">
               Results adjusted for your measurements
+            </p>
+          </div>
+        )}
+
+        {!measurements && (
+          <div className="mx-0 mb-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-xl flex items-center gap-2">
+            <span className="text-sm">📱</span>
+            <p className="text-xs text-primary-100">
+              Fabric-matched patterns · open on desktop for size-based fit
+              ranking
             </p>
           </div>
         )}

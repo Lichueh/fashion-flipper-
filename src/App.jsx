@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { Suspense, lazy, useState, useRef } from "react";
 import PhoneFrame from "./components/PhoneFrame";
-import HomeScreen from "./screens/HomeScreen";
-import UploadScreen from "./screens/UploadScreen";
-import AnalysisScreen from "./screens/AnalysisScreen";
+import ScreenLoader from "./components/ScreenLoader";
 import TemplateSelectScreen from "./screens/TemplateSelectScreen";
 import StepGuideScreen from "./screens/StepGuideScreen";
 import ResultScreen from "./screens/ResultScreen";
 import CommunityScreen from "./screens/CommunityScreen";
-import PatternLayoutScreen from "./screens/PatternLayoutScreen";
 import BasicTutorialScreen from "./screens/BasicTutorialScreen";
 import CameraPatternScreen from "./screens/CameraPatternScreen";
 import ProfilesScreen from "./screens/ProfilesScreen";
 import ProfileEditorScreen from "./screens/ProfileEditorScreen";
 import useProfiles from "./hooks/useProfiles";
+
+const HomeScreen = lazy(() => import("./screens/HomeScreen"));
+const UploadScreen = lazy(() => import("./screens/UploadScreen"));
+const AnalysisScreen = lazy(() => import("./screens/AnalysisScreen"));
+const PatternLayoutScreen = lazy(() => import("./screens/PatternLayoutScreen"));
 
 export default function App() {
   const [screen, setScreen] = useState("home");
@@ -24,6 +26,7 @@ export default function App() {
   const [segmentation, setSegmentation] = useState(null);
   const [feasibleTemplates, setFeasibleTemplates] = useState(null);
   const [fabric, setFabric] = useState(null);
+  const [usableAreaCm2, setUsableAreaCm2] = useState(0);
 
   const {
     profiles,
@@ -44,11 +47,33 @@ export default function App() {
   // Where the user came from before patternLayout (for back button)
   const [patternLayoutFrom, setPatternLayoutFrom] = useState("templateSelect");
 
+  const [previews, setPreviews] = useState(() => {
+    try {
+      const result = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key?.startsWith("preview_v1_")) continue;
+        const withoutPrefix = key.slice("preview_v1_".length);
+        const separatorIdx = withoutPrefix.indexOf("_");
+        if (separatorIdx === -1) continue;
+        const hash = withoutPrefix.slice(0, separatorIdx);
+        if (!/^[0-9a-f]{8,16}$/.test(hash)) continue;
+        const templateId = withoutPrefix.slice(separatorIdx + 1);
+        const value = localStorage.getItem(key);
+        if (value && templateId) result[templateId] = value;
+      }
+      return result;
+    } catch {
+      return {};
+    }
+  });
+
   const navigate = (to, data = {}) => {
     if (data.image !== undefined) setUploadedImage(data.image);
     if (data.imageFile !== undefined) setUploadedFile(data.imageFile);
     if (data.template !== undefined) setSelectedTemplate(data.template);
     if (data.longestSideCm !== undefined) setLongestSideCm(data.longestSideCm);
+    if (data.usableAreaCm2 !== undefined) setUsableAreaCm2(data.usableAreaCm2);
     if (data.measurements !== undefined) setMeasurements(data.measurements);
     if (data.segmentation !== undefined) setSegmentation(data.segmentation);
     if (data.feasibleTemplates !== undefined)
@@ -75,6 +100,7 @@ export default function App() {
         uploadedImage={uploadedImage}
         uploadedFile={uploadedFile}
         longestSideCm={longestSideCm}
+        usableAreaCm2={usableAreaCm2}
       />
     ),
     templateSelect: (
@@ -88,6 +114,8 @@ export default function App() {
         setSessionProfileOverride={setSessionProfileOverride}
         profiles={profiles}
         updateProfile={updateProfile}
+        previews={previews}
+        setPreviews={setPreviews}
       />
     ),
     patternLayout: (
@@ -150,5 +178,11 @@ export default function App() {
     ),
   };
 
-  return <PhoneFrame>{screens[screen] ?? screens.home}</PhoneFrame>;
+  return (
+    <PhoneFrame>
+      <Suspense fallback={<ScreenLoader />}>
+        {screens[screen] ?? screens.home}
+      </Suspense>
+    </PhoneFrame>
+  );
 }

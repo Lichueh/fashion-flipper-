@@ -34,8 +34,11 @@ import patternAreasBySize, {
  * }>}
  */
 export function checkFeasibility(measurements, templates, fabric = null) {
+  // measurements may be null on mobile (no segmentation run).
   // Collect only the panels that were actually detected.
-  const availablePanels = Object.values(measurements.panels).filter(Boolean);
+  const availablePanels = measurements
+    ? Object.values(measurements.panels).filter(Boolean)
+    : [];
 
   // Derive fabric profile once — null fabric means skip all fabric checks.
   const fabricProfile = fabric ? getFabricProfile(fabric) : null;
@@ -45,64 +48,75 @@ export function checkFeasibility(measurements, templates, fabric = null) {
     const totalPieces = pieces.length;
 
     // ── Stage 1: area check ──────────────────────────────────────────────────
-    // For patterns whose pieces are loaded dynamically (patternPieces: []),
-    // fall back to the pre-computed anchor area from patternAreasBySize.
-    const anchorAreaData = patternAreasBySize[template.id];
-    const fallbackArea = anchorAreaData
-      ? Math.max(...Object.values(anchorAreaData))
-      : null;
-    const totalRequiredArea =
-      totalPieces > 0
-        ? pieces.reduce((sum, p) => sum + p.areaCm2, 0)
-        : (fallbackArea ?? 0);
-    const totalRequiredWithBuffer = totalRequiredArea * 1.1;
-    const usedAreaPct = Math.min(
-      (totalRequiredArea / measurements.totalAreaCm2) * 100,
-      100,
-    );
+    // Skipped when measurements is null (mobile fabric-only flow).
+    let usedAreaPct = 0;
+    if (measurements) {
+      // For patterns whose pieces are loaded dynamically (patternPieces: []),
+      // fall back to the pre-computed anchor area from patternAreasBySize.
+      const anchorAreaData = patternAreasBySize[template.id];
+      const fallbackArea = anchorAreaData
+        ? Math.max(...Object.values(anchorAreaData))
+        : null;
+      const totalRequiredArea =
+        totalPieces > 0
+          ? pieces.reduce((sum, p) => sum + p.areaCm2, 0)
+          : (fallbackArea ?? 0);
+      const totalRequiredWithBuffer = totalRequiredArea * 1.1;
+      usedAreaPct = Math.min(
+        (totalRequiredArea / measurements.totalAreaCm2) * 100,
+        100,
+      );
 
-    if (measurements.totalAreaCm2 < totalRequiredWithBuffer) {
-      return {
-        ...template,
-        feasible: false,
-        compositeScore: 0,
-        fitScore: 0,
-        usedAreaPct,
-        needsInterfacing: false,
-        fabricNote: null,
-        failReason: "area",
-      };
+      if (measurements.totalAreaCm2 < totalRequiredWithBuffer) {
+        return {
+          ...template,
+          feasible: false,
+          compositeScore: 0,
+          fitScore: 0,
+          usedAreaPct,
+          needsInterfacing: false,
+          fabricNote: null,
+          failReason: "area",
+        };
+      }
     }
 
     // ── Stage 2: bounding-box fit check ─────────────────────────────────────
-    // Skipped when pieces are loaded dynamically (totalPieces === 0);
-    // the fallback area check above is sufficient for those patterns.
-    let piecesFit = totalPieces === 0 ? 0 : 0;
-    for (const piece of pieces) {
-      const pw = piece.widthCm;
-      const ph = piece.heightCm;
-      const fits = availablePanels.some((panel) => {
-        const panW = panel.widthCm;
-        const panH = panel.heightCm;
-        // Try natural orientation, then rotated 90°.
-        return (pw <= panW && ph <= panH) || (ph <= panW && pw <= panH);
-      });
-      if (fits) piecesFit++;
+    // Skipped when measurements is null or no panels were detected
+    // (mobile fabric-only flow, or dynamic-piece patterns).
+    let piecesFit = 0;
+    if (measurements && availablePanels.length > 0) {
+      for (const piece of pieces) {
+        const pw = piece.widthCm;
+        const ph = piece.heightCm;
+        const fits = availablePanels.some((panel) => {
+          const panW = panel.widthCm;
+          const panH = panel.heightCm;
+          // Try natural orientation, then rotated 90°.
+          return (pw <= panW && ph <= panH) || (ph <= panW && pw <= panH);
+        });
+        if (fits) piecesFit++;
+      }
+
+      if (totalPieces > 0 && piecesFit < totalPieces) {
+        return {
+          ...template,
+          feasible: false,
+          compositeScore: 0,
+          fitScore: 0,
+          usedAreaPct,
+          needsInterfacing: false,
+          fabricNote: null,
+          failReason: "piece_fit",
+        };
+      }
     }
 
-    const pieceFitScore = totalPieces > 0 ? piecesFit / totalPieces : 1;
-    if (totalPieces > 0 && piecesFit < totalPieces) {
-      return {
-        ...template,
-        feasible: false,
-        compositeScore: 0,
-        fitScore: 0,
-        usedAreaPct,
-        needsInterfacing: false,
-        fabricNote: null,
-        failReason: "piece_fit",
-      };
-    }
+    // When measurements are absent, treat all pieces as fitting (unknown).
+    const pieceFitScore =
+      measurements && availablePanels.length > 0 && totalPieces > 0
+        ? piecesFit / totalPieces
+        : 1;
 
     // ── Stage 3: fabric compatibility ────────────────────────────────────────
     // Skipped entirely when fabric = null (pre-analysis state).

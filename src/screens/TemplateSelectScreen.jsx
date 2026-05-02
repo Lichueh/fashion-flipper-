@@ -24,6 +24,7 @@ export default function TemplateSelectScreen({
   feasibleTemplates,
   fabric,
   measurements,
+  uploadedFile,
   activeProfile,
   sessionProfileOverride,
   setSessionProfileOverride,
@@ -82,7 +83,12 @@ export default function TemplateSelectScreen({
 
   const items = useMemo(() => {
     const sorted = Object.values(templates)
-      .slice()
+      .filter((t) => {
+        // Hide explicitly infeasible (tier 2). Keep feasible (tier 0/0.5) and
+        // unknown / accessories without area data (tier 1).
+        const f = profileFeasibility[t.id];
+        return !f || f.feasible !== false;
+      })
       .sort((a, b) => {
         const fa = profileFeasibility[a.id];
         const fb = profileFeasibility[b.id];
@@ -129,6 +135,34 @@ export default function TemplateSelectScreen({
     }
   });
   const [showAllGenders, setShowAllGenders] = useState(false);
+
+  // Long-press to zoom preview image
+  const [zoomImage, setZoomImage] = useState(null);
+  const longPressTimer = useRef(null);
+  const longPressed = useRef(false);
+  const LONG_PRESS_MS = 400;
+
+  function handleThumbnailPointerDown(src, e) {
+    e.stopPropagation();
+    longPressed.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressed.current = true;
+      setZoomImage(src);
+    }, LONG_PRESS_MS);
+  }
+  function handleThumbnailPointerEnd() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+  function handleThumbnailClick(e) {
+    if (longPressed.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      longPressed.current = false;
+    }
+  }
 
   // Derive profile gender — non-binary and no-profile both mean show all
   const profileGender = useMemo(() => {
@@ -181,7 +215,10 @@ export default function TemplateSelectScreen({
 
     if (ep && missing.length === 0) {
       // All good — navigate immediately
-      navigate("patternLayout", { template: template.id });
+      navigate(
+      template.patternSource === "ar-tutorial" ? "arTutorial" : "patternLayout",
+      { template: template.id },
+    );
       return;
     }
 
@@ -296,7 +333,12 @@ export default function TemplateSelectScreen({
       });
     }
 
-    navigate("patternLayout", { template: modalTemplate.id });
+    navigate(
+      modalTemplate.patternSource === "ar-tutorial"
+        ? "arTutorial"
+        : "patternLayout",
+      { template: modalTemplate.id },
+    );
     setModalTemplate(null);
   }
 
@@ -314,17 +356,22 @@ export default function TemplateSelectScreen({
     return grouped;
   }
 
-  const hasGeneratedPreviews = useRef(false);
+  // Track current previews via ref so the loop sees the latest state
+  // without needing previews in the effect deps (which would cause restarts)
+  const previewsRef = useRef(previews);
+  useEffect(() => {
+    previewsRef.current = previews;
+  }, [previews]);
 
   useEffect(() => {
-    if (!fabric || hasGeneratedPreviews.current) return;
-    hasGeneratedPreviews.current = true;
-
+    if (!fabric) return;
     let cancelled = false;
     (async () => {
       for (const template of items) {
         if (cancelled) break;
-        const dataUrl = await generatePreview(fabric, template);
+        // Skip if we already have a preview (from cache, prior HMR, or this run)
+        if (previewsRef.current[template.id]) continue;
+        const dataUrl = await generatePreview(fabric, template, uploadedFile);
         if (dataUrl && !cancelled) {
           setPreviews((prev) => ({ ...prev, [template.id]: dataUrl }));
         }
@@ -333,7 +380,7 @@ export default function TemplateSelectScreen({
     return () => {
       cancelled = true;
     };
-  }, [fabric]);
+  }, [fabric, items, uploadedFile]);
 
   // Build a lookup for match scores and feasibility: prefer feasibleTemplates (pipeline), fall back to mockAnalysis.
   // Overlay profileFeasibility so badge rendering reflects profile-adjusted scores.
@@ -375,6 +422,21 @@ export default function TemplateSelectScreen({
           These templates suit your fabric. After selecting, AI will provide
           step-by-step guidance
         </p>
+
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-primary-700/60 border border-primary-600 rounded-full self-start text-[11px] text-primary-100">
+          <svg
+            viewBox="0 0 24 24"
+            className="w-3.5 h-3.5 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
+          </svg>
+          <span>Long-press any preview image to enlarge</span>
+        </div>
 
         {profileFeasibility !== feasibilityById && (
           <div className="mx-0 mb-1 px-3 py-2 bg-primary-700 border border-primary-600 rounded-xl flex items-center gap-2">
@@ -462,26 +524,59 @@ export default function TemplateSelectScreen({
                   </p>
                 )}
                 <div className="flex items-center gap-4">
-                  <div
-                    className={`w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden ${template.accentColor}`}
-                  >
-                    {previews[template.id] ? (
-                      <img
-                        src={previews[template.id]}
-                        alt={template.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : template.resultImage ? (
-                      <img
-                        src={template.resultImage}
-                        alt={template.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-primary-200 animate-pulse rounded-2xl" />
-                    )}
-                  </div>
+                  {(() => {
+                    const zoomSrc =
+                      previews[template.id] ?? template.resultImage ?? null;
+                    return (
+                      <div
+                        className={`relative w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden select-none touch-none ${template.accentColor}`}
+                        onPointerDown={(e) =>
+                          zoomSrc && handleThumbnailPointerDown(zoomSrc, e)
+                        }
+                        onPointerUp={handleThumbnailPointerEnd}
+                        onPointerLeave={handleThumbnailPointerEnd}
+                        onPointerCancel={handleThumbnailPointerEnd}
+                        onClick={handleThumbnailClick}
+                      >
+                        {previews[template.id] ? (
+                          <img
+                            src={previews[template.id]}
+                            alt={template.name}
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                        ) : template.resultImage ? (
+                          <img
+                            src={template.resultImage}
+                            alt={template.name}
+                            className="w-full h-full object-cover pointer-events-none"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-primary-200 animate-pulse rounded-2xl" />
+                        )}
+                        {zoomSrc && (
+                          <div className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full bg-black/55 flex items-center justify-center pointer-events-none">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="w-2.5 h-2.5 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                            >
+                              <circle cx="11" cy="11" r="7" />
+                              <line
+                                x1="20.5"
+                                y1="20.5"
+                                x2="16.5"
+                                y2="16.5"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-primary-900 text-lg">
@@ -813,6 +908,20 @@ export default function TemplateSelectScreen({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {zoomImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-6 cursor-zoom-out"
+          onClick={() => setZoomImage(null)}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <img
+            src={zoomImage}
+            alt="Preview"
+            className="max-w-full max-h-full rounded-3xl shadow-2xl pointer-events-none"
+          />
         </div>
       )}
     </div>

@@ -1,4 +1,35 @@
 export const templates = {
+  noSewTote: {
+    id: "noSewTote",
+    name: "T-shirt → No-Sew Tote",
+    style: "Quick, zero-sewing upcycle",
+    emoji: "👜",
+    difficulty: 1,
+    maxDifficulty: 3,
+    difficultyLabel: "Beginner",
+    time: "About 20 min",
+    matchScore: 95,
+    description:
+      "Turn an old T-shirt into a shopping tote with just scissors — three steps, no sewing required",
+    visualDescription:
+      "A T-shirt converted into a tote bag with knotted fringe at the bottom and the sleeves cut off, hanging from a hook",
+    accentColor: "bg-lime-50",
+    forGender: "any",
+    patternSource: "ar-tutorial",
+    patternPieces: [],
+    materials: ["Old T-shirt", "Sharp scissors", "Optional: chalk for marking"],
+    steps: [], // loaded dynamically from src/patterns/noSewTote.js
+    previewPromptOverride: [
+      "Transform the T-shirt in this image into a finished no-sew tote bag, hanging from a hook against a clean off-white studio background.",
+      "Soft slouchy hobo-style shoulder bag with the body of the original T-shirt forming the bag pouch.",
+      "Two long fabric handles tied together at the top from the cut shoulder seams, original sleeves removed.",
+      "Bottom edge cut into long thin fringe tassels (about 8 cm long, evenly spaced).",
+      "Preserve the original front graphic, color, and any text from the source T-shirt exactly as they appear — same artwork, same hue, same placement on the front of the bag.",
+      "Soft cotton jersey texture, handmade upcycled aesthetic, natural drape with visible folds.",
+      "Even soft studio lighting, centered ecommerce product photo, sharp fabric detail.",
+      "No person, no model, no mannequin, no body parts, no hands.",
+    ].join(" "),
+  },
   bag: {
     id: "bag",
     name: "Tote Bag with chain",

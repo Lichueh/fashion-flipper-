@@ -124,6 +124,14 @@ export default {
     cisMaleAdult48: 11402,
   },
   // Fixed-size custom patterns — area does not vary with body measurements
+  noSewTote: {
+    cisFemaleAdult32: 600,
+    cisFemaleAdult38: 600,
+    cisFemaleAdult44: 600,
+    cisMaleAdult36: 600,
+    cisMaleAdult42: 600,
+    cisMaleAdult48: 600,
+  },
   bag: {
     cisFemaleAdult32: 875,
     cisFemaleAdult38: 875,

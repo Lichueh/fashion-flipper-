@@ -27,6 +27,19 @@
 export const FABRIC_REQUIREMENTS = {
   // ── Handmade accessories ───────────────────────────────────────────────────
 
+  noSewTote: {
+    minWeightClass: 1, // jersey-friendly
+    maxWeightClass: 2, // heavy fabric won't drape into a bag shape
+    allowKnit: true, // T-shirts are the target material
+    requiresStretch: false,
+    allowBias: true,
+    minConditionRank: 2, // fair — old tee is fine
+    canInterfaceFix: false,
+    rejectFibers: [],
+    preferredFibers: [],
+    reason: null,
+  },
+
   bag: {
     minWeightClass: 2,
     maxWeightClass: null,

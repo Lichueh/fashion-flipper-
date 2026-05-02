@@ -11,6 +11,7 @@ export default function ResultScreen({
   navigate,
   template: templateId,
   uploadedImage,
+  uploadedFile,
   fabric,
 }) {
   const template = templates[templateId] || templates.bag;
@@ -20,10 +21,10 @@ export default function ResultScreen({
 
   useEffect(() => {
     if (!fabric) return;
-    generatePreview(fabric, template).then((dataUrl) => {
+    generatePreview(fabric, template, uploadedFile).then((dataUrl) => {
       if (dataUrl) setPreviewUrl(dataUrl);
     });
-  }, [fabric, templateId]);
+  }, [fabric, templateId, uploadedFile]);
 
   return (
     <div className="h-full flex flex-col bg-primary-800">

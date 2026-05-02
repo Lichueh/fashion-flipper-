@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { templates } from "../data/templates";
 import { mockAnalysis } from "../data/mockAnalysis";
+import useDeviceOrientation from "../hooks/useDeviceOrientation";
+import usePinchScale from "../hooks/usePinchScale";
+
+// Small-angle approximation: 1° of phone rotation ≈ this many pixels of
+// scene shift. Same constant as ArMeasureScreen — tune both together.
+const PX_PER_DEG = 6;
 
 function CameraPiece({ piece, scale, pos, dragging, onPointerDown }) {
   const pw = piece.widthCm * scale;
@@ -184,6 +190,7 @@ export default function CameraPatternScreen({
   navigate,
   template: templateId,
   longestSideCm,
+  calibPxPerCm,
 }) {
   const template = templates[templateId];
   const { garmentLayout } = mockAnalysis;
@@ -191,10 +198,20 @@ export default function CameraPatternScreen({
   const [phase, setPhase] = useState("loading");
   const [scanPct, setScanPct] = useState(0);
   const [dimensions, setDimensions] = useState({ w: 390, h: 700 });
+  const [anchorOrient, setAnchorOrient] = useState(null);
 
   const videoRef = useRef();
   const containerRef = useRef();
   const streamRef = useRef();
+
+  const {
+    orientation,
+    permission: orientPerm,
+    requestPermission: requestOrient,
+  } = useDeviceOrientation();
+  const { scale, reset: resetScale } = usePinchScale(containerRef, {
+    enabled: phase === "ready",
+  });
 
   const [positions, setPositions] = useState(() =>
     Object.fromEntries(
@@ -265,49 +282,58 @@ export default function CameraPatternScreen({
     setDimensions({ w, h });
   }, [phase]);
 
+  // Snapshot orientation once when entering "ready" so all pieces share
+  // the same world-space anchor. Subsequent phone rotation translates the
+  // whole pattern as a rigid layer, faking spatial anchoring.
+  useEffect(() => {
+    if (phase === "ready" && !anchorOrient) {
+      setAnchorOrient({ ...orientation });
+    }
+  }, [phase]);
+
   function handlePointerDown(e, pieceId) {
     e.preventDefault();
+    e.stopPropagation();
+    if (orientPerm === "needs-request") requestOrient();
     const rect = containerRef.current.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDragging({
-      id: pieceId,
-      startPointerX: px,
-      startPointerY: py,
-      startPieceX: positions[pieceId].x,
-      startPieceY: positions[pieceId].y,
-    });
+    const startPx = e.clientX - rect.left;
+    const startPy = e.clientY - rect.top;
+    const startPieceX = positions[pieceId].x;
+    const startPieceY = positions[pieceId].y;
+    const piece = template.patternPieces.find((p) => p.id === pieceId);
+    setDragging({ id: pieceId });
+
+    function onMove(ev) {
+      const px = ev.clientX - rect.left;
+      const py = ev.clientY - rect.top;
+      const dx = px - startPx;
+      const dy = py - startPy;
+      const pw = piece.widthCm * pixelsPerCm;
+      const ph = piece.heightCm * pixelsPerCm;
+      const newX = Math.max(0, Math.min(dimensions.w - pw, startPieceX + dx));
+      const newY = Math.max(0, Math.min(dimensions.h - ph, startPieceY + dy));
+      setPositions((prev) => ({ ...prev, [pieceId]: { x: newX, y: newY } }));
+    }
+    function onUp() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      setDragging(null);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }
 
-  const pixelsPerCm = longestSideCm
-    ? dimensions.w / longestSideCm
-    : PIECE_SCALE_FALLBACK;
-
-  function handlePointerMove(e) {
-    if (!dragging) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    const dx = px - dragging.startPointerX;
-    const dy = py - dragging.startPointerY;
-    const piece = template.patternPieces.find((p) => p.id === dragging.id);
-    const pw = piece.widthCm * pixelsPerCm;
-    const ph = piece.heightCm * pixelsPerCm;
-    const newX = Math.max(
-      0,
-      Math.min(dimensions.w - pw, dragging.startPieceX + dx),
-    );
-    const newY = Math.max(
-      0,
-      Math.min(dimensions.h - ph, dragging.startPieceY + dy),
-    );
-    setPositions((prev) => ({ ...prev, [dragging.id]: { x: newX, y: newY } }));
-  }
-
-  function handlePointerUp() {
-    setDragging(null);
-  }
+  // Priority: real calibrated px/cm (from ArMeasure card calibration) →
+  // longestSideCm-based fit-to-screen scale → fallback constant.
+  // Calibrated mode displays pieces at true physical size when phone is
+  // held at the calibration distance.
+  const pixelsPerCm = calibPxPerCm
+    ? calibPxPerCm
+    : longestSideCm
+      ? dimensions.w / longestSideCm
+      : PIECE_SCALE_FALLBACK;
 
   return (
     <div
@@ -320,9 +346,6 @@ export default function CameraPatternScreen({
         background: "#283326",
         touchAction: "none",
       }}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
     >
       <video
         ref={videoRef}
@@ -430,67 +453,103 @@ export default function CameraPatternScreen({
         </>
       )}
 
-      {phase === "ready" && (
-        <>
-          <GrainOverlay
-            w={dimensions.w}
-            h={dimensions.h}
-            angle={garmentLayout.grainAngleDeg}
-            spacing={22}
-          />
+      {phase === "ready" &&
+        (() => {
+          // Rigid offset for AR-anchored layer (grain + pieces).
+          let offX = 0;
+          let offY = 0;
+          if (anchorOrient && orientPerm === "granted") {
+            const dGamma =
+              (orientation.gamma ?? 0) - (anchorOrient.gamma ?? 0);
+            const dBeta = (orientation.beta ?? 0) - (anchorOrient.beta ?? 0);
+            offX = -dGamma * PX_PER_DEG;
+            offY = dBeta * PX_PER_DEG;
+          }
+          return (
+            <>
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  transform: `translate3d(${offX}px, ${offY}px, 0) scale3d(${scale}, ${scale}, 1)`,
+                  transformOrigin: "center center",
+                  backfaceVisibility: "hidden",
+                }}
+              >
+                <GrainOverlay
+                  w={dimensions.w}
+                  h={dimensions.h}
+                  angle={garmentLayout.grainAngleDeg}
+                  spacing={22}
+                />
+                {template.patternPieces.map((piece) => (
+                  <CameraPiece
+                    key={piece.id}
+                    piece={piece}
+                    scale={pixelsPerCm}
+                    pos={positions[piece.id]}
+                    dragging={dragging?.id === piece.id}
+                    onPointerDown={(e) => handlePointerDown(e, piece.id)}
+                  />
+                ))}
+              </div>
 
-          <div
-            style={{
-              position: "absolute",
-              top: 70,
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: "rgba(40,51,38,0.55)",
-              backdropFilter: "blur(6px)",
-              color: "#dde3d5",
-              fontSize: 11,
-              fontWeight: 600,
-              padding: "4px 14px",
-              borderRadius: 16,
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-            }}
-          >
-            ✓ Grain detected: Vertical (Warp)
-          </div>
+              <div
+                style={{
+                  position: "absolute",
+                  top: 70,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "rgba(40,51,38,0.55)",
+                  backdropFilter: "blur(6px)",
+                  color: "#dde3d5",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "4px 14px",
+                  borderRadius: 16,
+                  whiteSpace: "nowrap",
+                  pointerEvents: "none",
+                }}
+              >
+                ✓ Grain detected: Vertical (Warp)
+                {calibPxPerCm && (
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      paddingLeft: 8,
+                      borderLeft: "1px solid rgba(255,255,255,0.3)",
+                      color: "#00D4FF",
+                      fontFamily: "monospace",
+                      fontSize: 10,
+                    }}
+                  >
+                    {calibPxPerCm.toFixed(1)} px/cm
+                  </span>
+                )}
+              </div>
 
-          {template.patternPieces.map((piece) => (
-            <CameraPiece
-              key={piece.id}
-              piece={piece}
-              scale={pixelsPerCm}
-              pos={positions[piece.id]}
-              dragging={dragging?.id === piece.id}
-              onPointerDown={(e) => handlePointerDown(e, piece.id)}
-            />
-          ))}
-
-          <div
-            style={{
-              position: "absolute",
-              bottom: 110,
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: "rgba(40,51,38,0.55)",
-              backdropFilter: "blur(6px)",
-              color: "white",
-              fontSize: 11,
-              fontWeight: 500,
-              padding: "5px 16px",
-              borderRadius: 16,
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-            }}
-          >
-            Drag pieces onto your garment
-          </div>
-        </>
-      )}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 110,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "rgba(40,51,38,0.55)",
+                  backdropFilter: "blur(6px)",
+                  color: "white",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  padding: "5px 16px",
+                  borderRadius: 16,
+                  whiteSpace: "nowrap",
+                  pointerEvents: "none",
+                }}
+              >
+                Drag pieces onto your garment
+              </div>
+            </>
+          );
+        })()}
 
       {phase === "denied" && (
         <div
@@ -624,6 +683,26 @@ export default function CameraPatternScreen({
               <span style={{ color: "#90a480", fontSize: 11, fontWeight: 600 }}>
                 LIVE
               </span>
+              {scale !== 1 && (
+                <button
+                  onClick={resetScale}
+                  style={{
+                    marginLeft: 6,
+                    background: "rgba(0,212,255,0.2)",
+                    border: "1px solid rgba(0,212,255,0.5)",
+                    borderRadius: 10,
+                    padding: "2px 7px",
+                    color: "#00D4FF",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    fontFamily: "monospace",
+                    cursor: "pointer",
+                  }}
+                  title="Tap to reset scale"
+                >
+                  {scale.toFixed(2)}×
+                </button>
+              )}
             </div>
           )}
         </div>

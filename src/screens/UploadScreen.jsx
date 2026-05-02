@@ -4,7 +4,7 @@ import { analyzeFabric } from "../services/fabricAnalysis";
 export default function UploadScreen({ navigate }) {
   const [preview, setPreview] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [longestSide, setLongestSide] = useState("");
+  const [manualCm, setManualCm] = useState("");
   const fileRef = useRef();
 
   const handleFile = (e) => {
@@ -86,25 +86,82 @@ export default function UploadScreen({ navigate }) {
           onChange={handleFile}
         />
 
-        {/* Measurement input */}
+        {/* Measurement card — choose AR or manual */}
         <div className="bg-primary-100 rounded-2xl p-4 mb-5">
           <p className="text-primary-900 font-semibold text-sm mb-1">
             📏 Garment Measurement
           </p>
-          <p className="text-primary-700 text-xs mb-3 leading-4">
-            Lay it flat and measure the full length from top to bottom (e.g.
-            collar to hem for a shirt, waist to ankle for trousers).
+          <p className="text-primary-700 text-xs leading-4 mb-3">
+            Choose how to provide the longest side of your garment.
           </p>
+
+          {/* AR option */}
+          <button
+            onClick={() =>
+              preview &&
+              navigate("arMeasure", {
+                image: preview,
+                imageFile: uploadedFile,
+              })
+            }
+            disabled={!preview}
+            className={`w-full flex items-center justify-between gap-2 rounded-xl px-4 py-3 mb-2 transition-all ${
+              preview
+                ? "bg-secondary-300 text-white active:scale-[0.98] shadow-sm"
+                : "bg-primary-200 text-primary-700 cursor-not-allowed"
+            }`}
+          >
+            <div className="text-left">
+              <p className="font-bold text-sm leading-tight">
+                📏 Measure with AR
+              </p>
+              <p className="text-[10px] leading-tight opacity-80">
+                Tap two endpoints with your camera
+              </p>
+            </div>
+            <span className="text-base font-bold">→</span>
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-2 my-2">
+            <div className="flex-1 h-px bg-primary-300" />
+            <span className="text-[10px] text-primary-700 font-medium uppercase tracking-wider">
+              or
+            </span>
+            <div className="flex-1 h-px bg-primary-300" />
+          </div>
+
+          {/* Manual option */}
           <div className="flex items-center gap-2">
             <input
               type="number"
               inputMode="decimal"
               placeholder="e.g. 70"
-              value={longestSide}
-              onChange={(e) => setLongestSide(e.target.value)}
-              className="flex-1 bg-white border border-primary-300 rounded-xl px-4 py-2.5 text-sm text-primary-900 outline-none focus:border-secondary-300"
+              value={manualCm}
+              onChange={(e) => setManualCm(e.target.value)}
+              className="flex-1 bg-white border border-primary-300 rounded-xl px-3 py-2 text-sm text-primary-900 outline-none focus:border-secondary-300"
             />
             <span className="text-primary-800 font-semibold text-sm">cm</span>
+            <button
+              onClick={() =>
+                preview &&
+                manualCm > 0 &&
+                navigate("analysis", {
+                  image: preview,
+                  imageFile: uploadedFile,
+                  longestSideCm: parseFloat(manualCm),
+                  calibPxPerCm: null,
+                })
+              }
+              disabled={!preview || !(manualCm > 0)}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                preview && manualCm > 0
+                  ? "bg-primary-800 text-primary-100 active:scale-[0.98]"
+                  : "bg-primary-200 text-primary-700 cursor-not-allowed"
+              }`}
+            >
+              →
+            </button>
           </div>
         </div>
 
@@ -130,29 +187,11 @@ export default function UploadScreen({ navigate }) {
           </ul>
         </div>
 
-        {/* CTA */}
-        <button
-          onClick={() =>
-            preview &&
-            longestSide > 0 &&
-            navigate("analysis", {
-              image: preview,
-              imageFile: uploadedFile,
-              longestSideCm: parseFloat(longestSide),
-            })
-          }
-          className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
-            preview && longestSide > 0
-              ? "bg-secondary-300 text-white active:scale-[0.98] shadow-md shadow-black/20"
-              : "bg-primary-700 text-accent-100 cursor-not-allowed"
-          }`}
-        >
-          {preview && longestSide > 0
-            ? "🔍 Start AI Analysis"
-            : preview
-              ? "Enter garment measurement"
-              : "Please select a photo first"}
-        </button>
+        {!preview && (
+          <p className="text-center text-primary-300 text-xs mt-4">
+            Select a photo first to enable measurement
+          </p>
+        )}
       </div>
     </div>
   );

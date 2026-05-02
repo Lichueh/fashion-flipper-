@@ -100,9 +100,12 @@ export default async function handler(req, res) {
     const data = await upstream.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) {
-      return res
-        .status(502)
-        .json({ error: "Empty response from model — please try again" });
+      console.error("[analyze] empty content from model", JSON.stringify(data));
+      return res.status(502).json({
+        error: "Empty response from model — please try again",
+        finishReason: data.choices?.[0]?.finish_reason,
+        raw: data,
+      });
     }
 
     const parsed = JSON.parse(content);

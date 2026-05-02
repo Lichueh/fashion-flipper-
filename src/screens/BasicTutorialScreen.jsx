@@ -117,6 +117,28 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
 
               {isOpen && (
                 <div className="border-t border-primary-600">
+                  {tutorial.id === "machine" && (
+                    <button
+                      onClick={() =>
+                        navigate("arTutorial", {
+                          template: "sewingMachine",
+                          from: "learn",
+                        })
+                      }
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-secondary-300 active:bg-secondary-400 transition-colors text-left"
+                    >
+                      <span className="text-xl">🪡</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-bold text-sm">
+                          Try AR-Guided Walkthrough
+                        </p>
+                        <p className="text-white/85 text-[11px]">
+                          Numbered callouts overlaid on your camera view
+                        </p>
+                      </div>
+                      <span className="text-white text-base">→</span>
+                    </button>
+                  )}
                   {tutorial.video && (
                     <div className="px-4 pt-3 pb-2">
                       <video

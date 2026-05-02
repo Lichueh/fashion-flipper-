@@ -10,6 +10,8 @@ import CommunityScreen from "./screens/CommunityScreen";
 import PatternLayoutScreen from "./screens/PatternLayoutScreen";
 import BasicTutorialScreen from "./screens/BasicTutorialScreen";
 import CameraPatternScreen from "./screens/CameraPatternScreen";
+import ArMeasureScreen from "./screens/ArMeasureScreen";
+import ArTutorialScreen from "./screens/ArTutorialScreen";
 import ProfilesScreen from "./screens/ProfilesScreen";
 import ProfileEditorScreen from "./screens/ProfileEditorScreen";
 import useProfiles from "./hooks/useProfiles";
@@ -20,6 +22,7 @@ export default function App() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState("bag");
   const [longestSideCm, setLongestSideCm] = useState(null);
+  const [calibPxPerCm, setCalibPxPerCm] = useState(null);
   const [measurements, setMeasurements] = useState(null);
   const [segmentation, setSegmentation] = useState(null);
   const [feasibleTemplates, setFeasibleTemplates] = useState(null);
@@ -43,12 +46,16 @@ export default function App() {
 
   // Where the user came from before patternLayout (for back button)
   const [patternLayoutFrom, setPatternLayoutFrom] = useState("templateSelect");
+  // Same for arTutorial — defaults to templateSelect, set to "learn" when
+  // launched from BasicTutorialScreen so the back button returns there.
+  const [arTutorialFrom, setArTutorialFrom] = useState("templateSelect");
 
   const navigate = (to, data = {}) => {
     if (data.image !== undefined) setUploadedImage(data.image);
     if (data.imageFile !== undefined) setUploadedFile(data.imageFile);
     if (data.template !== undefined) setSelectedTemplate(data.template);
     if (data.longestSideCm !== undefined) setLongestSideCm(data.longestSideCm);
+    if (data.calibPxPerCm !== undefined) setCalibPxPerCm(data.calibPxPerCm);
     if (data.measurements !== undefined) setMeasurements(data.measurements);
     if (data.segmentation !== undefined) setSegmentation(data.segmentation);
     if (data.feasibleTemplates !== undefined)
@@ -59,6 +66,9 @@ export default function App() {
     }
     if (to === "patternLayout" && data.from !== undefined) {
       setPatternLayoutFrom(data.from);
+    }
+    if (to === "arTutorial") {
+      setArTutorialFrom(data.from ?? "templateSelect");
     }
     setSessionProfileOverride(null);
     setScreen(to);
@@ -83,6 +93,7 @@ export default function App() {
         feasibleTemplates={feasibleTemplates}
         fabric={fabric}
         measurements={measurements}
+        uploadedFile={uploadedFile}
         activeProfile={activeProfile}
         sessionProfileOverride={sessionProfileOverride}
         setSessionProfileOverride={setSessionProfileOverride}
@@ -113,6 +124,7 @@ export default function App() {
         navigate={navigate}
         template={selectedTemplate}
         uploadedImage={uploadedImage}
+        uploadedFile={uploadedFile}
         fabric={fabric}
       />
     ),
@@ -124,6 +136,16 @@ export default function App() {
         navigate={navigate}
         template={selectedTemplate}
         longestSideCm={longestSideCm}
+        calibPxPerCm={calibPxPerCm}
+      />
+    ),
+    arMeasure: <ArMeasureScreen navigate={navigate} />,
+    arTutorial: (
+      <ArTutorialScreen
+        navigate={navigate}
+        template={selectedTemplate}
+        calibPxPerCm={calibPxPerCm}
+        from={arTutorialFrom}
       />
     ),
     community: (

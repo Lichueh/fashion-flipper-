@@ -3,86 +3,73 @@
  * user-supplied longest-side measurement as the pixel→cm scale reference.
  *
  * The scale factor is derived by dividing the user's stated longest side (cm)
- * by the longest dimension (width or height) of the frontPanel bounding box
- * in pixels. All other regions use the same scale factor.
+ * by the height of the garment's bounding box in pixels.
  *
  * @param {Object} segResult         - Return value of segmentGarment().
  * @param {number} maskWidth         - Width of the mask grid in pixels.
  * @param {number} maskHeight        - Height of the mask grid in pixels.
- * @param {number} longestSideCm     - User-measured longest side of the garment, cm.
+ * @param {number} lengthGarment      - User-measured height of the garment (top to bottom), cm.
+ * @param {boolean} [hasLayers=true] - When true, totalAreaCm2 is doubled to account
+ *                                     for the unseen back panel.
  *
  * @returns {{
  *   totalAreaCm2:  number,
  *   scaleCmPerPx:  number,
  *   panels: {
- *     frontPanel:  { widthCm: number, heightCm: number, areaCm2: number } | null,
- *     sleeveLeft:  { widthCm: number, heightCm: number, areaCm2: number } | null,
- *     sleeveRight: { widthCm: number, heightCm: number, areaCm2: number } | null,
- *   }
- * } | null} null when the front panel mask is absent or has zero width.
+ *     frontPanel: { widthCm: number, heightCm: number, areaCm2: number } | null,
+ *     sleeveLeft:  null,
+ *     sleeveRight: null,
+ *   },
+ *   bboxFraction: { x: number, y: number, w: number, h: number },
+ * } | null} null when garmentMask is absent or has zero height.
  */
 export function computeMeasurements(
   segResult,
   maskWidth,
   maskHeight,
-  longestSideCm,
+  lengthGarment,
+  hasLayers = true,
 ) {
-  const frontRegion = segResult.regions.frontPanel;
-  if (!frontRegion?.mask) return null;
+  if (!segResult?.garmentMask) return null;
 
-  const frontBbox = _boundingBox(frontRegion.mask, maskWidth, maskHeight);
-  if (!frontBbox || frontBbox.heightPx === 0) return null;
+  const bbox = _boundingBox(segResult.garmentMask, maskWidth, maskHeight);
+  if (!bbox || bbox.heightPx === 0) return null;
 
-  // 1 pixel = this many centimetres
-  const scaleCmPerPx = longestSideCm / frontBbox.heightPx;
+  // Derive scale from the user's stated garment height vs the bounding box height
+  const scaleCmPerPx = lengthGarment / bbox.heightPx;
 
-  function measureRegion(region) {
-    if (!region?.mask) return null;
-    const bbox = _boundingBox(region.mask, maskWidth, maskHeight);
-    if (!bbox) return null;
-    return {
-      widthCm: _round1(bbox.widthPx * scaleCmPerPx),
-      heightCm: _round1(bbox.heightPx * scaleCmPerPx),
-      // pixelArea is already counted in segmentation; multiply by scale²
-      areaCm2: Math.round(region.pixelArea * scaleCmPerPx * scaleCmPerPx),
-    };
-  }
+  const widthCm = _round1(bbox.widthPx * scaleCmPerPx);
+  const heightCm = _round1(bbox.heightPx * scaleCmPerPx);
+  // Pixel area → cm² using scale²
+  const areaCm2 = Math.round(
+    segResult.totalPixelArea * scaleCmPerPx * scaleCmPerPx,
+  );
 
-  const frontPanel = measureRegion(frontRegion);
-  const sleeveLeft = measureRegion(segResult.regions.sleeveLeft);
-  const sleeveRight = measureRegion(segResult.regions.sleeveRight);
-
-  const totalAreaCm2 =
-    (frontPanel?.areaCm2 ?? 0) +
-    (sleeveLeft?.areaCm2 ?? 0) +
-    (sleeveRight?.areaCm2 ?? 0);
+  const visibleAreaCm2 = areaCm2;
+  const totalAreaCm2 = visibleAreaCm2 * (hasLayers ? 2 : 1);
 
   const bboxFraction = {
-    x: frontBbox.minCol / maskWidth, 
-    y: frontBbox.minRow / maskHeight,
-    w: frontBbox.widthPx / maskWidth,
-    h: frontBbox.heightPx / maskHeight,
+    x: bbox.minCol / maskWidth,
+    y: bbox.minRow / maskHeight,
+    w: bbox.widthPx / maskWidth,
+    h: bbox.heightPx / maskHeight,
   };
 
   return {
     totalAreaCm2,
     scaleCmPerPx: _round4(scaleCmPerPx),
-    panels: { frontPanel, sleeveLeft, sleeveRight },
+    panels: {
+      // sleeveLeft/sleeveRight kept as null — panel breakdown no longer computed
+      frontPanel: { widthCm, heightCm, areaCm2: visibleAreaCm2 },
+      sleeveLeft: null,
+      sleeveRight: null,
+    },
     bboxFraction,
   };
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-/**
- * Compute the tight axis-aligned bounding box of active (value = 1) pixels
- * in a flat row-major binary mask.
- *
- * @param   {Uint8Array} mask
- * @param   {number}     maskW
- * @param   {number}     maskH
- * @returns {{ widthPx: number, heightPx: number, minCol: number, minRow: number } | null}
- */
 function _boundingBox(mask, maskW, maskH) {
   let minRow = maskH,
     maxRow = -1,
@@ -99,7 +86,7 @@ function _boundingBox(mask, maskW, maskH) {
       }
     }
   }
-  if (maxRow === -1) return null; // no active pixels
+  if (maxRow === -1) return null;
   return {
     widthPx: maxCol - minCol + 1,
     heightPx: maxRow - minRow + 1,

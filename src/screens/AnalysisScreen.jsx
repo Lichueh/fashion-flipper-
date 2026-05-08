@@ -6,7 +6,8 @@ export default function AnalysisScreen({
   navigate,
   uploadedImage,
   uploadedFile,
-  longestSideCm,
+  lengthGarment,
+  hasLayers,
 }) {
   const {
     status,
@@ -18,19 +19,19 @@ export default function AnalysisScreen({
     feasibleTemplates,
     fabric,
     run,
-    submitLongestSide,
+    submitGarmentLength,
     retry,
   } = useAnalysisPipeline();
 
   // Kick off the pipeline as soon as the file is available.
-  // longestSideCm is passed directly so the hook can skip the
+  // lengthGarment is passed directly so the hook can skip the
   // awaiting_scale pause and proceed straight to measurement.
   const hasRun = useRef(false);
 
   useEffect(() => {
     if (!uploadedFile || hasRun.current) return;
     hasRun.current = true;
-    run(uploadedFile, longestSideCm);
+    run(uploadedFile, lengthGarment, hasLayers);
   }, [uploadedFile]);
 
   const [phase, setPhase] = useState("scanning");

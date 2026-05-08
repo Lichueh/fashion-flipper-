@@ -410,33 +410,18 @@ export default function PatternLayoutScreen({
       setMaskedImageUrl(null);
       return;
     }
-    // No segmentation available → show the raw photo as a dim reference
-    if (!segmentation?.regions) {
+    // No segmentation or no garment mask → show raw photo as dim reference
+    if (!segmentation?.garmentMask) {
       setMaskedImageUrl(uploadedImage);
       return;
     }
+
     const img = new Image();
     img.onload = () => {
       const { naturalWidth: iw, naturalHeight: ih } = img;
-      const anyMask = Object.values(segmentation.regions).find((r) => r?.mask);
-      if (!anyMask) {
-        // Masks present in object but all null → fall back to raw photo
-        setMaskedImageUrl(uploadedImage);
-        return;
-      }
-
-      const maskLen = anyMask.mask.length;
+      const maskLen = segmentation.garmentMask.length;
       const maskW = Math.round(Math.sqrt(maskLen * (iw / ih)));
       const maskH = Math.round(maskLen / maskW);
-
-      const combined = new Uint8Array(maskLen);
-      for (const region of Object.values(segmentation.regions)) {
-        if (!region?.mask) continue;
-        const m = region.mask;
-        for (let i = 0; i < maskLen; i++) {
-          if (m[i]) combined[i] = 1;
-        }
-      }
 
       const c = document.createElement("canvas");
       c.width = iw;
@@ -445,11 +430,14 @@ export default function PatternLayoutScreen({
       ctx.drawImage(img, 0, 0, iw, ih);
       const imageData = ctx.getImageData(0, 0, iw, ih);
       const px = imageData.data;
+
       for (let y = 0; y < ih; y++) {
         for (let x = 0; x < iw; x++) {
           const mx = Math.floor((x / iw) * maskW);
           const my = Math.floor((y / ih) * maskH);
-          if (!combined[my * maskW + mx]) px[(y * iw + x) * 4 + 3] = 0;
+          if (!segmentation.garmentMask[my * maskW + mx]) {
+            px[(y * iw + x) * 4 + 3] = 0;
+          }
         }
       }
       ctx.putImageData(imageData, 0, 0);
@@ -928,6 +916,7 @@ export default function PatternLayoutScreen({
           </span>
         </span>
       </div>
+
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto pb-4">

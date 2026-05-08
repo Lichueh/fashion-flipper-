@@ -38,7 +38,7 @@ const templatesWithPieces = Object.fromEntries(
  *   needsScaleInput: boolean,
  *   error: string|null,
  *   run: (imageFile: File) => Promise<void>,
- *   submitLongestSide: (cm: number) => Promise<void>,
+ *   submitGarmentLength: (cm: number) => Promise<void>,
  *   retry: () => void,
  * }}
  */
@@ -118,8 +118,8 @@ export function useAnalysisPipeline() {
   };
 
   // ── Stages 2 + 3: measure then feasibility-check ───────────────────────────
-  // Shared by run() (when longestSideCm provided upfront) and submitLongestSide().
-  const _measureAndCheck = (longestSideCm) => {
+  // Shared by run() (when lengthGarment provided upfront) and submitGarmentLength().
+  const _measureAndCheck = (lengthGarment) => {
     const pending = _pendingRef.current;
     if (!pending) return;
 
@@ -131,7 +131,8 @@ export function useAnalysisPipeline() {
       pending.segResult,
       pending.maskW,
       pending.maskH,
-      longestSideCm,
+      lengthGarment,
+      pending.hasLayers,
     );
 
     if (!measResult) {
@@ -158,72 +159,68 @@ export function useAnalysisPipeline() {
   };
 
   // ── Stage 1 + optional auto-continue ────────────────────────────────────────
-  const run = useCallback(async (imageFile, longestSideCm) => {
-    reset();
+  const run = useCallback(
+    async (imageFile, lengthGarment, hasLayers = true) => {
+      reset();
 
+      try {
+        setStatus("segmenting");
+        setProgress(10);
+
+        // Downscale for segmentation (≤800 px longest side) to cut decode/transfer
+        // overhead. SegFormer only needs the outline, not full camera resolution.
+        // fabricAnalysis receives the original file for maximum quality.
+        // Both chains run fully in parallel.
+        const [fabricResult, segResult] = await Promise.all([
+          analyzeFabric(imageFile),
+          _downscaleForSegmentation(imageFile, 800).then((sf) =>
+            _runSegmentationInWorker(sf),
+          ),
+        ]);
+
+        if (fabricResult) {
+          setFabric(fabricResult);
+          fabricRef.current = fabricResult;
+        }
+
+        if (segResult.error || segResult.lowConfidence) {
+          setNeedsManualInput(true);
+          setSegmentation(segResult.error ? null : segResult);
+          setProgress(100);
+          setStatus("done");
+          return;
+        }
+
+        setSegmentation(segResult);
+        setProgress(40);
+
+        // Resolve mask dimensions — provided directly by the worker.
+        const maskW = segResult.maskWidth;
+        const maskH = segResult.maskHeight;
+
+        // Persist segResult + mask dims so submitGarmentLength can resume.
+        _pendingRef.current = { segResult, maskW, maskH, hasLayers };
+
+        if (lengthGarment > 0) {
+          // Scale was provided upfront — skip the pause and finish immediately.
+          _measureAndCheck(lengthGarment);
+        } else {
+          setNeedsScaleInput(true);
+          setStatus("awaiting_scale");
+          setProgress(50);
+        }
+      } catch (err) {
+        setError(err?.message ?? String(err));
+        setStatus("error");
+      }
+    },
+    [],
+  );
+
+  // ── Called when the user submits garment height measurement later ──────────────
+  const submitGarmentLength = useCallback((lengthGarment) => {
     try {
-      setStatus("segmenting");
-      setProgress(10);
-
-      // Downscale for segmentation (≤800 px longest side) to cut decode/transfer
-      // overhead. SegFormer only needs the outline, not full camera resolution.
-      // fabricAnalysis receives the original file for maximum quality.
-      // Both chains run fully in parallel.
-      const [fabricResult, segResult] = await Promise.all([
-        analyzeFabric(imageFile),
-        _downscaleForSegmentation(imageFile, 800).then((sf) =>
-          _runSegmentationInWorker(sf),
-        ),
-      ]);
-
-      if (fabricResult) {
-        setFabric(fabricResult);
-        fabricRef.current = fabricResult;
-      }
-
-      if (segResult.error || segResult.lowConfidence) {
-        setNeedsManualInput(true);
-        setSegmentation(segResult.error ? null : segResult);
-        setProgress(100);
-        setStatus("done");
-        return;
-      }
-
-      setSegmentation(segResult);
-      setProgress(40);
-
-      // Resolve mask pixel dimensions from the image's native aspect ratio.
-      const { width: imgW, height: imgH } =
-        await _loadImageDimensions(imageFile);
-      const firstMask = Object.values(segResult.regions).find((r) => r.mask);
-      const maskW = firstMask
-        ? Math.round(Math.sqrt(firstMask.mask.length * (imgW / imgH)))
-        : imgW;
-      const maskH = firstMask
-        ? Math.round(firstMask.mask.length / maskW)
-        : imgH;
-
-      // Persist segResult + mask dims so submitLongestSide can resume.
-      _pendingRef.current = { segResult, maskW, maskH };
-
-      if (longestSideCm > 0) {
-        // Scale was provided upfront — skip the pause and finish immediately.
-        _measureAndCheck(longestSideCm);
-      } else {
-        setNeedsScaleInput(true);
-        setStatus("awaiting_scale");
-        setProgress(50);
-      }
-    } catch (err) {
-      setError(err?.message ?? String(err));
-      setStatus("error");
-    }
-  }, []);
-
-  // ── Called when the user submits longest-side measurement later ──────────────
-  const submitLongestSide = useCallback((longestSideCm) => {
-    try {
-      _measureAndCheck(longestSideCm);
+      _measureAndCheck(lengthGarment);
     } catch (err) {
       setError(err?.message ?? String(err));
       setStatus("error");
@@ -245,7 +242,7 @@ export function useAnalysisPipeline() {
     needsScaleInput,
     error,
     run,
-    submitLongestSide,
+    submitGarmentLength,
     retry,
   };
 }
@@ -279,22 +276,6 @@ function _downscaleForSegmentation(file, maxPx = 800) {
     img.onerror = () => {
       URL.revokeObjectURL(url);
       resolve(file); // fall back to original on error
-    };
-    img.src = url;
-  });
-}
-
-function _loadImageDimensions(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Could not read image dimensions"));
     };
     img.src = url;
   });

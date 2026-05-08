@@ -130,7 +130,10 @@ export default function ArMeasureScreen({ navigate }) {
       if (isCalibrating) {
         setMeasurementCm(REFERENCE_OBJECT_CM);
       } else {
-        const cm = Math.max(20, Math.min(180, px / activePxPerCm + jitter(0.7)));
+        const cm = Math.max(
+          20,
+          Math.min(180, px / activePxPerCm + jitter(0.7)),
+        );
         setMeasurementCm(cm);
       }
       setAnchorOrient({ ...orientationRef.current });
@@ -174,7 +177,7 @@ export default function ArMeasureScreen({ navigate }) {
   function confirmMeasurement() {
     if (measurementCm == null) return;
     navigate("analysis", {
-      longestSideCm: parseFloat(measurementCm.toFixed(1)),
+      lengthGarment: parseFloat(measurementCm.toFixed(1)),
       calibPxPerCm,
     });
   }
@@ -199,7 +202,8 @@ export default function ArMeasureScreen({ navigate }) {
     offY = dBeta * PX_PER_DEG;
   }
 
-  const showLine = (phase === "drawing" || phase === "done") && startPt && endPt;
+  const showLine =
+    (phase === "drawing" || phase === "done") && startPt && endPt;
   const lp = showLine ? lineGeom(startPt, endPt) : null;
   const isFinal = phase === "done" && measurementCm != null;
 
@@ -608,8 +612,7 @@ export default function ArMeasureScreen({ navigate }) {
             left: 0,
             right: 0,
             padding: "16px 20px 24px",
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.7), transparent)",
+            background: "linear-gradient(to top, rgba(0,0,0,0.7), transparent)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -685,8 +688,7 @@ export default function ArMeasureScreen({ navigate }) {
               onClick={continueToMeasure}
               disabled={phase !== "done"}
               style={{
-                background:
-                  phase === "done" ? accent : "rgba(255,255,255,0.1)",
+                background: phase === "done" ? accent : "rgba(255,255,255,0.1)",
                 border: "none",
                 color: phase === "done" ? "#0a2030" : "rgba(255,255,255,0.3)",
                 fontSize: 14,
@@ -707,8 +709,7 @@ export default function ArMeasureScreen({ navigate }) {
               onClick={confirmMeasurement}
               disabled={phase !== "done"}
               style={{
-                background:
-                  phase === "done" ? accent : "rgba(255,255,255,0.1)",
+                background: phase === "done" ? accent : "rgba(255,255,255,0.1)",
                 border: "none",
                 color: phase === "done" ? "#1a1a1a" : "rgba(255,255,255,0.3)",
                 fontSize: 14,

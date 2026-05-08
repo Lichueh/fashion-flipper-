@@ -193,7 +193,7 @@ export default function TemplateSelectScreen({
   // Preset picker inside the modal
   const [showModalPresetPicker, setShowModalPresetPicker] = useState(false);
   const [modalSelectedPresetId, setModalSelectedPresetId] = useState(null);
-
+  const [showDimensions, setShowDimensions] = useState(false);
   // Derived: which profile is in effect for the modal
   function effectiveProfile() {
     return sessionProfileOverride ?? activeProfile ?? null;
@@ -416,6 +416,81 @@ export default function TemplateSelectScreen({
           </p>
         </div>
       </div>
+
+      {/* Garment measurements summary */}
+      {measurements != null && (
+        <>
+          <button
+            onClick={() => setShowDimensions((v) => !v)}
+            className="mx-5 mb-2 flex items-center gap-2 text-xs bg-secondary-200 text-secondary-800 hover:bg-primary-200 hover:text-primary-700 transition-colors rounded-full px-4"
+          >
+            <span>📏</span>
+            <span>Show garment dimensions</span>
+          </button>
+
+          {showDimensions && (
+            <div
+              className="absolute inset-0 z-50 flex items-center justify-center bg-black/50"
+              onClick={() => setShowDimensions(false)}
+            >
+              <div
+                className="mx-5 bg-primary-200 border border-primary-600 rounded-2xl px-5 py-4 w-full max-w-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[11px] font-bold text-secondary-700 bg-secondary-200 rounded-full px-3 py-0.5 uppercase tracking-wider">
+                    📏 Your Garment
+                  </p>
+                  <button
+                    onClick={() => setShowDimensions(false)}
+                    className="text-primary-500 hover:text-primary-800 text-lg leading-none"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {measurements?.panels?.frontPanel != null ? (
+                  <div className="flex gap-4 flex-wrap">
+                    <div>
+                      <p className="text-[10px] text-primary-800">Width</p>
+                      <p className="text-sm font-semibold text-secondary-700">
+                        {measurements.panels.frontPanel.widthCm} cm
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-primary-800">Height</p>
+                      <p className="text-sm font-semibold text-secondary-700">
+                        {measurements.panels.frontPanel.heightCm} cm
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-primary-800">
+                        Usable fabric (one side)
+                      </p>
+                      <p className="text-sm font-semibold text-secondary-700">
+                        {measurements.panels.frontPanel.areaCm2} cm²
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-primary-800">
+                        Total fabric (both sides)
+                      </p>
+                      <p className="text-sm font-semibold text-secondary-700">
+                        {measurements.totalAreaCm2} cm²
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-primary-400">
+                    Measurements unavailable — templates are sorted by fabric
+                    compatibility only.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4 space-y-4">
         <p className="text-sm text-primary-100 leading-5">

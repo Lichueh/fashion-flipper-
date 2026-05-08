@@ -5,6 +5,7 @@ export default function UploadScreen({ navigate }) {
   const [preview, setPreview] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [manualCm, setManualCm] = useState("");
+  const [hasLayers, setHasLayers] = useState(true);
   const fileRef = useRef();
 
   const handleFile = (e) => {
@@ -92,7 +93,7 @@ export default function UploadScreen({ navigate }) {
             📏 Garment Measurement
           </p>
           <p className="text-primary-700 text-xs leading-4 mb-3">
-            Choose how to provide the longest side of your garment.
+            Choose how to provide the height of your garment (top to bottom).
           </p>
 
           {/* AR option */}
@@ -149,7 +150,7 @@ export default function UploadScreen({ navigate }) {
                 navigate("analysis", {
                   image: preview,
                   imageFile: uploadedFile,
-                  longestSideCm: parseFloat(manualCm),
+                  lengthGarment: parseFloat(manualCm),
                   calibPxPerCm: null,
                 })
               }
@@ -162,6 +163,36 @@ export default function UploadScreen({ navigate }) {
             >
               →
             </button>
+          </div>
+        </div>
+
+        {/* Layers toggle */}
+        <div className="bg-primary-100 rounded-2xl p-4 mb-5">
+          <p className="text-primary-900 font-semibold text-sm mb-1">
+            🧥 Garment Layers
+          </p>
+          <p className="text-primary-700 text-xs mb-3 leading-4">
+            Does your garment have a front and back layer? For example, a
+            typical shirt has two layers of fabric (front and back), while a
+            scarf or open jacket may only have one layer.
+          </p>
+          <div className="flex gap-3">
+            {[
+              { label: "Yes — front & back", value: true },
+              { label: "No — single layer", value: false },
+            ].map(({ label, value }) => (
+              <button
+                key={String(value)}
+                onClick={() => setHasLayers(value)}
+                className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                  hasLayers === value
+                    ? "bg-secondary-300 text-white border-secondary-300"
+                    : "bg-white text-primary-800 border-primary-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -192,6 +223,30 @@ export default function UploadScreen({ navigate }) {
             Select a photo first to enable measurement
           </p>
         )}
+        {/* CTA */}
+        <button
+          onClick={() =>
+            preview &&
+            manualCm > 0 &&
+            navigate("analysis", {
+              image: preview,
+              imageFile: uploadedFile,
+              lengthGarment: parseFloat(manualCm),
+              hasLayers,
+            })
+          }
+          className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
+            preview && manualCm > 0
+              ? "bg-secondary-300 text-white active:scale-[0.98] shadow-md shadow-black/20"
+              : "bg-primary-700 text-accent-100 cursor-not-allowed"
+          }`}
+        >
+          {preview && manualCm > 0
+            ? "🔍 Start AI Analysis"
+            : preview
+              ? "Enter garment measurement"
+              : "Please select a photo first"}
+        </button>
       </div>
     </div>
   );

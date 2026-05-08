@@ -189,7 +189,7 @@ const PIECE_SCALE_FALLBACK = 2.4;
 export default function CameraPatternScreen({
   navigate,
   template: templateId,
-  longestSideCm,
+  lengthGarment,
   calibPxPerCm,
 }) {
   const template = templates[templateId];
@@ -326,13 +326,13 @@ export default function CameraPatternScreen({
   }
 
   // Priority: real calibrated px/cm (from ArMeasure card calibration) →
-  // longestSideCm-based fit-to-screen scale → fallback constant.
+  // lengthGarment-based fit-to-screen scale → fallback constant.
   // Calibrated mode displays pieces at true physical size when phone is
   // held at the calibration distance.
   const pixelsPerCm = calibPxPerCm
     ? calibPxPerCm
-    : longestSideCm
-      ? dimensions.w / longestSideCm
+    : lengthGarment
+      ? dimensions.w / lengthGarment
       : PIECE_SCALE_FALLBACK;
 
   return (
@@ -459,8 +459,7 @@ export default function CameraPatternScreen({
           let offX = 0;
           let offY = 0;
           if (anchorOrient && orientPerm === "granted") {
-            const dGamma =
-              (orientation.gamma ?? 0) - (anchorOrient.gamma ?? 0);
+            const dGamma = (orientation.gamma ?? 0) - (anchorOrient.gamma ?? 0);
             const dBeta = (orientation.beta ?? 0) - (anchorOrient.beta ?? 0);
             offX = -dGamma * PX_PER_DEG;
             offY = dBeta * PX_PER_DEG;

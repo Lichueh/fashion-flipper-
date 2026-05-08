@@ -21,8 +21,9 @@ export default function App() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState("bag");
-  const [longestSideCm, setLongestSideCm] = useState(null);
+  const [lengthGarment, setLengthGarment] = useState(null);
   const [calibPxPerCm, setCalibPxPerCm] = useState(null);
+  const [hasLayers, setHasLayers] = useState(true);
   const [measurements, setMeasurements] = useState(null);
   const [segmentation, setSegmentation] = useState(null);
   const [feasibleTemplates, setFeasibleTemplates] = useState(null);
@@ -54,8 +55,9 @@ export default function App() {
     if (data.image !== undefined) setUploadedImage(data.image);
     if (data.imageFile !== undefined) setUploadedFile(data.imageFile);
     if (data.template !== undefined) setSelectedTemplate(data.template);
-    if (data.longestSideCm !== undefined) setLongestSideCm(data.longestSideCm);
+    if (data.lengthGarment !== undefined) setLengthGarment(data.lengthGarment);
     if (data.calibPxPerCm !== undefined) setCalibPxPerCm(data.calibPxPerCm);
+    if (data.hasLayers !== undefined) setHasLayers(data.hasLayers);
     if (data.measurements !== undefined) setMeasurements(data.measurements);
     if (data.segmentation !== undefined) setSegmentation(data.segmentation);
     if (data.feasibleTemplates !== undefined)
@@ -84,7 +86,8 @@ export default function App() {
         navigate={navigate}
         uploadedImage={uploadedImage}
         uploadedFile={uploadedFile}
-        longestSideCm={longestSideCm}
+        lengthGarment={lengthGarment}
+        hasLayers={hasLayers}
       />
     ),
     templateSelect: (
@@ -135,7 +138,7 @@ export default function App() {
       <CameraPatternScreen
         navigate={navigate}
         template={selectedTemplate}
-        longestSideCm={longestSideCm}
+        lengthGarment={lengthGarment}
         calibPxPerCm={calibPxPerCm}
       />
     ),

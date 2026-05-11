@@ -3,6 +3,8 @@
 // (relative to the translated wrapper). Drag interactions update local
 // offsets owned by the parent screen.
 
+import { useLang } from "../i18n/LanguageContext";
+
 const ACCENT = "#FFCC00";
 const ACCENT_RGBA = "rgba(255,204,0,0.95)";
 
@@ -44,6 +46,7 @@ export function NumberedCalloutOverlay({
   dragOffset,
   onDrag,
 }) {
+  const { tl } = useLang();
   const dx = dragOffset?.dx ?? 0;
   const dy = dragOffset?.dy ?? 0;
 
@@ -204,7 +207,7 @@ export function NumberedCalloutOverlay({
               padding: "4px 9px",
             }}
           >
-            {p.label}
+            {tl(p.label)}
             {p.value && (
               <span
                 style={{
@@ -215,7 +218,7 @@ export function NumberedCalloutOverlay({
                   fontWeight: 700,
                 }}
               >
-                {p.value}
+                {tl(p.value)}
               </span>
             )}
           </div>

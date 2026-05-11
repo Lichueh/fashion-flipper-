@@ -20,10 +20,19 @@
  *   materialPcts: Record<string, number>,
  * }}
  */
+// fabric fields may be plain strings (from gpt-4o) or { en, nb, zh } objects
+// (from mockAnalysis after i18n). Internal matching uses English regex, so
+// always reduce to the English form before processing.
+function asEnString(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  return v.en ?? "";
+}
+
 export function getFabricProfile(fabric, grainAngleDeg = 90) {
-  const texture = (fabric.texture ?? "").toLowerCase();
-  const weight = (fabric.weight ?? "").toLowerCase();
-  const condition = (fabric.condition ?? "").toLowerCase();
+  const texture = asEnString(fabric.texture).toLowerCase();
+  const weight = asEnString(fabric.weight).toLowerCase();
+  const condition = asEnString(fabric.condition).toLowerCase();
 
   // ── Texture / weave classification ──────────────────────────────────────────
   const isKnit = /knit|jersey|rib\b|fleece|terry|interlock/.test(texture);
@@ -57,7 +66,7 @@ export function getFabricProfile(fabric, grainAngleDeg = 90) {
   // e.g. { cotton: 85, polyester: 15 }
   const materialPcts = {};
   for (const { material, percentage } of fabric.composition ?? []) {
-    materialPcts[material.toLowerCase()] = percentage ?? 0;
+    materialPcts[asEnString(material).toLowerCase()] = percentage ?? 0;
   }
 
   // ── Stretch ──────────────────────────────────────────────────────────────────

@@ -4,10 +4,9 @@
  */
 export default {
   patternPieces: [
-    // areaCm2 for trapezoid = (topWidth + bottomWidth) / 2 * height = (8+12)/2*14 = 140
     {
       id: "panel-1",
-      label: "Crown Panel 1",
+      label: { en: "Crown Panel 1", nb: "Pull-panel 1", zh: "帽冠 1" },
       widthCm: 12,
       heightCm: 14,
       areaCm2: 140,
@@ -22,7 +21,7 @@ export default {
     },
     {
       id: "panel-2",
-      label: "Crown Panel 2",
+      label: { en: "Crown Panel 2", nb: "Pull-panel 2", zh: "帽冠 2" },
       widthCm: 12,
       heightCm: 14,
       areaCm2: 140,
@@ -37,7 +36,7 @@ export default {
     },
     {
       id: "panel-3",
-      label: "Crown Panel 3",
+      label: { en: "Crown Panel 3", nb: "Pull-panel 3", zh: "帽冠 3" },
       widthCm: 12,
       heightCm: 14,
       areaCm2: 140,
@@ -52,7 +51,7 @@ export default {
     },
     {
       id: "panel-4",
-      label: "Crown Panel 4",
+      label: { en: "Crown Panel 4", nb: "Pull-panel 4", zh: "帽冠 4" },
       widthCm: 12,
       heightCm: 14,
       areaCm2: 140,
@@ -67,7 +66,7 @@ export default {
     },
     {
       id: "panel-5",
-      label: "Crown Panel 5",
+      label: { en: "Crown Panel 5", nb: "Pull-panel 5", zh: "帽冠 5" },
       widthCm: 12,
       heightCm: 14,
       areaCm2: 140,
@@ -82,7 +81,7 @@ export default {
     },
     {
       id: "panel-6",
-      label: "Crown Panel 6",
+      label: { en: "Crown Panel 6", nb: "Pull-panel 6", zh: "帽冠 6" },
       widthCm: 12,
       heightCm: 14,
       areaCm2: 140,
@@ -95,10 +94,9 @@ export default {
       defaultX: 3,
       defaultY: 53,
     },
-    // areaCm2 for circle = π * (14/2)² ≈ 154
     {
       id: "crown-top",
-      label: "Crown Top",
+      label: { en: "Crown Top", nb: "Pull-topp", zh: "帽頂" },
       widthCm: 14,
       heightCm: 14,
       areaCm2: 154,
@@ -109,10 +107,9 @@ export default {
       defaultX: 55,
       defaultY: 3,
     },
-    // areaCm2 for ring = π * (15² - 9²) ≈ 452
     {
       id: "brim",
-      label: "Brim",
+      label: { en: "Brim", nb: "Brem", zh: "帽簷" },
       widthCm: 30,
       heightCm: 30,
       areaCm2: 452,
@@ -128,46 +125,112 @@ export default {
   ],
   steps: [
     {
-      title: "Prepare the Pattern",
-      description:
-        'Measure your head circumference (typically 56–58 cm for adults). Draw or download a bucket hat pattern with 1 cm seam allowance: 6 crown side panels (trapezoid), 1 crown top circle, and 1 brim ring. Search "bucket hat pattern PDF" to find a free printable.',
-      tip: "Trace the pattern onto cardboard for a sturdier template that's easier to hold in place while cutting",
-      duration: "20 min",
+      title: {
+        en: "Prepare the Pattern",
+        nb: "Klargjør mønsteret",
+        zh: "準備紙型",
+      },
+      description: {
+        en: 'Measure your head circumference (typically 56–58 cm for adults). Draw or download a bucket hat pattern with 1 cm seam allowance: 6 crown side panels (trapezoid), 1 crown top circle, and 1 brim ring. Search "bucket hat pattern PDF" to find a free printable.',
+        nb: "Mål hodeomkretsen (vanligvis 56–58 cm for voksne). Tegn eller last ned et bøttehatt-mønster med 1 cm sømmonn: 6 sidepaneler i trapesform, 1 rund toppdel og 1 bremring. Søk etter «bucket hat pattern PDF» for å finne en gratis utskriftsversjon.",
+        zh: "量頭圍(成人通常 56–58 公分)。畫或下載含 1 公分縫份的漁夫帽紙型:6 片梯形帽冠側片、1 片帽頂圓、1 片帽簷環。搜尋「bucket hat pattern PDF」可找免費印製版。",
+      },
+      tip: {
+        en: "Trace the pattern onto cardboard for a sturdier template that's easier to hold in place while cutting",
+        nb: "Tegn mønsteret over på papp for en stødigere mal som er lettere å holde på plass når du klipper",
+        zh: "把紙型描到厚紙板上,當作更穩固的模板,裁布時比較好固定",
+      },
+      duration: { en: "20 min", nb: "20 min", zh: "20 分鐘" },
     },
     {
-      title: "Cut the Fabric",
-      description:
-        "Trace the pattern pieces onto the fabric with a disappearing-ink marker and cut out: 6 crown side panels, 1 crown top circle, 2 brim rings (one for each side — use a contrasting fabric for a reversible look).",
-      tip: "Align side panels along the straight grain of the fabric to prevent the hat from distorting",
-      duration: "25 min",
+      title: {
+        en: "Cut the Fabric",
+        nb: "Klipp ut stoffet",
+        zh: "裁布",
+      },
+      description: {
+        en: "Trace the pattern pieces onto the fabric with a disappearing-ink marker and cut out: 6 crown side panels, 1 crown top circle, 2 brim rings (one for each side — use a contrasting fabric for a reversible look).",
+        nb: "Tegn mønsterdelene over på stoffet med en forsvinnende tusj og klipp ut: 6 sidepaneler, 1 rund toppdel, 2 bremringer (én for hver side — bruk kontraststoff for en reversibel hatt).",
+        zh: "用消失筆把紙型描到布上裁出:6 片帽冠側片、1 片帽頂圓、2 片帽簷環(每面一片 — 用對比色布料可做雙面戴)。",
+      },
+      tip: {
+        en: "Align side panels along the straight grain of the fabric to prevent the hat from distorting",
+        nb: "Plasser sidepanelene langs den rette trådretningen for å hindre at hatten blir skjev",
+        zh: "側片沿布料直紗向裁,避免帽子變形",
+      },
+      duration: { en: "25 min", nb: "25 min", zh: "25 分鐘" },
     },
     {
-      title: "Sew the Crown",
-      description:
-        "Sew the 6 side panels together in pairs (right sides facing), then join all pairs to form a cylindrical crown. Finally sew the circular top piece onto the crown, using pins every 3–4 cm around the curve.",
-      tip: "Clip notches into the curved seam allowance after sewing so the seam lies flat when turned",
-      duration: "30 min",
+      title: {
+        en: "Sew the Crown",
+        nb: "Sy pullen",
+        zh: "縫合帽冠",
+      },
+      description: {
+        en: "Sew the 6 side panels together in pairs (right sides facing), then join all pairs to form a cylindrical crown. Finally sew the circular top piece onto the crown, using pins every 3–4 cm around the curve.",
+        nb: "Sy de 6 sidepanelene sammen parvis (rette sider mot hverandre), og sett deretter alle parene sammen til en sylindrisk pull. Sy til slutt den runde toppdelen på pullen, og bruk knappenåler hver 3–4 cm rundt kurven.",
+        zh: "把 6 片側片正面相對兩兩縫合,再把每組縫成圓筒形帽冠。最後把圓形帽頂縫上去,沿弧線每 3–4 公分別一支別針。",
+      },
+      tip: {
+        en: "Clip notches into the curved seam allowance after sewing so the seam lies flat when turned",
+        nb: "Klipp hakk i den kurvede sømmonnen etter sying slik at sømmen ligger flatt når den snus",
+        zh: "縫好後在弧形縫份剪牙口,翻面時接縫才會服貼",
+      },
+      duration: { en: "30 min", nb: "30 min", zh: "30 分鐘" },
     },
     {
-      title: "Make the Brim",
-      description:
-        "Place the two brim rings right sides together and sew around the outer curved edge. Clip notches every 1 cm around the curve, then turn right-side out and press flat. Leave the inner circle unsewn for now.",
-      tip: "Clip notches to within 0.2 cm of the seam — not too close, or the seam may fray",
-      duration: "25 min",
+      title: {
+        en: "Make the Brim",
+        nb: "Lag bremmen",
+        zh: "做帽簷",
+      },
+      description: {
+        en: "Place the two brim rings right sides together and sew around the outer curved edge. Clip notches every 1 cm around the curve, then turn right-side out and press flat. Leave the inner circle unsewn for now.",
+        nb: "Legg de to bremringene med rette sider sammen og sy rundt den ytre kurven. Klipp hakk hver 1 cm rundt kurven, vend retten ut og stryk flatt. La den indre sirkelen være usydd foreløpig.",
+        zh: "把兩片帽簷環正面相對,沿外弧車一圈。沿弧每 1 公分剪牙口,翻到正面熨平,內圓暫時不縫。",
+      },
+      tip: {
+        en: "Clip notches to within 0.2 cm of the seam — not too close, or the seam may fray",
+        nb: "Klipp hakkene til 0,2 cm fra sømmen — ikke for nær, ellers kan sømmen frynse seg",
+        zh: "牙口剪到距縫線 0.2 公分即可 — 太近會使縫線鬆邊",
+      },
+      duration: { en: "25 min", nb: "25 min", zh: "25 分鐘" },
     },
     {
-      title: "Attach Brim to Crown",
-      description:
-        "Align the open inner circle of the brim with the bottom edge of the crown (right sides facing). Pin every 3–4 cm around the full circumference, then stitch all the way around.",
-      tip: "Do a quick hand-baste stitch first to check the fit before machine sewing",
-      duration: "20 min",
+      title: {
+        en: "Attach Brim to Crown",
+        nb: "Fest bremmen til pullen",
+        zh: "把帽簷接上帽冠",
+      },
+      description: {
+        en: "Align the open inner circle of the brim with the bottom edge of the crown (right sides facing). Pin every 3–4 cm around the full circumference, then stitch all the way around.",
+        nb: "Juster den åpne indre sirkelen av bremmen mot pullens nedre kant (rette sider mot hverandre). Fest med knappenåler hver 3–4 cm rundt hele omkretsen, og sy hele veien rundt.",
+        zh: "把帽簷未縫的內圓對齊帽冠下緣(正面相對),沿一圈每 3–4 公分別針,再車一整圈。",
+      },
+      tip: {
+        en: "Do a quick hand-baste stitch first to check the fit before machine sewing",
+        nb: "Tråkle først for hånd for å sjekke passformen før du syr på maskin",
+        zh: "車前先手縫假縫檢查合身度",
+      },
+      duration: { en: "20 min", nb: "20 min", zh: "20 分鐘" },
     },
     {
-      title: "Topstitch & Finish",
-      description:
-        "Press the seam allowance toward the crown. From the right side of the crown, topstitch ~0.2 cm from the seam to secure the seam allowance and add a clean finish. Optionally, topstitch around the outer brim edge for extra stiffness and style.",
-      tip: "Slow down your machine speed on curves and gently guide the fabric for even stitching",
-      duration: "15 min",
+      title: {
+        en: "Topstitch & Finish",
+        nb: "Pyntestikking og avslutning",
+        zh: "壓明線收尾",
+      },
+      description: {
+        en: "Press the seam allowance toward the crown. From the right side of the crown, topstitch ~0.2 cm from the seam to secure the seam allowance and add a clean finish. Optionally, topstitch around the outer brim edge for extra stiffness and style.",
+        nb: "Stryk sømmonnen oppover mot pullen. Fra rettsiden av pullen, sy pyntestikking ca. 0,2 cm fra sømmen for å feste sømmonnen og gi en pen finish. Valgfritt kan du også pyntestikke rundt ytterkanten av bremmen for ekstra stivhet og stil.",
+        zh: "把縫份倒向帽冠。從帽冠正面距縫線約 0.2 公分壓一道明線固定縫份並讓收邊更俐落。可選:沿帽簷外緣再壓一圈明線增加挺度與造型。",
+      },
+      tip: {
+        en: "Slow down your machine speed on curves and gently guide the fabric for even stitching",
+        nb: "Sett ned hastigheten på maskinen i kurver og styr stoffet forsiktig for jevn søm",
+        zh: "車弧線時放慢速度,並輕輕引導布料,車線才會均勻",
+      },
+      duration: { en: "15 min", nb: "15 min", zh: "15 分鐘" },
     },
   ],
 };

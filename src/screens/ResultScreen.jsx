@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { templates } from "../data/templates";
 import { generatePreview } from "../services/previewGeneration";
+import { useLang } from "../i18n/LanguageContext";
 
 const gradients = {
   bag: "from-amber-100 via-yellow-50 to-amber-50",
@@ -14,6 +15,7 @@ export default function ResultScreen({
   uploadedFile,
   fabric,
 }) {
+  const { t, tl } = useLang();
   const template = templates[templateId] || templates.bag;
   const [showBefore, setShowBefore] = useState(false);
   const [shared, setShared] = useState(false);
@@ -36,7 +38,7 @@ export default function ResultScreen({
         >
           ←
         </button>
-        <h2 className="font-semibold text-primary-100">Upcycling Results</h2>
+        <h2 className="font-semibold text-primary-100">{t("result.title")}</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-4">
@@ -44,16 +46,15 @@ export default function ResultScreen({
         <div className="text-center py-2">
           <p className="text-4xl mb-2">🎉</p>
           <h3 className="text-xl font-bold text-primary-100">
-            Upcycling Complete!
+            {t("result.complete")}
           </h3>
           <p className="text-primary-100 text-sm mt-1">
-            Here is the AI-generated upcycling preview
+            {t("result.subtitle")}
           </p>
         </div>
 
-        {/* Before / After card — primary-100 inset card */}
+        {/* Before / After card */}
         <div className="bg-primary-100 rounded-3xl overflow-hidden border border-primary-200">
-          {/* Toggle */}
           <div className="flex border-b border-primary-200">
             <button
               onClick={() => setShowBefore(false)}
@@ -63,7 +64,7 @@ export default function ResultScreen({
                   : "text-primary-500"
               }`}
             >
-              ✨ After (AI Preview)
+              {t("result.afterTab")}
             </button>
             <button
               onClick={() => setShowBefore(true)}
@@ -73,7 +74,7 @@ export default function ResultScreen({
                   : "text-primary-500"
               }`}
             >
-              Original Clothing
+              {t("result.beforeTab")}
             </button>
           </div>
 
@@ -115,7 +116,7 @@ export default function ResultScreen({
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                         <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
                         <p className="text-primary-500 text-xs">
-                          Generating preview…
+                          {t("result.generatingPreview")}
                         </p>
                       </div>
                     )}
@@ -126,7 +127,7 @@ export default function ResultScreen({
                 )}
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
                   <span className="bg-black/20 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full font-medium">
-                    AI-Generated Preview
+                    {t("result.aiPreviewBadge")}
                   </span>
                 </div>
               </div>
@@ -137,31 +138,40 @@ export default function ResultScreen({
           <div className="px-4 py-3 flex items-center justify-between">
             <div>
               <p className="font-semibold text-primary-900 text-sm">
-                {template.name}
+                {tl(template.name)}
               </p>
               <p className="text-[11px] text-primary-600 mt-0.5">
-                Transformed from your old clothing
+                {t("result.transformedFrom")}
               </p>
             </div>
             <div className="text-right">
               <p className="text-[10px] text-primary-500">
-                Carbon Emissions Reduced
+                {t("result.carbonReduced")}
               </p>
               <p className="text-primary-700 font-bold text-sm">-82%</p>
             </div>
           </div>
         </div>
 
-        {/* Environmental impact — slightly deeper inset within the dark bg */}
+        {/* Environmental impact */}
         <div className="bg-primary-700 rounded-3xl p-5">
           <p className="text-primary-100 text-xs font-semibold mb-3 flex items-center gap-1.5">
-            🌍 Your Environmental Impact
+            {t("result.environmentalImpact")}
           </p>
           <div className="flex justify-around">
             {[
-              { value: "1 item", label: "Clothing Upcycled" },
-              { value: "0.3kg", label: "Waste Reduced" },
-              { value: "2.4L", label: "Water Saved" },
+              {
+                value: t("result.stat1Value"),
+                label: t("result.stat1Label"),
+              },
+              {
+                value: t("result.stat2Value"),
+                label: t("result.stat2Label"),
+              },
+              {
+                value: t("result.stat3Value"),
+                label: t("result.stat3Label"),
+              },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-lg font-bold text-primary-100">
@@ -185,13 +195,13 @@ export default function ResultScreen({
                 : "bg-secondary-300 text-white shadow-md shadow-black/20"
             }`}
           >
-            {shared ? "✓ Shared to Community" : "Share to Community 🌿"}
+            {shared ? t("result.sharedToCommunity") : t("result.shareToCommunity")}
           </button>
           <button
             onClick={() => navigate("community")}
             className="flex-1 py-4 rounded-2xl font-bold text-sm bg-primary-600 border border-primary-600 text-primary-100 active:scale-[0.97] transition-transform"
           >
-            Browse Community
+            {t("result.browseCommunity")}
           </button>
         </div>
 
@@ -200,7 +210,7 @@ export default function ResultScreen({
           onClick={() => navigate("home")}
           className="w-full py-3 text-primary-100 text-sm font-medium active:text-primary-200 transition-colors"
         >
-          Back to Home →
+          {t("result.backHome")}
         </button>
       </div>
     </div>

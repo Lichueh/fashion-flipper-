@@ -16,7 +16,10 @@
  * } | null>}
  */
 
-const CACHE_PREFIX = "fabric_analysis_v1_";
+// v3: bumped after adding server-side Stage-2 translation (gpt-4o-mini wraps
+// each text field as { en, nb, zh }) — old v2 entries are English-only and
+// would leave the analysis card stuck in English when the UI is in nb/zh.
+const CACHE_PREFIX = "fabric_analysis_v3_";
 const _inFlight = new Map();
 
 /**
@@ -43,41 +46,45 @@ function _fileToBase64(file) {
 }
 
 /**
- * Crops a square from the center of the image and scales it to `size` px.
- * Keeps the crop on the clothing piece (typically centered in phone photos)
- * and dramatically reduces the payload sent to the API.
+ * Downscales the image so its longest side is ≤ maxPx, preserving aspect ratio.
+ * Replaces the older centre-crop approach: the model needs to see the whole
+ * garment (silhouette helps disambiguate dress vs shirt, and a calibration
+ * ruler placed beside the garment must NOT be cropped out — it would steal
+ * the centre and rob the model of any fabric pixels to look at).
+ *
+ * 1024 px pairs well with GPT-4o vision's high-detail mode (the model tiles
+ * up to ~1568×768 internally, so 1024 lets it see real weave detail without
+ * wasted bandwidth).
  */
-function _cropCenter(file, size = 300) {
+function _downscale(file, maxPx = 1024) {
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      if (w <= maxPx && h <= maxPx) {
+        URL.revokeObjectURL(url);
+        resolve(file);
+        return;
+      }
+      const scale = maxPx / Math.max(w, h);
       const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
       const ctx = canvas.getContext("2d");
-      const srcSize = Math.min(img.width, img.height);
-      ctx.drawImage(
-        img,
-        (img.width - srcSize) / 2,
-        (img.height - srcSize) / 2,
-        srcSize,
-        srcSize,
-        0,
-        0,
-        size,
-        size,
-      );
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
+      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
     };
     img.src = url;
   });
 }
 
 async function _doAnalyze(imageFile, cacheKey) {
-  const cropped = await _cropCenter(imageFile);
-  const base64 = await _fileToBase64(cropped);
+  const downscaled = await _downscale(imageFile);
+  const base64 = await _fileToBase64(downscaled);
 
   const response = await fetch("/api/analyze", {
     method: "POST",
@@ -107,15 +114,24 @@ async function _doAnalyze(imageFile, cacheKey) {
   return parsed;
 }
 
-export async function analyzeFabric(imageFile) {
+/**
+ * @param {File} imageFile
+ * @param {Object} [options]
+ * @param {boolean} [options.force] - Skip session cache and re-call the API.
+ */
+export async function analyzeFabric(imageFile, options = {}) {
   try {
     const hash = await _fileHash(imageFile);
     const cacheKey = CACHE_PREFIX + hash;
 
-    // 1. Return cached result if available
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
+    // 1. Return cached result if available (unless caller explicitly forces re-run)
+    if (!options.force) {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } else {
+      sessionStorage.removeItem(cacheKey);
     }
 
     // 2. If already in flight for this image, wait for that promise instead

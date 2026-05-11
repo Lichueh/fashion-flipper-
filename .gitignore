@@ -4,3 +4,10 @@ dist/
 .env
 .env.local
 .github
+
+# Local research / paper materials — not part of the prototype source
+docs/
+sources/
+picture/
+paper review/
+scripts/build-methodology-deck.cjs

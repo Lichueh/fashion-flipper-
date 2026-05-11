@@ -14,6 +14,7 @@ import {
   cmToMm,
   unitLabel,
 } from "../utils/measurementValidation";
+import { useLang } from "../i18n/LanguageContext";
 
 export default function MeasurementsModal({
   open,
@@ -25,6 +26,7 @@ export default function MeasurementsModal({
   setSessionProfileOverride,
   updateProfile,
 }) {
+  const { t, tl } = useLang();
   const template = templates[templateId];
   const effectiveProfile = sessionProfileOverride ?? activeProfile ?? null;
   const requiredKeys =
@@ -40,7 +42,6 @@ export default function MeasurementsModal({
   const [measPresetId, setMeasPresetId] = useState(null);
   const [showMeasProfilePicker, setShowMeasProfilePicker] = useState(false);
 
-  // Reset fields whenever modal opens
   useEffect(() => {
     if (open) {
       setMeasFields({});
@@ -90,7 +91,7 @@ export default function MeasurementsModal({
     const allKeys = Object.values(grouped).flat();
     return allKeys.filter((k) => {
       const v = measFields[k];
-      return !v || !!validateField(k, v);
+      return !v || !!validateField(k, v, t);
     });
   }
 
@@ -99,7 +100,7 @@ export default function MeasurementsModal({
     let anyError = false;
     for (const [k, v] of Object.entries(measFields)) {
       if (!v) continue;
-      const err = validateField(k, v);
+      const err = validateField(k, v, t);
       if (err) {
         newErrors[k] = err;
         anyError = true;
@@ -147,15 +148,14 @@ export default function MeasurementsModal({
         <div className="px-5 pt-2 pb-3 flex-shrink-0">
           <h3 className="font-bold text-primary-900 text-base">
             {measStillMissing().length === 0
-              ? "Measurements look good"
-              : "Measurements needed"}
+              ? t("measurementsModal.goodTitle")
+              : t("measurementsModal.neededTitle")}
           </h3>
-          <p className="text-xs text-primary-500 mt-0.5">{template?.name}</p>
+          <p className="text-xs text-primary-500 mt-0.5">{tl(template?.name)}</p>
         </div>
 
         {/* Profile + preset chips */}
         <div className="px-5 pb-3 flex-shrink-0 relative flex items-center gap-2 flex-wrap">
-          {/* Profile chip */}
           <button
             onClick={() => {
               setShowMeasProfilePicker((v) => !v);
@@ -165,12 +165,12 @@ export default function MeasurementsModal({
           >
             <span>👤</span>
             <span>
-              {(sessionProfileOverride ?? activeProfile)?.name ?? "No profile"}
+              {(sessionProfileOverride ?? activeProfile)?.name ??
+                t("common.noProfile")}
             </span>
             <span className="text-primary-400 text-xs">▾</span>
           </button>
 
-          {/* Preset chip — only when there are fields to fill */}
           {Object.keys(groupedMissingKeys()).length > 0 && (
             <button
               onClick={() => {
@@ -186,9 +186,11 @@ export default function MeasurementsModal({
               <span>📐</span>
               <span>
                 {measPresetId
-                  ? (measurementPresets.find((p) => p.id === measPresetId)
-                      ?.label ?? "Size preset")
-                  : "Start from size"}
+                  ? tl(
+                      measurementPresets.find((p) => p.id === measPresetId)
+                        ?.label,
+                    ) || t("common.sizePreset")
+                  : t("common.startFromSize")}
               </span>
               <span className="text-primary-400 text-xs">▾</span>
             </button>
@@ -201,7 +203,7 @@ export default function MeasurementsModal({
                 onClick={() => handleMeasProfileSwitch(null)}
                 className={`w-full text-left px-4 py-3 text-sm ${!(sessionProfileOverride ?? activeProfile) ? "font-bold text-primary-900 bg-primary-50" : "text-primary-700"}`}
               >
-                No profile
+                {t("common.noProfile")}
               </button>
               {profiles.map((p) => (
                 <button
@@ -219,7 +221,7 @@ export default function MeasurementsModal({
           {showMeasPresetPicker && (
             <div className="absolute left-5 top-full mt-1 bg-white border border-primary-200 rounded-2xl shadow-lg z-20 min-w-[220px] max-h-72 overflow-y-auto">
               <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-primary-400 uppercase tracking-wide">
-                Women's
+                {t("common.women")}
               </p>
               {femalePresets.map((p) => (
                 <button
@@ -227,11 +229,11 @@ export default function MeasurementsModal({
                   onClick={() => applyMeasPreset(p)}
                   className={`w-full text-left px-4 py-2.5 text-sm ${measPresetId === p.id ? "font-bold text-green-800 bg-green-50" : "text-primary-700"}`}
                 >
-                  {p.label}
+                  {tl(p.label)}
                 </button>
               ))}
               <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-primary-400 uppercase tracking-wide border-t border-primary-100">
-                Men's
+                {t("common.men")}
               </p>
               {malePresets.map((p) => (
                 <button
@@ -239,14 +241,14 @@ export default function MeasurementsModal({
                   onClick={() => applyMeasPreset(p)}
                   className={`w-full text-left px-4 py-2.5 text-sm ${measPresetId === p.id ? "font-bold text-green-800 bg-green-50" : "text-primary-700"}`}
                 >
-                  {p.label}
+                  {tl(p.label)}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Missing measurement fields (scrollable) */}
+        {/* Missing measurement fields */}
         {Object.keys(groupedMissingKeys()).length > 0 && (
           <div
             className="flex-1 overflow-y-auto px-5 pb-2"
@@ -255,13 +257,13 @@ export default function MeasurementsModal({
             {Object.entries(groupedMissingKeys()).map(([group, keys]) => (
               <div key={group} className="mb-4">
                 <p className="text-[11px] font-bold text-primary-500 uppercase tracking-wide mb-2">
-                  {group}
+                  {t(`measurementGroups.${group}`)}
                 </p>
                 <div className="space-y-2">
                   {keys.map((k) => (
                     <div key={k}>
                       <label className="text-xs font-medium text-primary-700 mb-1 block">
-                        {humanise(k)}
+                        {humanise(k, t)}
                       </label>
                       <div className="flex items-center gap-2">
                         <input
@@ -280,7 +282,7 @@ export default function MeasurementsModal({
                               }));
                           }}
                           onBlur={(e) => {
-                            const err = validateField(k, e.target.value);
+                            const err = validateField(k, e.target.value, t);
                             setMeasErrors((prev) => ({
                               ...prev,
                               [k]: err,
@@ -319,7 +321,9 @@ export default function MeasurementsModal({
                 />
               </button>
               <span className="text-sm text-primary-700">
-                Save to "{(sessionProfileOverride ?? activeProfile).name}"
+                {t("measurementsModal.saveTo", {
+                  name: (sessionProfileOverride ?? activeProfile).name,
+                })}
               </span>
             </div>
           )}
@@ -330,14 +334,16 @@ export default function MeasurementsModal({
             onClick={onClose}
             className="flex-1 h-11 rounded-2xl border border-primary-200 text-primary-700 text-sm font-semibold"
           >
-            Skip
+            {t("common.skip")}
           </button>
           <button
             onClick={handleMeasConfirm}
             className="flex-1 h-11 rounded-2xl bg-green-700 text-white text-sm font-semibold disabled:opacity-50"
             disabled={Object.values(measErrors).some(Boolean)}
           >
-            {measStillMissing().length === 0 ? "Confirm" : "Continue anyway"}
+            {measStillMissing().length === 0
+              ? t("measurementsModal.confirm")
+              : t("measurementsModal.continueAnyway")}
           </button>
         </div>
       </div>

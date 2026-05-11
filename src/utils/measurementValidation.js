@@ -12,7 +12,16 @@
 
 // ── Readable labels ──────────────────────────────────────────────────────────
 
-export function humanise(key) {
+/**
+ * Convert a measurement key to a readable label.
+ * Pass `t` from useLang() to get a localized label; without `t` falls back to
+ * camelCase splitting (kept for tests / non-React callers).
+ */
+export function humanise(key, t) {
+  if (t) {
+    const localized = t(`measurements.${key}`);
+    if (localized && localized !== `measurements.${key}`) return localized;
+  }
   return key
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (c) => c.toUpperCase())
@@ -71,14 +80,27 @@ export const DEFAULT_RANGE = { min: 0, max: 300, unit: "cm" };
  * Validate a single field value (in cm string form).
  * Returns an error message string, or null if valid.
  * Empty string is treated as "not filled in" (no error).
+ *
+ * Pass `t` from useLang() for a localized error message; without `t` falls back
+ * to English (kept for tests / non-React callers).
  */
-export function validateField(key, cmValue) {
+export function validateField(key, cmValue, t) {
   if (cmValue === "" || cmValue === undefined) return null;
   const num = parseFloat(cmValue);
-  if (isNaN(num) || num <= 0) return "Must be a positive number";
   const range = RANGES[key] ?? DEFAULT_RANGE;
-  if (num < range.min) return `Min ${range.min} ${range.unit}`;
-  if (num > range.max) return `Max ${range.max} ${range.unit}`;
+  if (isNaN(num) || num <= 0) {
+    return t ? t("validation.mustBePositive") : "Must be a positive number";
+  }
+  if (num < range.min) {
+    return t
+      ? t("validation.min", { value: range.min, unit: range.unit })
+      : `Min ${range.min} ${range.unit}`;
+  }
+  if (num > range.max) {
+    return t
+      ? t("validation.max", { value: range.max, unit: range.unit })
+      : `Max ${range.max} ${range.unit}`;
+  }
   return null;
 }
 

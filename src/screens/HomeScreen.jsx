@@ -1,10 +1,12 @@
 import BottomNav from "../components/BottomNav";
 import { templates } from "../data/templates";
 import { communityPosts } from "../data/communityPosts";
+import { useLang } from "../i18n/LanguageContext";
 
 const communityPreviews = communityPosts.slice(0, 4);
 
 export default function HomeScreen({ navigate, activeProfile }) {
+  const { t, tl } = useLang();
   return (
     <div className="h-full flex flex-col bg-primary-800">
       <div className="flex-1 overflow-y-auto pb-1 scrollbar-hide">
@@ -23,7 +25,7 @@ export default function HomeScreen({ navigate, activeProfile }) {
                 </h1>
               </div>
               <p className="text-primary-100 text-xs mt-0.5">
-                Give old clothes a new life
+                {t("home.tagline")}
               </p>
             </div>
             <button className="w-9 h-9 bg-primary-100 rounded-full border border-primary-200 flex items-center justify-center text-base shadow-sm">
@@ -38,33 +40,31 @@ export default function HomeScreen({ navigate, activeProfile }) {
             👗
           </div>
           <span className="inline-block bg-secondary-100 text-secondary-700 text-[10px] font-semibold px-2.5 py-1 rounded-full mb-3 tracking-widest uppercase">
-            AI-Guided Upcycling
+            {t("home.heroBadge")}
           </span>
-          <h2 className="text-primary-900 text-xl font-bold leading-snug mb-1">
-            Snap a photo, turn your
-            <br />
-            old clothes into something new
+          <h2 className="text-primary-900 text-xl font-bold leading-snug mb-1 whitespace-pre-line">
+            {t("home.heroTitle")}
           </h2>
           <p className="text-primary-700 text-xs mb-4 leading-5">
-            AI identifies your fabric and recommends the best upcycling option
+            {t("home.heroBody")}
           </p>
           <button
             onClick={() => navigate("upload")}
             className="bg-secondary-300 text-white font-bold text-sm px-5 py-2.5 rounded-full active:scale-95 transition-transform shadow-sm"
           >
-            Start Upcycling ✂️
+            {t("home.startUpcycling")}
           </button>
         </div>
 
         {/* Stats */}
         <div className="mx-5 grid grid-cols-3 gap-2.5 mb-5">
           {[
-            { value: "1,234", label: "Community Works" },
+            { value: "1,234", label: t("home.stat1Label") },
             {
               value: String(Object.keys(templates).length),
-              label: "Templates",
+              label: t("home.stat2Label"),
             },
-            { value: "-82%", label: "Waste Reduced" },
+            { value: "-82%", label: t("home.stat3Label") },
           ].map((s) => (
             <div
               key={s.label}
@@ -80,13 +80,13 @@ export default function HomeScreen({ navigate, activeProfile }) {
         <div className="mb-5">
           <div className="flex justify-between items-center px-5 mb-3">
             <h3 className="font-semibold text-secondary-100 text-sm">
-              Community Picks
+              {t("home.communityPicks")}
             </h3>
             <button
               onClick={() => navigate("community")}
               className="text-secondary-100 text-xs font-medium"
             >
-              See all →
+              {t("home.seeAll")}
             </button>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-1 px-5 scrollbar-hide">
@@ -95,12 +95,12 @@ export default function HomeScreen({ navigate, activeProfile }) {
                 <div className="rounded-2xl h-28 mb-2 overflow-hidden border border-white/60">
                   <img
                     src={p.image}
-                    alt={p.item}
+                    alt={tl(p.item)}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <p className="text-xs font-medium text-secondary-100 truncate">
-                  {p.item}
+                  {tl(p.item)}
                 </p>
                 <p className="text-[10px] text-secondary-100 mt-0.5">
                   @{p.user} · ❤️ {p.likes}
@@ -113,23 +113,23 @@ export default function HomeScreen({ navigate, activeProfile }) {
         {/* Templates */}
         <div className="mx-5 mb-6">
           <h3 className="font-semibold text-secondary-100 text-sm mb-3">
-            Available Templates
+            {t("home.availableTemplates")}
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            {Object.values(templates).map((t) => (
+            {Object.values(templates).map((tpl) => (
               <div
-                key={t.id}
+                key={tpl.id}
                 onClick={() =>
-                  navigate("patternLayout", { template: t.id, from: "home" })
+                  navigate("patternLayout", { template: tpl.id, from: "home" })
                 }
                 className="bg-primary-50 border border-primary-200 rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform"
               >
-                <span className="text-4xl">{t.emoji}</span>
+                <span className="text-4xl">{tpl.emoji}</span>
                 <p className="font-semibold text-secondary-800 mt-2 text-sm">
-                  {t.name}
+                  {tl(tpl.name)}
                 </p>
                 <p className="text-[11px] text-secondary-700 mt-0.5">
-                  {t.difficultyLabel} · ⏱ {t.time}
+                  {tl(tpl.difficultyLabel)} · ⏱ {tl(tpl.time)}
                 </p>
               </div>
             ))}

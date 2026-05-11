@@ -18,6 +18,7 @@ import {
   unitLabel,
 } from "../utils/measurementValidation";
 import { interpolatePatternArea } from "../services/feasibility";
+import { useLang } from "../i18n/LanguageContext";
 
 export default function TemplateSelectScreen({
   navigate,
@@ -31,6 +32,7 @@ export default function TemplateSelectScreen({
   profiles = [],
   updateProfile,
 }) {
+  const { t, tl } = useLang();
   // Build a feasibility lookup so we can sort feasible templates first.
   const feasibilityById = useMemo(
     () => Object.fromEntries((feasibleTemplates ?? []).map((r) => [r.id, r])),
@@ -414,11 +416,17 @@ export default function TemplateSelectScreen({
         </button>
         <div>
           <h2 className="font-semibold text-primary-100">
-            Choose Upcycling Template
+            {t("templateSelect.title")}
           </h2>
           <p className="text-[11px] text-primary-100 mt-0.5">
-            Recommended based on AI analysis
+            {t("templateSelect.subtitle")}
           </p>
+          {MAX_VISIBLE_PATTERNS != null &&
+            items.length > MAX_VISIBLE_PATTERNS && (
+              <p className="text-[11px] text-secondary-300 mt-0.5">
+                {t("templateSelect.topNHint", { n: MAX_VISIBLE_PATTERNS })}
+              </p>
+            )}
         </div>
       </div>
 
@@ -434,7 +442,7 @@ export default function TemplateSelectScreen({
           >
             <div className="flex items-center justify-between mb-3">
               <p className="text-[11px] font-bold text-secondary-700 bg-secondary-200 rounded-full px-3 py-0.5 uppercase tracking-wider">
-                📏 Your Garment
+                {t("templateSelect.yourGarment")}
               </p>
               <button
                 onClick={() => setShowDimensions(false)}
@@ -447,20 +455,24 @@ export default function TemplateSelectScreen({
             {measurements?.panels?.frontPanel != null ? (
               <div className="flex gap-4 flex-wrap">
                 <div>
-                  <p className="text-[10px] text-primary-800">Width</p>
+                  <p className="text-[10px] text-primary-800">
+                    {t("templateSelect.widthLabel")}
+                  </p>
                   <p className="text-sm font-semibold text-secondary-700">
                     {measurements.panels.frontPanel.widthCm} cm
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-primary-800">Height</p>
+                  <p className="text-[10px] text-primary-800">
+                    {t("templateSelect.heightLabel")}
+                  </p>
                   <p className="text-sm font-semibold text-secondary-700">
                     {measurements.panels.frontPanel.heightCm} cm
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] text-primary-800">
-                    Usable fabric (one side)
+                    {t("templateSelect.usableFabricOneSide")}
                   </p>
                   <p className="text-sm font-semibold text-secondary-700">
                     {measurements.panels.frontPanel.areaCm2} cm²
@@ -468,7 +480,7 @@ export default function TemplateSelectScreen({
                 </div>
                 <div>
                   <p className="text-[10px] text-primary-800">
-                    Total fabric (both sides)
+                    {t("templateSelect.totalFabricBothSides")}
                   </p>
                   <p className="text-sm font-semibold text-secondary-700">
                     {measurements.totalAreaCm2} cm²
@@ -477,8 +489,7 @@ export default function TemplateSelectScreen({
               </div>
             ) : (
               <p className="text-xs text-primary-400">
-                Measurements unavailable — templates are sorted by fabric
-                compatibility only.
+                {t("templateSelect.measurementsUnavailable")}
               </p>
             )}
           </div>
@@ -489,8 +500,7 @@ export default function TemplateSelectScreen({
         {/* Info box */}
         <div className="bg-primary-100 rounded-2xl p-4">
           <p className="text-sm text-primary-800 leading-5 mb-3">
-            You have enough fabric for these patterns. The percentage score indicate fabric fit and how much fabric is reused.
-            Choose a pattern and get instructions.
+            {t("templateSelect.intro")}
           </p>
           <div className="flex items-center gap-1.5 text-[12px] text-primary-600">
             <svg
@@ -504,7 +514,7 @@ export default function TemplateSelectScreen({
               <circle cx="11" cy="11" r="7" />
               <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
             </svg>
-            <span>Long-press any preview image to enlarge</span>
+            <span>{t("templateSelect.longPressHint")}</span>
           </div>
           {measurements != null && (
             <div className="flex justify-end mt-3">
@@ -513,7 +523,7 @@ export default function TemplateSelectScreen({
                 className="text-[10px] border-primary-500 bg-primary-200 text-primary-700 flex items-center gap-1 hover:text-secondary-700 hover:bg-secondary-200 transition-colors rounded-full px-3 py-1.5"
               >
                 <span>📏</span>
-                <span>Show garment dimensions</span>
+                <span>{t("templateSelect.showGarmentDimensions")}</span>
               </button>
             </div>
           )}
@@ -523,8 +533,16 @@ export default function TemplateSelectScreen({
         {profileGender && profileGender !== "nonbinary" && (
           <div className="flex items-center justify-between px-1">
             <span className="text-xs text-primary-300">
-              Showing{" "}
-              {showAllGenders ? "all patterns" : `${profileGender} patterns`}
+              {showAllGenders
+                ? t("templateSelect.showingAll")
+                : t("templateSelect.showingFiltered", {
+                    gender:
+                      profileGender === "female"
+                        ? t("templateSelect.genderFemale")
+                        : profileGender === "male"
+                          ? t("templateSelect.genderMale")
+                          : profileGender,
+                  })}
             </span>
             <button
               onClick={() => setShowAllGenders((v) => !v)}
@@ -534,7 +552,9 @@ export default function TemplateSelectScreen({
                   : "bg-secondary-200 border-secondary-300 text-secondary-900"
               }`}
             >
-              {showAllGenders ? "Showing all" : "Show all patterns"}
+              {showAllGenders
+                ? t("templateSelect.showingAll")
+                : t("templateSelect.showAll")}
             </button>
           </div>
         )}
@@ -547,15 +567,14 @@ export default function TemplateSelectScreen({
           const matchScore = scoreById[template.id] ?? template.matchScore;
           const failReason = !isFeasible
             ? rec?.failReason === "area"
-              ? "Not enough fabric area for this pattern"
+              ? t("templateSelect.reasonArea")
               : rec?.failReason === "piece_fit"
-                ? "Some pieces are too large to fit on your garment"
+                ? t("templateSelect.reasonPieceFit")
                 : rec?.failReason === "fabric"
-                  ? (rec.fabricNote ??
-                    "Fabric type is not compatible with this pattern")
+                  ? (tl(rec.fabricNote) || t("templateSelect.reasonFabric"))
                   : rec?.failReason
-                    ? "Not feasible with this garment"
-                    : "Not enough fabric area for this pattern"
+                    ? t("templateSelect.reasonGeneric")
+                    : t("templateSelect.reasonArea")
             : null;
           return (
             <div
@@ -577,17 +596,17 @@ export default function TemplateSelectScreen({
               >
                 {isCleanTop && (
                   <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
-                    ✨ AI Top Recommendation
+                    {t("templateSelect.topRecommendation")}
                   </span>
                 )}
                 {needsInterfacing && (
                   <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
-                    ⚠️ Needs interfacing
+                    {t("templateSelect.needsInterfacing")}
                   </span>
                 )}
                 {!isFeasible && (
                   <span className="inline-block bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
-                    ✕ Not feasible
+                    {t("templateSelect.notFeasible")}
                   </span>
                 )}
                 {failReason && (
@@ -613,13 +632,13 @@ export default function TemplateSelectScreen({
                         {previews[template.id] ? (
                           <img
                             src={previews[template.id]}
-                            alt={template.name}
+                            alt={tl(template.name)}
                             className="w-full h-full object-cover pointer-events-none"
                           />
                         ) : template.resultImage ? (
                           <img
                             src={template.resultImage}
-                            alt={template.name}
+                            alt={tl(template.name)}
                             className="w-full h-full object-cover pointer-events-none"
                             loading="lazy"
                           />
@@ -647,7 +666,7 @@ export default function TemplateSelectScreen({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-bold text-primary-900 text-lg">
-                        {template.name}
+                        {tl(template.name)}
                       </h3>
                       <span
                         className={`text-sm font-bold ${matchScore >= 85 ? "text-primary-800" : "text-secondary-600"}`}
@@ -656,13 +675,13 @@ export default function TemplateSelectScreen({
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-primary-500">
-                      <span>⏱ {template.time}</span>
+                      <span>⏱ {tl(template.time)}</span>
                       <span>
                         {"★".repeat(template.difficulty)}
                         {"☆".repeat(
                           template.maxDifficulty - template.difficulty,
                         )}{" "}
-                        {template.difficultyLabel}
+                        {tl(template.difficultyLabel)}
                       </span>
                     </div>
                   </div>
@@ -690,7 +709,7 @@ export default function TemplateSelectScreen({
                 <div className="px-5 pt-2">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] text-primary-500">
-                      Fabric used
+                      {t("templateSelect.fabricUsed")}
                     </span>
                     <span
                       className={`text-[11px] font-semibold ${
@@ -724,16 +743,24 @@ export default function TemplateSelectScreen({
               {/* Description & meta */}
               <div className="px-5 pt-3 pb-4">
                 <p className="text-primary-700 text-sm leading-5 mb-3">
-                  {template.description}
+                  {tl(template.description)}
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex gap-3 text-xs text-primary-500">
-                    <span>{template.steps?.length || "?"} steps</span>
+                    <span>
+                      {t("templateSelect.stepsCount", {
+                        count: template.steps?.length ?? "?",
+                      })}
+                    </span>
                     <span>·</span>
-                    <span>{template.materials.length} materials</span>
+                    <span>
+                      {t("templateSelect.materialsCount", {
+                        count: template.materials.length,
+                      })}
+                    </span>
                   </div>
                   <span className="text-primary-700 text-sm font-semibold">
-                    Start Making →
+                    {t("templateSelect.startMaking")}
                   </span>
                 </div>
               </div>
@@ -765,11 +792,11 @@ export default function TemplateSelectScreen({
             <div className="px-5 pt-2 pb-3 flex-shrink-0">
               <h3 className="font-bold text-primary-900 text-base">
                 {stillMissingAfterModal().length === 0 && effectiveProfile()
-                  ? "Measurements look good"
-                  : "Measurements needed"}
+                  ? t("templateSelect.modalGoodTitle")
+                  : t("templateSelect.modalNeededTitle")}
               </h3>
               <p className="text-xs text-primary-500 mt-0.5">
-                {modalTemplate.name}
+                {tl(modalTemplate.name)}
               </p>
             </div>
 
@@ -784,7 +811,7 @@ export default function TemplateSelectScreen({
                 className="flex items-center gap-2 bg-primary-100 border border-primary-200 rounded-full px-3 py-1.5 text-sm font-medium text-primary-800"
               >
                 <span className="text-base">👤</span>
-                <span>{effectiveProfile()?.name ?? "No profile"}</span>
+                <span>{effectiveProfile()?.name ?? t("common.noProfile")}</span>
                 <span className="text-primary-400 text-xs">▾</span>
               </button>
 
@@ -804,10 +831,12 @@ export default function TemplateSelectScreen({
                   <span className="text-base">📐</span>
                   <span>
                     {modalSelectedPresetId
-                      ? (measurementPresets.find(
-                          (p) => p.id === modalSelectedPresetId,
-                        )?.label ?? "Size preset")
-                      : "Start from size"}
+                      ? (tl(
+                          measurementPresets.find(
+                            (p) => p.id === modalSelectedPresetId,
+                          )?.label,
+                        ) || t("common.sizePreset"))
+                      : t("common.startFromSize")}
                   </span>
                   <span className="text-primary-400 text-xs">▾</span>
                 </button>
@@ -824,7 +853,7 @@ export default function TemplateSelectScreen({
                         : "text-primary-700"
                     }`}
                   >
-                    No profile
+                    {t("common.noProfile")}
                   </button>
                   {profiles.map((p) => (
                     <button
@@ -846,7 +875,7 @@ export default function TemplateSelectScreen({
               {showModalPresetPicker && (
                 <div className="absolute left-5 top-full mt-1 bg-white border border-primary-200 rounded-2xl shadow-lg z-20 min-w-[220px] max-h-72 overflow-y-auto">
                   <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-primary-400 uppercase tracking-wide">
-                    Women's
+                    {t("common.women")}
                   </p>
                   {femalePresets.map((p) => (
                     <button
@@ -858,11 +887,11 @@ export default function TemplateSelectScreen({
                           : "text-primary-700"
                       }`}
                     >
-                      {p.label}
+                      {tl(p.label)}
                     </button>
                   ))}
                   <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-primary-400 uppercase tracking-wide border-t border-primary-100">
-                    Men's
+                    {t("common.men")}
                   </p>
                   {malePresets.map((p) => (
                     <button
@@ -874,7 +903,7 @@ export default function TemplateSelectScreen({
                           : "text-primary-700"
                       }`}
                     >
-                      {p.label}
+                      {tl(p.label)}
                     </button>
                   ))}
                 </div>
@@ -951,7 +980,9 @@ export default function TemplateSelectScreen({
                   />
                 </button>
                 <span className="text-sm text-primary-700">
-                  Save to "{effectiveProfile().name}"
+                  {t("templateSelect.saveTo", {
+                    name: effectiveProfile().name,
+                  })}
                 </span>
               </div>
             )}
@@ -962,7 +993,7 @@ export default function TemplateSelectScreen({
                 onClick={() => setModalTemplate(null)}
                 className="flex-1 h-11 rounded-2xl border border-primary-200 text-primary-700 text-sm font-semibold"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleModalConfirm}
@@ -970,8 +1001,8 @@ export default function TemplateSelectScreen({
                 disabled={Object.values(modalErrors).some(Boolean)}
               >
                 {stillMissingAfterModal().length === 0
-                  ? "Generate pattern"
-                  : "Continue anyway"}
+                  ? t("templateSelect.generatePattern")
+                  : t("templateSelect.continueAnyway")}
               </button>
             </div>
           </div>

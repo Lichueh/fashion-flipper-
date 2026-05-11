@@ -4,10 +4,9 @@
  */
 export default {
   patternPieces: [
-    // FRONT shirt (body y≈75–225px, canvas H≈528)
     {
       id: "body-1",
-      label: "Body Panel 1",
+      label: { en: "Body Panel 1", nb: "Kroppspanel 1", zh: "包身 1" },
       widthCm: 20,
       heightCm: 15,
       areaCm2: 300,
@@ -20,7 +19,7 @@ export default {
     },
     {
       id: "side",
-      label: "Side Panel",
+      label: { en: "Side Panel", nb: "Sidepanel", zh: "側片" },
       widthCm: 15,
       heightCm: 5,
       areaCm2: 75,
@@ -33,7 +32,7 @@ export default {
     },
     {
       id: "body-2",
-      label: "Body Panel 2",
+      label: { en: "Body Panel 2", nb: "Kroppspanel 2", zh: "包身 2" },
       widthCm: 20,
       heightCm: 15,
       areaCm2: 300,
@@ -46,7 +45,7 @@ export default {
     },
     {
       id: "strip-1",
-      label: "Strip 1",
+      label: { en: "Strip 1", nb: "Stropp 1", zh: "提帶 1" },
       widthCm: 20,
       heightCm: 5,
       areaCm2: 100,
@@ -59,7 +58,7 @@ export default {
     },
     {
       id: "strip-2",
-      label: "Strip 2",
+      label: { en: "Strip 2", nb: "Stropp 2", zh: "提帶 2" },
       widthCm: 20,
       heightCm: 5,
       areaCm2: 100,
@@ -74,43 +73,94 @@ export default {
   steps: [
     {
       image: "/images/templates/bag-step1.png",
-      title: "Cut the Fabric",
-      description:
-        "Wash and lay the garment flat. Cut two 35×40 cm rectangles for the bag body and one 8×60 cm strip for the handles. Mark the outlines on the fabric reverse side with chalk before cutting.",
-      tip: "Leave a 1.5 cm seam allowance on all sides and draw guidelines with chalk to keep cuts straight",
-      duration: "15 min",
+      title: { en: "Cut the Fabric", nb: "Klipp ut stoffet", zh: "裁布" },
+      description: {
+        en: "Wash and lay the garment flat. Cut two 35×40 cm rectangles for the bag body and one 8×60 cm strip for the handles. Mark the outlines on the fabric reverse side with chalk before cutting.",
+        nb: "Vask og legg plagget flatt. Klipp ut to rektangler på 35×40 cm til veskekroppen og en stripe på 8×60 cm til håndtak. Merk konturene på vrangsiden av stoffet med kritt før du klipper.",
+        zh: "把衣物洗淨後攤平。裁兩塊 35×40 公分的長方形作為包身,並裁一條 8×60 公分的布條做提帶。裁布前先用粉筆在布料反面畫好輪廓線。",
+      },
+      tip: {
+        en: "Leave a 1.5 cm seam allowance on all sides and draw guidelines with chalk to keep cuts straight",
+        nb: "La det være 1,5 cm sømmonn på alle sider og tegn streker med kritt for å holde kuttet rett",
+        zh: "四邊各留 1.5 公分縫份,並用粉筆畫輔助線好讓剪線維持直線",
+      },
+      duration: { en: "15 min", nb: "15 min", zh: "15 分鐘" },
     },
     {
       image: "/images/templates/bag-step2.png",
-      title: "Make the Handles",
-      description:
-        "Fold the long strip in half lengthwise. Fold each side inward by 1 cm, then fold in half again to form a ~2 cm wide strap. Stitch along both edges to secure. Cut into two 30 cm pieces.",
-      tip: "Press the folds flat with an iron before stitching to keep everything aligned",
-      duration: "15 min",
+      title: {
+        en: "Make the Handles",
+        nb: "Lag håndtakene",
+        zh: "做提帶",
+      },
+      description: {
+        en: "Fold the long strip in half lengthwise. Fold each side inward by 1 cm, then fold in half again to form a ~2 cm wide strap. Stitch along both edges to secure. Cut into two 30 cm pieces.",
+        nb: "Brett den lange stripen på langs. Brett hver side innover 1 cm, og brett deretter dobbelt for å danne en ca. 2 cm bred stropp. Sy langs begge kantene for å feste. Klipp i to 30 cm lange biter.",
+        zh: "把長條布縱向對摺。兩邊各往內摺 1 公分,再對摺一次,形成約 2 公分寬的帶子。沿兩側車線固定後,裁成兩條 30 公分長。",
+      },
+      tip: {
+        en: "Press the folds flat with an iron before stitching to keep everything aligned",
+        nb: "Stryk brettene flate med strykejern før du syr så alt blir riktig justert",
+        zh: "車線前先用熨斗把摺邊燙平,可以保持對齊",
+      },
+      duration: { en: "15 min", nb: "15 min", zh: "15 分鐘" },
     },
     {
       image: "/images/templates/bag-step3.png",
-      title: "Sew the Bag Body",
-      description:
-        "Place the two body pieces right sides together. Stitch three sides (both side seams + bottom), leaving the top open. Clip small notches at the corners — this helps the corners turn out sharp when flipped.",
-      tip: "Use pins every 5 cm to prevent the fabric layers from shifting while sewing",
-      duration: "20 min",
+      title: {
+        en: "Sew the Bag Body",
+        nb: "Sy veskekroppen",
+        zh: "縫合包身",
+      },
+      description: {
+        en: "Place the two body pieces right sides together. Stitch three sides (both side seams + bottom), leaving the top open. Clip small notches at the corners — this helps the corners turn out sharp when flipped.",
+        nb: "Legg de to kroppsdelene med rette sider sammen. Sy tre sider (begge sidesømmer + bunn), la toppen være åpen. Klipp små hakk i hjørnene — det gjør hjørnene skarpe når de snus.",
+        zh: "把兩片包身正面相對。縫合三邊(兩側與底邊),頂端留開。在四角剪小牙口 — 翻面時角才會挺直。",
+      },
+      tip: {
+        en: "Use pins every 5 cm to prevent the fabric layers from shifting while sewing",
+        nb: "Bruk knappenåler hver 5 cm for å hindre at stofflagene forskyver seg mens du syr",
+        zh: "每 5 公分別一支別針,避免縫的時候布層位移",
+      },
+      duration: { en: "20 min", nb: "20 min", zh: "20 分鐘" },
     },
     {
       image: "/images/templates/bag-step4.png",
-      title: "Turn Right-Side Out & Shape",
-      description:
-        "Turn the bag right-side out through the top opening. Use a blunt tool (e.g., chopstick) to push the corners out fully. Press with an iron to flatten and shape the bag.",
-      tip: "Take your time shaping before moving on — a well-pressed bag looks much more polished",
-      duration: "10 min",
+      title: {
+        en: "Turn Right-Side Out & Shape",
+        nb: "Vend til retten og form",
+        zh: "翻面整型",
+      },
+      description: {
+        en: "Turn the bag right-side out through the top opening. Use a blunt tool (e.g., chopstick) to push the corners out fully. Press with an iron to flatten and shape the bag.",
+        nb: "Vend posen rett ut gjennom toppåpningen. Bruk et stumpt verktøy (f.eks. en spisepinne) for å skyve hjørnene helt ut. Stryk med strykejern for å flate ut og forme posen.",
+        zh: "從頂端開口把包翻到正面。用鈍頭工具(例如筷子)把四角頂出來,再用熨斗整燙塑形。",
+      },
+      tip: {
+        en: "Take your time shaping before moving on — a well-pressed bag looks much more polished",
+        nb: "Ta deg tid til å forme før du går videre — en godt strøken pose ser mye mer forseggjort ut",
+        zh: "整型多花一點時間 — 燙得好,包包看起來更精緻",
+      },
+      duration: { en: "10 min", nb: "10 min", zh: "10 分鐘" },
     },
     {
       image: "/images/templates/bag-step5.png",
-      title: "Attach Handles & Finish Top Edge",
-      description:
-        'Position the handles 8 cm from each side edge and pin in place. Fold the top edge inward by 2 cm and stitch all the way around to close and finish the opening. Reinforce the handle attachment points with an "X" stitch for extra strength.',
-      tip: "Measure handle placement symmetrically on both sides before sewing",
-      duration: "20 min",
+      title: {
+        en: "Attach Handles & Finish Top Edge",
+        nb: "Fest håndtakene og avslutt toppkanten",
+        zh: "接上提帶並收頂邊",
+      },
+      description: {
+        en: 'Position the handles 8 cm from each side edge and pin in place. Fold the top edge inward by 2 cm and stitch all the way around to close and finish the opening. Reinforce the handle attachment points with an "X" stitch for extra strength.',
+        nb: "Plasser håndtakene 8 cm fra hver sidekant og fest med knappenåler. Brett toppkanten 2 cm innover og sy hele veien rundt for å lukke og avslutte åpningen. Forsterk festepunktene for håndtakene med et «X»-sting for ekstra styrke.",
+        zh: "把提帶分別距離兩邊 8 公分定位,並用別針固定。把頂邊往內摺 2 公分,沿一圈車線收口。提帶接點用「X」字縫加強耐用度。",
+      },
+      tip: {
+        en: "Measure handle placement symmetrically on both sides before sewing",
+        nb: "Mål håndtaksplasseringen symmetrisk på begge sider før du syr",
+        zh: "縫之前先量好,讓兩邊提帶位置對稱",
+      },
+      duration: { en: "20 min", nb: "20 min", zh: "20 分鐘" },
     },
   ],
 };

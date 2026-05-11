@@ -5,6 +5,7 @@ import { extractPatternPieces } from "../utils/extractFreeSewingPieces";
 import patternMeasurements from "../data/patternMeasurements";
 import MeasurementsModal from "../components/MeasurementsModal";
 import { generateLayout } from "../utils/generateLayout";
+import { useLang } from "../i18n/LanguageContext";
 
 /* ── Layout constants ────────────────────────────────────────────── */
 const PANEL_W = 290; // each panel takes the full available width
@@ -67,12 +68,6 @@ function _layoutToPositions(
     }
   }
   return posMap;
-}
-
-function grainLabel(angle) {
-  if (angle === 90) return "Vertical (Warp)";
-  if (angle === 0) return "Horizontal (Weft)";
-  return `Bias (${angle}°)`;
 }
 
 function isMisaligned(pieceAngle, garmentAngle) {
@@ -395,9 +390,16 @@ export default function PatternLayoutScreen({
   updateProfile,
   from = "templateSelect",
 }) {
+  const { t } = useLang();
   const template = templates[templateId];
   const grainAngleDeg =
     measurements?.garmentLayout?.grainAngleDeg ?? DEFAULT_GRAIN_ANGLE;
+
+  function grainLabelI18n(angle) {
+    if (angle === 90) return t("patternLayout.grainVertical");
+    if (angle === 0) return t("patternLayout.grainHorizontal");
+    return t("patternLayout.grainBias", { angle });
+  }
 
   // ── Measurements modal (auto-opens when arriving from home with no profile) ──
   const effectiveProfile = sessionProfileOverride ?? activeProfile ?? null;
@@ -934,18 +936,20 @@ export default function PatternLayoutScreen({
           ←
         </button>
         <div className="flex-1">
-          <h2 className="font-semibold text-primary-50">Pattern Layout</h2>
+          <h2 className="font-semibold text-primary-50">
+            {t("patternLayout.title")}
+          </h2>
           <p className="text-primary-100 text-xs mt-0.5">
-            Drag · double-tap rotates · tap →B/→F to flip side
+            {t("patternLayout.subtitle")}
           </p>
         </div>
         {template.patternSource === "freesewing" && (
           <button
             onClick={handlePrint}
-            title="Opens FreeSewing.eu with your measurements pre-loaded"
+            title={t("patternLayout.printTooltip")}
             className="ml-2 h-9 px-3 bg-primary-700 border border-primary-600 rounded-full text-primary-100 text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform whitespace-nowrap"
           >
-            🖨 Print Pattern
+            {t("patternLayout.printPattern")}
           </button>
         )}
         <button
@@ -953,26 +957,26 @@ export default function PatternLayoutScreen({
             if (suggestedLayoutRef.current)
               setPositions({ ...suggestedLayoutRef.current });
           }}
-          title="Reset all pieces to suggested layout"
+          title={t("patternLayout.resetTooltip")}
           className="ml-2 h-9 px-3 bg-primary-700 border border-primary-600 rounded-full text-primary-100 text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform whitespace-nowrap"
         >
-          ⟳ Reset
+          {t("patternLayout.reset")}
         </button>
       </div>
 
       {/* Garment info strip */}
       <div className="mx-5 mb-3 flex items-center gap-2 bg-primary-700 rounded-xl px-3 py-2 border border-primary-600">
         <span className="text-[11px] text-primary-300">
-          Each panel:{" "}
+          {t("patternLayout.eachPanel")}{" "}
           <span className="font-semibold text-primary-100">
             {panelW} × {panelH} cm
           </span>
         </span>
         <span className="mx-1 text-primary-600">·</span>
         <span className="text-[11px] text-primary-300">
-          Grain:{" "}
+          {t("patternLayout.grain")}{" "}
           <span className="font-semibold text-primary-100">
-            {grainLabel(grainAngleDeg)}
+            {grainLabelI18n(grainAngleDeg)}
           </span>
         </span>
       </div>
@@ -984,11 +988,11 @@ export default function PatternLayoutScreen({
           <div className="mx-5 mb-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex flex-col gap-2">
             <p className="text-sm font-semibold text-red-800">
               {fsError === "load"
-                ? "Could not load pattern file."
-                : "Pattern generation failed."}
+                ? t("patternLayout.couldNotLoad")
+                : t("patternLayout.generationFailed")}
             </p>
             <p className="text-xs text-red-600">
-              Showing default sizing instead.
+              {t("patternLayout.defaultSizing")}
             </p>
             <button
               onClick={() => {
@@ -998,14 +1002,26 @@ export default function PatternLayoutScreen({
               }}
               className="self-start text-xs font-semibold text-red-700 underline"
             >
-              Retry
+              {t("patternLayout.retry")}
             </button>
           </div>
         )}
         {/* Front then back, stacked vertically */}
         <div className="flex flex-col items-center px-2.5 gap-3 mb-4">
-          {renderPanel("FRONT", "front", frontRef, maskedImageUrl, 0.8)}
-          {renderPanel("BACK", "back", backRef, maskedImageUrl, 0.35)}
+          {renderPanel(
+            t("patternLayout.panelFront"),
+            "front",
+            frontRef,
+            maskedImageUrl,
+            0.8,
+          )}
+          {renderPanel(
+            t("patternLayout.panelBack"),
+            "back",
+            backRef,
+            maskedImageUrl,
+            0.35,
+          )}
         </div>
 
         {showAiBadge && (
@@ -1017,7 +1033,7 @@ export default function PatternLayoutScreen({
               boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
             }}
           >
-            Drag to adjust, double-tap to rotate
+            {t("patternLayout.dragRotateHint")}
           </div>
         )}
 
@@ -1026,17 +1042,9 @@ export default function PatternLayoutScreen({
             <span className="text-base leading-none mt-0.5">💡</span>
             <p className="flex-1 text-[11px] text-primary-100 leading-4">
               <span className="font-semibold">
-                To move a piece to the other side:
+                {t("patternLayout.moveSideTitle")}
               </span>{" "}
-              drag it into the other panel, or tap{" "}
-              <span className="font-semibold bg-primary-600 rounded px-1">
-                →B
-              </span>{" "}
-              /{" "}
-              <span className="font-semibold bg-primary-600 rounded px-1">
-                →F
-              </span>{" "}
-              next to its name below.
+              {t("patternLayout.moveSideHint")}
             </p>
             <button
               onClick={() => setShowHint(false)}
@@ -1055,8 +1063,7 @@ export default function PatternLayoutScreen({
           <div className="mx-5 mb-3 bg-secondary-100 border border-secondary-200 rounded-xl px-3 py-2 flex items-start gap-2">
             <span className="text-secondary-500 text-sm mt-0.5">⚠</span>
             <p className="text-[11px] text-secondary-800 leading-4">
-              Pieces marked <span className="font-bold">!</span> have a
-              different grain direction — intentional for the design.
+              {t("patternLayout.grainWarning")}
             </p>
           </div>
         )}
@@ -1064,7 +1071,7 @@ export default function PatternLayoutScreen({
         {/* Legend */}
         <div className="mx-5">
           <p className="text-[11px] font-semibold text-primary-100 uppercase tracking-wider mb-2">
-            Pattern Pieces
+            {t("patternLayout.patternPieces")}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
             {activePieces.map((piece) => (
@@ -1110,13 +1117,13 @@ export default function PatternLayoutScreen({
           onClick={() => navigate("arPattern")}
           className="w-full bg-primary-700 border border-primary-500 text-primary-100 py-3 rounded-2xl font-semibold text-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
         >
-          <span>📷</span> Try on Garment (AR View)
+          <span>📷</span> {t("patternLayout.tryArView")}
         </button>
         <button
           onClick={() => navigate("stepGuide")}
           className="w-full bg-secondary-300 text-white py-4 rounded-2xl font-bold active:scale-[0.98] transition-transform shadow-md shadow-black/20"
         >
-          Confirm Layout →
+          {t("patternLayout.confirmLayout")}
         </button>
       </div>
 
@@ -1126,7 +1133,7 @@ export default function PatternLayoutScreen({
           <div className="bg-primary-700 rounded-2xl px-6 py-5 flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-primary-300 border-t-transparent rounded-full animate-spin" />
             <p className="text-primary-100 text-sm font-medium">
-              Generating your pattern…
+              {t("patternLayout.generating")}
             </p>
           </div>
         </div>

@@ -94,13 +94,18 @@ function _buildPrompt(fabric, template, hasSourceImage) {
   }
 
   // Text-only fallback when no source image is available.
+  // Fabric fields may be plain strings (gpt-4o) or {en,nb,zh} objects
+  // (mockAnalysis post-i18n) — pull the English form for the prompt so
+  // Gemini gets clean English text and not "[object Object]".
+  const enStr = (v) =>
+    v == null ? "" : typeof v === "string" ? v : (v.en ?? "");
   const composition =
     fabric.composition
-      ?.map((c) => `${c.material} ${c.percentage}%`)
-      .join(", ") ?? fabric.type;
+      ?.map((c) => `${enStr(c.material)} ${c.percentage}%`)
+      .join(", ") ?? enStr(fabric.type);
   return [
     `Product photography of ${visual}, flat lay on a pure white background.`,
-    `Fabric: ${fabric.color} ${fabric.type}, ${fabric.texture}, ${fabric.weight} weight, ${composition}.`,
+    `Fabric: ${enStr(fabric.color)} ${enStr(fabric.type)}, ${enStr(fabric.texture)}, ${enStr(fabric.weight)} weight, ${composition}.`,
     `No person, no model, no mannequin, no body parts, no hands.`,
     `Garment laid completely flat, overhead shot, soft even studio lighting, sharp fabric texture detail.`,
   ].join(" ");
@@ -154,6 +159,11 @@ async function _fetchPreview(
   const body = { prompt, seed };
   if (inlineImage) {
     body.image = { mimeType: inlineImage.mimeType, data: inlineImage.data };
+    // Server falls back to Pollinations (text-only) if Gemini refuses
+    // the img2img request — Pollinations needs a self-contained prompt
+    // without "in this image" references, so send the text-only variant
+    // as a fallback prompt.
+    body.fallbackPrompt = _buildPrompt(fabric, template, false);
   }
 
   try {

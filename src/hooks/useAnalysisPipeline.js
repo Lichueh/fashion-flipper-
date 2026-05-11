@@ -127,12 +127,21 @@ export function useAnalysisPipeline() {
     setStatus("measuring");
     setProgress(60);
 
+    // Ruler-calibration path: convert cm/(natural-image px) → cm/(mask px).
+    // Mask is a downscaled, aspect-preserved view of the natural image, so the
+    // ratio of widths is the same scaling factor in both axes.
+    const scaleCmPerMaskPxOverride =
+      pending.scaleCmPerImagePx > 0 && pending.imageWidth > 0
+        ? pending.scaleCmPerImagePx * (pending.imageWidth / pending.maskW)
+        : null;
+
     const measResult = computeMeasurements(
       pending.segResult,
       pending.maskW,
       pending.maskH,
       lengthGarment,
       pending.hasLayers,
+      scaleCmPerMaskPxOverride,
     );
 
     if (!measResult) {
@@ -160,7 +169,12 @@ export function useAnalysisPipeline() {
 
   // ── Stage 1 + optional auto-continue ────────────────────────────────────────
   const run = useCallback(
-    async (imageFile, lengthGarment, hasLayers = true) => {
+    async (
+      imageFile,
+      lengthGarment,
+      hasLayers = true,
+      rulerScale = null, // { scaleCmPerImagePx, imageWidth } | null
+    ) => {
       reset();
 
       try {
@@ -199,10 +213,17 @@ export function useAnalysisPipeline() {
         const maskH = segResult.maskHeight;
 
         // Persist segResult + mask dims so submitGarmentLength can resume.
-        _pendingRef.current = { segResult, maskW, maskH, hasLayers };
+        _pendingRef.current = {
+          segResult,
+          maskW,
+          maskH,
+          hasLayers,
+          scaleCmPerImagePx: rulerScale?.scaleCmPerImagePx ?? null,
+          imageWidth: rulerScale?.imageWidth ?? null,
+        };
 
-        if (lengthGarment > 0) {
-          // Scale was provided upfront — skip the pause and finish immediately.
+        // A ruler-derived scale stands on its own — no need for lengthGarment.
+        if (lengthGarment > 0 || rulerScale?.scaleCmPerImagePx > 0) {
           _measureAndCheck(lengthGarment);
         } else {
           setNeedsScaleInput(true);

@@ -12,6 +12,7 @@ import BasicTutorialScreen from "./screens/BasicTutorialScreen";
 import CameraPatternScreen from "./screens/CameraPatternScreen";
 import ArMeasureScreen from "./screens/ArMeasureScreen";
 import ArTutorialScreen from "./screens/ArTutorialScreen";
+import RulerCalibrationScreen from "./screens/RulerCalibrationScreen";
 import ProfilesScreen from "./screens/ProfilesScreen";
 import ProfileEditorScreen from "./screens/ProfileEditorScreen";
 import useProfiles from "./hooks/useProfiles";
@@ -23,6 +24,8 @@ export default function App() {
   const [selectedTemplate, setSelectedTemplate] = useState("bag");
   const [lengthGarment, setLengthGarment] = useState(null);
   const [calibPxPerCm, setCalibPxPerCm] = useState(null);
+  const [scaleCmPerImagePx, setScaleCmPerImagePx] = useState(null);
+  const [imageWidth, setImageWidth] = useState(null);
   const [hasLayers, setHasLayers] = useState(true);
   const [measurements, setMeasurements] = useState(null);
   const [segmentation, setSegmentation] = useState(null);
@@ -57,6 +60,9 @@ export default function App() {
     if (data.template !== undefined) setSelectedTemplate(data.template);
     if (data.lengthGarment !== undefined) setLengthGarment(data.lengthGarment);
     if (data.calibPxPerCm !== undefined) setCalibPxPerCm(data.calibPxPerCm);
+    if (data.scaleCmPerImagePx !== undefined)
+      setScaleCmPerImagePx(data.scaleCmPerImagePx);
+    if (data.imageWidth !== undefined) setImageWidth(data.imageWidth);
     if (data.hasLayers !== undefined) setHasLayers(data.hasLayers);
     if (data.measurements !== undefined) setMeasurements(data.measurements);
     if (data.segmentation !== undefined) setSegmentation(data.segmentation);
@@ -88,6 +94,8 @@ export default function App() {
         uploadedFile={uploadedFile}
         lengthGarment={lengthGarment}
         hasLayers={hasLayers}
+        scaleCmPerImagePx={scaleCmPerImagePx}
+        imageWidth={imageWidth}
       />
     ),
     templateSelect: (
@@ -143,6 +151,14 @@ export default function App() {
       />
     ),
     arMeasure: <ArMeasureScreen navigate={navigate} />,
+    rulerCalibrate: (
+      <RulerCalibrationScreen
+        navigate={navigate}
+        uploadedImage={uploadedImage}
+        uploadedFile={uploadedFile}
+        hasLayers={hasLayers}
+      />
+    ),
     arTutorial: (
       <ArTutorialScreen
         navigate={navigate}

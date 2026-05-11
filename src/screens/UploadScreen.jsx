@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
 import { analyzeFabric } from "../services/fabricAnalysis";
+import { useLang } from "../i18n/LanguageContext";
 
 export default function UploadScreen({ navigate }) {
+  const { t } = useLang();
   const [preview, setPreview] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [manualCm, setManualCm] = useState("");
@@ -13,7 +15,6 @@ export default function UploadScreen({ navigate }) {
     if (!file) return;
     setUploadedFile(file);
     setPreview(URL.createObjectURL(file));
-    // Pre-warm the fabric analysis cache so AnalysisScreen gets an instant hit
     analyzeFabric(file);
   };
 
@@ -27,15 +28,12 @@ export default function UploadScreen({ navigate }) {
         >
           ←
         </button>
-        <h2 className="font-semibold text-primary-100">
-          Upload Your Old Clothes
-        </h2>
+        <h2 className="font-semibold text-primary-100">{t("upload.title")}</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-6">
         <p className="text-primary-100 text-sm mb-5 leading-5">
-          Photograph or upload clothing you want to upcycle — AI will analyze
-          fabric properties and suggest ideas
+          {t("upload.intro")}
         </p>
 
         {/* Upload zone */}
@@ -56,7 +54,7 @@ export default function UploadScreen({ navigate }) {
               />
               <div className="absolute inset-0 flex items-end justify-center pb-4 bg-gradient-to-t from-black/40 to-transparent">
                 <span className="bg-primary-900/60 backdrop-blur-sm text-primary-100 text-xs font-medium px-4 py-1.5 rounded-full">
-                  Click to Reselect
+                  {t("upload.reselect")}
                 </span>
               </div>
               <div className="absolute top-3 right-3 w-7 h-7 bg-secondary-300 rounded-full flex items-center justify-center">
@@ -69,11 +67,10 @@ export default function UploadScreen({ navigate }) {
                 📷
               </div>
               <p className="text-primary-800 font-medium text-sm">
-                Tap to Take Photo / Select Photo
+                {t("upload.tapToTake")}
               </p>
               <p className="text-primary-700 text-xs">
-                Supports JPG, PNG — recommended to shoot in natural light on
-                high-contrast background
+                {t("upload.formatHint")}
               </p>
             </div>
           )}
@@ -87,13 +84,13 @@ export default function UploadScreen({ navigate }) {
           onChange={handleFile}
         />
 
-        {/* Measurement card — choose AR or manual */}
+        {/* Measurement card */}
         <div className="bg-primary-100 rounded-2xl p-4 mb-5">
           <p className="text-primary-900 font-semibold text-sm mb-1">
-            📏 Garment Measurement
+            {t("upload.garmentMeasure")}
           </p>
           <p className="text-primary-700 text-xs leading-4 mb-3">
-            Choose how to provide the height of your garment (top to bottom).
+            {t("upload.garmentMeasureHint")}
           </p>
 
           {/* AR option */}
@@ -114,10 +111,38 @@ export default function UploadScreen({ navigate }) {
           >
             <div className="text-left">
               <p className="font-bold text-sm leading-tight">
-                📏 Measure with AR
+                {t("upload.arOptionTitle")}
               </p>
               <p className="text-[10px] leading-tight opacity-80">
-                Tap two endpoints with your camera
+                {t("upload.arOptionHint")}
+              </p>
+            </div>
+            <span className="text-base font-bold">→</span>
+          </button>
+
+          {/* Ruler option */}
+          <button
+            onClick={() =>
+              preview &&
+              navigate("rulerCalibrate", {
+                image: preview,
+                imageFile: uploadedFile,
+                hasLayers,
+              })
+            }
+            disabled={!preview}
+            className={`w-full flex items-center justify-between gap-2 rounded-xl px-4 py-3 mb-2 transition-all ${
+              preview
+                ? "bg-primary-800 text-primary-100 active:scale-[0.98] shadow-sm"
+                : "bg-primary-200 text-primary-700 cursor-not-allowed"
+            }`}
+          >
+            <div className="text-left">
+              <p className="font-bold text-sm leading-tight">
+                {t("upload.rulerOptionTitle")}
+              </p>
+              <p className="text-[10px] leading-tight opacity-80">
+                {t("upload.rulerOptionHint")}
               </p>
             </div>
             <span className="text-base font-bold">→</span>
@@ -127,7 +152,7 @@ export default function UploadScreen({ navigate }) {
           <div className="flex items-center gap-2 my-2">
             <div className="flex-1 h-px bg-primary-300" />
             <span className="text-[10px] text-primary-700 font-medium uppercase tracking-wider">
-              or
+              {t("common.orSeparator")}
             </span>
             <div className="flex-1 h-px bg-primary-300" />
           </div>
@@ -137,7 +162,7 @@ export default function UploadScreen({ navigate }) {
             <input
               type="number"
               inputMode="decimal"
-              placeholder="e.g. 70"
+              placeholder={t("upload.manualPlaceholder")}
               value={manualCm}
               onChange={(e) => setManualCm(e.target.value)}
               className="flex-1 bg-white border border-primary-300 rounded-xl px-3 py-2 text-sm text-primary-900 outline-none focus:border-secondary-300"
@@ -169,17 +194,15 @@ export default function UploadScreen({ navigate }) {
         {/* Layers toggle */}
         <div className="bg-primary-100 rounded-2xl p-4 mb-5">
           <p className="text-primary-900 font-semibold text-sm mb-1">
-            🧥 Garment Layers
+            {t("upload.layersTitle")}
           </p>
           <p className="text-primary-700 text-xs mb-3 leading-4">
-            Does your garment have a front and back layer? For example, a
-            typical shirt has two layers of fabric (front and back), while a
-            scarf or open jacket may only have one layer.
+            {t("upload.layersHint")}
           </p>
           <div className="flex gap-3">
             {[
-              { label: "Yes — front & back", value: true },
-              { label: "No — single layer", value: false },
+              { label: t("upload.layersYes"), value: true },
+              { label: t("upload.layersNo"), value: false },
             ].map(({ label, value }) => (
               <button
                 key={String(value)}
@@ -196,31 +219,29 @@ export default function UploadScreen({ navigate }) {
           </div>
         </div>
 
-        {/* Tips card — primary-100 inset card, same as HomeScreen hero */}
+        {/* Tips card */}
         <div className="bg-primary-100 rounded-2xl p-4 mb-6">
           <p className="text-primary-900 font-semibold text-sm mb-2">
-            📸 Photography Tips
+            {t("upload.photographyTips")}
           </p>
           <ul className="space-y-1.5">
-            {[
-              "Shoot in natural light with high contrast background",
-              "Lay the garment flat to fully expose the fabric",
-              "Try to get the garment to fill the frame, but avoid cropping out edges",
-            ].map((tip) => (
-              <li
-                key={tip}
-                className="flex items-start gap-2 text-primary-700 text-xs"
-              >
-                <span className="mt-0.5 flex-shrink-0">•</span>
-                <span className="leading-4">{tip}</span>
-              </li>
-            ))}
+            {[t("upload.tip1"), t("upload.tip2"), t("upload.tip3")].map(
+              (tip) => (
+                <li
+                  key={tip}
+                  className="flex items-start gap-2 text-primary-700 text-xs"
+                >
+                  <span className="mt-0.5 flex-shrink-0">•</span>
+                  <span className="leading-4">{tip}</span>
+                </li>
+              ),
+            )}
           </ul>
         </div>
 
         {!preview && (
           <p className="text-center text-primary-300 text-xs mt-4">
-            Select a photo first to enable measurement
+            {t("upload.selectFirst")}
           </p>
         )}
         {/* CTA */}

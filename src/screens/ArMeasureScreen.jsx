@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import useDeviceOrientation from "../hooks/useDeviceOrientation";
 import usePinchScale from "../hooks/usePinchScale";
+import { useLang } from "../i18n/LanguageContext";
 
 // Fallback px→cm rate when user skips calibration. After calibration the
 // real ratio (derived from the reference card edge) replaces this.
@@ -25,6 +26,7 @@ function lineGeom(p1, p2) {
 }
 
 export default function ArMeasureScreen({ navigate }) {
+  const { t } = useLang();
   // Two-phase flow: first calibrate against a known reference object,
   // then measure the garment using the calibrated scale.
   const [step, setStep] = useState("calibrate"); // calibrate | measure
@@ -218,17 +220,15 @@ export default function ArMeasureScreen({ navigate }) {
 
   // Top-bar subtitle
   let subtitle = "";
-  if (phase === "loading") subtitle = "Starting camera…";
+  if (phase === "loading") subtitle = t("arMeasure.starting");
   else if (isCalibrating) {
-    if (phase === "ready")
-      subtitle = "Step 1 of 2 · Drag along a credit / ID card long edge";
-    else if (phase === "drawing")
-      subtitle = "Release when aligned with the card edge";
-    else if (phase === "done") subtitle = "Tap Continue to start measuring";
+    if (phase === "ready") subtitle = t("arMeasure.cardStep1");
+    else if (phase === "drawing") subtitle = t("arMeasure.cardStep1Drawing");
+    else if (phase === "done") subtitle = t("arMeasure.cardStep1Done");
   } else {
-    if (phase === "ready") subtitle = "Step 2 of 2 · Drag across the garment";
-    else if (phase === "drawing") subtitle = "Release to measure";
-    else if (phase === "done") subtitle = "Tap Done to use this measurement";
+    if (phase === "ready") subtitle = t("arMeasure.garmentStep2");
+    else if (phase === "drawing") subtitle = t("arMeasure.garmentStep2Drawing");
+    else if (phase === "done") subtitle = t("arMeasure.garmentStep2Done");
   }
 
   return (
@@ -412,7 +412,7 @@ export default function ArMeasureScreen({ navigate }) {
         >
           {isCalibrating ? (
             <>
-              💳 Place a credit / ID card in frame
+              {t("arMeasure.cardPrompt")}
               <div
                 style={{
                   fontSize: 10,
@@ -422,12 +422,12 @@ export default function ArMeasureScreen({ navigate }) {
                   whiteSpace: "normal",
                 }}
               >
-                Drag along its long edge ({REFERENCE_OBJECT_CM} cm)
+                {t("arMeasure.cardPromptHint", { cm: REFERENCE_OBJECT_CM })}
               </div>
             </>
           ) : (
             <>
-              ✋ Drag across the garment
+              {t("arMeasure.garmentPrompt")}
               <div
                 style={{
                   fontSize: 10,
@@ -437,7 +437,7 @@ export default function ArMeasureScreen({ navigate }) {
                   whiteSpace: "normal",
                 }}
               >
-                from one end to the other
+                {t("arMeasure.garmentPromptHint")}
               </div>
             </>
           )}
@@ -489,7 +489,7 @@ export default function ArMeasureScreen({ navigate }) {
                 margin: 0,
               }}
             >
-              {isCalibrating ? "Calibrate" : "Measure Garment"}
+              {isCalibrating ? t("arMeasure.calibrate") : t("arMeasure.measureGarment")}
             </p>
             <p
               style={{
@@ -575,7 +575,7 @@ export default function ArMeasureScreen({ navigate }) {
               textAlign: "center",
             }}
           >
-            Camera Access Required
+            {t("arMeasure.cameraRequired")}
           </p>
           <p
             style={{
@@ -586,7 +586,7 @@ export default function ArMeasureScreen({ navigate }) {
               marginBottom: 24,
             }}
           >
-            Allow camera access to measure your garment with AR.
+            {t("arMeasure.cameraDeniedBody")}
           </p>
           <button
             onClick={() => navigate("upload")}
@@ -601,7 +601,7 @@ export default function ArMeasureScreen({ navigate }) {
               cursor: "pointer",
             }}
           >
-            ← Back
+            {t("arMeasure.backToBack")}
           </button>
         </div>
       ) : (
@@ -639,7 +639,7 @@ export default function ArMeasureScreen({ navigate }) {
                 textUnderlineOffset: 3,
               }}
             >
-              Skip
+              {t("common.skip")}
             </button>
           ) : !isCalibrating && phase === "ready" ? (
             <button
@@ -657,7 +657,7 @@ export default function ArMeasureScreen({ navigate }) {
                 cursor: "pointer",
               }}
             >
-              ↻ Recalibrate
+              {t("arMeasure.recalibrate")}
             </button>
           ) : (
             <button
@@ -677,7 +677,7 @@ export default function ArMeasureScreen({ navigate }) {
                 minWidth: 90,
               }}
             >
-              Reset
+              {t("common.reset")}
             </button>
           )}
 
@@ -701,7 +701,7 @@ export default function ArMeasureScreen({ navigate }) {
                   phase === "done" ? `0 4px 12px ${accentRgba}` : "none",
               }}
             >
-              Continue →
+              {t("arMeasure.continue")}
             </button>
           ) : (
             <button
@@ -722,7 +722,7 @@ export default function ArMeasureScreen({ navigate }) {
                   phase === "done" ? `0 4px 12px ${accentRgba}` : "none",
               }}
             >
-              Done →
+              {t("arMeasure.doneCta")}
             </button>
           )}
         </div>

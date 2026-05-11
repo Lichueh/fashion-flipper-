@@ -1,8 +1,10 @@
-const navItems = [
-  { id: "home", label: "Home", icon: HomeIcon },
-  { id: "upload", label: "Upcycle", icon: ScissorsIcon },
-  { id: "learn", label: "Learn", icon: BookIcon },
-  { id: "community", label: "Community", icon: LeafIcon },
+import { useLang } from "../i18n/LanguageContext";
+
+const NAV_ITEMS = [
+  { id: "home", labelKey: "nav.home", icon: HomeIcon },
+  { id: "upload", labelKey: "nav.upcycle", icon: ScissorsIcon },
+  { id: "learn", labelKey: "nav.learn", icon: BookIcon },
+  { id: "community", labelKey: "nav.community", icon: LeafIcon },
 ];
 
 function HomeIcon({ active }) {
@@ -111,6 +113,7 @@ function profileInitials(name) {
 }
 
 export default function BottomNav({ current, navigate, activeProfile }) {
+  const { t } = useLang();
   const isProfilesActive = current === "profiles";
   const initials = activeProfile ? profileInitials(activeProfile.name) : null;
 
@@ -119,7 +122,7 @@ export default function BottomNav({ current, navigate, activeProfile }) {
       className="border-t border-stone-200 bg-white/90 backdrop-blur-sm flex"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}
     >
-      {navItems.map(({ id, label, icon: Icon }) => {
+      {NAV_ITEMS.map(({ id, labelKey, icon: Icon }) => {
         const active = current === id;
         return (
           <button
@@ -131,7 +134,7 @@ export default function BottomNav({ current, navigate, activeProfile }) {
             <span
               className={`text-[10px] font-medium ${active ? "text-green-700" : "text-gray-400"}`}
             >
-              {label}
+              {t(labelKey)}
             </span>
           </button>
         );
@@ -156,7 +159,7 @@ export default function BottomNav({ current, navigate, activeProfile }) {
         <span
           className={`text-[10px] font-medium ${isProfilesActive ? "text-green-700" : "text-gray-400"}`}
         >
-          Profiles
+          {t("nav.profiles")}
         </span>
       </button>
     </div>

@@ -1,9 +1,10 @@
 /**
- * Converts a segmentation result into physical measurements using a
- * user-supplied longest-side measurement as the pixel→cm scale reference.
+ * Converts a segmentation result into physical measurements.
  *
- * The scale factor is derived by dividing the user's stated longest side (cm)
- * by the height of the garment's bounding box in pixels.
+ * Two modes for deriving the pixel→cm scale (mask-grid space):
+ *   1. lengthGarment-based (default): cm/px = lengthGarment / bboxHeightPx.
+ *   2. ruler-override: caller supplies scaleCmPerMaskPx directly (e.g. derived
+ *      from a calibration ruler in the photo). When supplied, it wins.
  *
  * @param {Object} segResult         - Return value of segmentGarment().
  * @param {number} maskWidth         - Width of the mask grid in pixels.
@@ -11,6 +12,9 @@
  * @param {number} lengthGarment      - User-measured height of the garment (top to bottom), cm.
  * @param {boolean} [hasLayers=true] - When true, totalAreaCm2 is doubled to account
  *                                     for the unseen back panel.
+ * @param {number|null} [scaleCmPerMaskPxOverride=null] - When set, overrides the
+ *                                     lengthGarment-derived scale. Units: cm per
+ *                                     mask-grid pixel.
  *
  * @returns {{
  *   totalAreaCm2:  number,
@@ -29,14 +33,17 @@ export function computeMeasurements(
   maskHeight,
   lengthGarment,
   hasLayers = true,
+  scaleCmPerMaskPxOverride = null,
 ) {
   if (!segResult?.garmentMask) return null;
 
   const bbox = _boundingBox(segResult.garmentMask, maskWidth, maskHeight);
   if (!bbox || bbox.heightPx === 0) return null;
 
-  // Derive scale from the user's stated garment height vs the bounding box height
-  const scaleCmPerPx = lengthGarment / bbox.heightPx;
+  const scaleCmPerPx =
+    scaleCmPerMaskPxOverride != null && scaleCmPerMaskPxOverride > 0
+      ? scaleCmPerMaskPxOverride
+      : lengthGarment / bbox.heightPx;
 
   const widthCm = _round1(bbox.widthPx * scaleCmPerPx);
   const heightCm = _round1(bbox.heightPx * scaleCmPerPx);

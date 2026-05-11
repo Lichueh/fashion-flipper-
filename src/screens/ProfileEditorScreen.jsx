@@ -11,26 +11,21 @@ import {
   cmToMm,
   unitLabel,
 } from "../utils/measurementValidation";
+import { useLang } from "../i18n/LanguageContext";
 
-// All measurement keys across all groups, flat and ordered
 const ALL_KEYS = Object.values(MEASUREMENT_GROUPS).flat();
 
-// ── Component ────────────────────────────────────────────────────────────────
-
 export default function ProfileEditorScreen({
-  profile, // null → new profile; Profile object → editing
+  profile,
   addProfile,
   updateProfile,
   navigate,
 }) {
+  const { t, tl } = useLang();
   const isNew = profile === null;
 
-  // For new profiles, track the ID after first addProfile call so that
-  // re-saves (e.g. after "Add now" on the empty-prompt dialog) use
-  // updateProfile instead of creating a duplicate.
   const createdProfileIdRef = useRef(null);
 
-  // Build initial cm-string field map from existing profile (mm → cm)
   function initialFields() {
     if (!profile?.measurements) return {};
     return Object.fromEntries(
@@ -41,16 +36,14 @@ export default function ProfileEditorScreen({
   const [name, setName] = useState(profile?.name ?? "");
   const [gender, setGender] = useState(profile?.gender ?? null);
   const [fields, setFields] = useState(initialFields);
-  const [errors, setErrors] = useState({}); // key → error string
-  const [collapsed, setCollapsed] = useState({}); // group → bool
+  const [errors, setErrors] = useState({});
+  const [collapsed, setCollapsed] = useState({});
   const [selectedPresetId, setSelectedPresetId] = useState(null);
   const [showPresetPicker, setShowPresetPicker] = useState(false);
-  const [confirmPreset, setConfirmPreset] = useState(null); // preset to confirm
-  const [emptyPrompt, setEmptyPrompt] = useState(false); // post-save no-measurements dialog
+  const [confirmPreset, setConfirmPreset] = useState(null);
+  const [emptyPrompt, setEmptyPrompt] = useState(false);
 
   const nameInputRef = useRef(null);
-
-  // ── Preset apply ────────────────────────────────────────────────────────
 
   function applyPreset(preset) {
     const newFields = Object.fromEntries(
@@ -72,20 +65,15 @@ export default function ProfileEditorScreen({
     }
   }
 
-  // ── Field change + blur validation ──────────────────────────────────────
-
   function handleFieldChange(key, value) {
     setFields((prev) => ({ ...prev, [key]: value }));
-    // Clear error on change
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: null }));
   }
 
   function handleFieldBlur(key, value) {
-    const err = validateField(key, value);
+    const err = validateField(key, value, t);
     setErrors((prev) => ({ ...prev, [key]: err }));
   }
-
-  // ── Derived state ────────────────────────────────────────────────────────
 
   const hasValidationErrors = Object.values(errors).some(Boolean);
   const nameBlank = name.trim() === "";
@@ -95,28 +83,23 @@ export default function ProfileEditorScreen({
     ? measurementPresets.find((p) => p.id === selectedPresetId)
     : null;
 
-  // ── Save ────────────────────────────────────────────────────────────────
-
   function handleSave() {
-    // Run validation on all filled fields
     const newErrors = {};
     let anyError = false;
     for (const key of ALL_KEYS) {
       const val = fields[key];
       if (val === undefined || val === "") continue;
-      const err = validateField(key, val);
+      const err = validateField(key, val, t);
       if (err) {
         newErrors[key] = err;
         anyError = true;
       }
     }
     if (anyError) {
-      console.log("[ProfileEditor] validation failed", newErrors);
       setErrors(newErrors);
       return;
     }
 
-    // Build mm measurements object
     const measurements = {};
     for (const key of ALL_KEYS) {
       const val = fields[key];
@@ -127,12 +110,10 @@ export default function ProfileEditorScreen({
 
     if (isNew) {
       if (createdProfileIdRef.current === null) {
-        // First save: create the profile
         const newProfile = addProfile(name.trim());
         createdProfileIdRef.current = newProfile.id;
         updateProfile(newProfile.id, { gender, measurements });
       } else {
-        // Re-save after "Add now" — profile already exists, just update it
         updateProfile(createdProfileIdRef.current, {
           name: name.trim(),
           gender,
@@ -150,8 +131,6 @@ export default function ProfileEditorScreen({
     }
   }
 
-  // ── Render helpers ────────────────────────────────────────────────────────
-
   function toggleGroup(group) {
     setCollapsed((prev) => ({ ...prev, [group]: !prev[group] }));
   }
@@ -168,32 +147,33 @@ export default function ProfileEditorScreen({
         </button>
         <div>
           <h2 className="font-semibold text-primary-100 text-base">
-            {isNew ? "New Profile" : `Edit ${profile.name}`}
+            {isNew
+              ? t("profileEditor.newTitle")
+              : t("profileEditor.editTitle", { name: profile.name })}
           </h2>
           <p className="text-[11px] text-primary-300 mt-0.5">
-            Measurements are stored only on your device
+            {t("profileEditor.subtitle")}
           </p>
         </div>
       </div>
 
-      {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-4">
         {/* Name input */}
         <div className="bg-primary-100 rounded-3xl px-4 py-4">
           <label className="block text-[11px] font-semibold text-primary-500 uppercase tracking-wider mb-2">
-            Profile name
+            {t("profileEditor.profileName")}
           </label>
           <input
             ref={nameInputRef}
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. My measurements, Alice"
+            placeholder={t("profileEditor.namePlaceholder")}
             className="w-full bg-primary-50 border border-primary-200 rounded-xl px-3 py-2.5 text-sm text-primary-900 placeholder-primary-400 focus:outline-none focus:border-secondary-400"
           />
           {nameBlank && name !== "" && (
             <p className="text-red-500 text-[11px] mt-1">
-              Name cannot be blank
+              {t("profileEditor.nameBlank")}
             </p>
           )}
         </div>
@@ -201,13 +181,13 @@ export default function ProfileEditorScreen({
         {/* Gender */}
         <div className="bg-primary-100 rounded-3xl px-4 py-4">
           <label className="block text-[11px] font-semibold text-primary-500 uppercase tracking-wider mb-3">
-            Gender
+            {t("profileEditor.gender")}
           </label>
           <div className="flex gap-2">
             {[
-              { value: "female", label: "Female" },
-              { value: "male", label: "Male" },
-              { value: "nonbinary", label: "Non-binary" },
+              { value: "female", label: t("profileEditor.female") },
+              { value: "male", label: t("profileEditor.male") },
+              { value: "nonbinary", label: t("profileEditor.nonbinary") },
             ].map(({ value, label }) => (
               <button
                 key={value}
@@ -227,7 +207,7 @@ export default function ProfileEditorScreen({
         {/* Preset picker */}
         <div className="bg-primary-100 rounded-3xl px-4 py-4">
           <label className="block text-[11px] font-semibold text-primary-500 uppercase tracking-wider mb-2">
-            Start from preset
+            {t("profileEditor.startFromPreset")}
           </label>
           <button
             onClick={() => setShowPresetPicker((v) => !v)}
@@ -238,7 +218,9 @@ export default function ProfileEditorScreen({
                 selectedPreset ? "text-primary-900" : "text-primary-400"
               }
             >
-              {selectedPreset ? selectedPreset.label : "None — start blank"}
+              {selectedPreset
+                ? tl(selectedPreset.label)
+                : t("profileEditor.presetNone")}
             </span>
             <span className="text-primary-400">
               {showPresetPicker ? "▲" : "▼"}
@@ -249,7 +231,7 @@ export default function ProfileEditorScreen({
             <div className="mt-2 bg-white rounded-2xl border border-primary-200 overflow-hidden shadow-md max-h-64 overflow-y-auto">
               <div className="px-3 pt-3 pb-1">
                 <p className="text-[10px] font-bold text-primary-400 uppercase tracking-wider">
-                  Women's sizes
+                  {t("profileEditor.womenSizes")}
                 </p>
               </div>
               {femalePresets.map((preset) => (
@@ -262,12 +244,12 @@ export default function ProfileEditorScreen({
                       : "text-primary-800 hover:bg-primary-50"
                   }`}
                 >
-                  {preset.label}
+                  {tl(preset.label)}
                 </button>
               ))}
               <div className="px-3 pt-3 pb-1 border-t border-primary-100">
                 <p className="text-[10px] font-bold text-primary-400 uppercase tracking-wider">
-                  Men's sizes
+                  {t("profileEditor.menSizes")}
                 </p>
               </div>
               {malePresets.map((preset) => (
@@ -280,7 +262,7 @@ export default function ProfileEditorScreen({
                       : "text-primary-800 hover:bg-primary-50"
                   }`}
                 >
-                  {preset.label}
+                  {tl(preset.label)}
                 </button>
               ))}
             </div>
@@ -293,16 +275,17 @@ export default function ProfileEditorScreen({
             key={group}
             className="bg-primary-100 rounded-3xl overflow-hidden"
           >
-            {/* Group header */}
             <button
               onClick={() => toggleGroup(group)}
               className="w-full flex items-center justify-between px-4 py-3.5 text-left"
             >
               <span className="text-sm font-semibold text-primary-800">
-                {group}
+                {t(`measurementGroups.${group}`)}
               </span>
               <span className="text-primary-400 text-xs">
-                {collapsed[group] ? "▼ Show" : "▲ Hide"}
+                {collapsed[group]
+                  ? t("profileEditor.showGroup")
+                  : t("profileEditor.hideGroup")}
               </span>
             </button>
 
@@ -319,7 +302,7 @@ export default function ProfileEditorScreen({
                     <div key={key}>
                       <div className="flex items-center gap-2">
                         <label className="text-[12px] text-primary-600 flex-1 min-w-0 truncate">
-                          {humanise(key)}
+                          {humanise(key, t)}
                         </label>
                         <div className="flex items-center gap-1">
                           <input
@@ -369,16 +352,18 @@ export default function ProfileEditorScreen({
               : "bg-secondary-300 text-secondary-900 active:scale-[0.98]"
           }`}
         >
-          {isNew ? "Create Profile" : "Save Changes"}
+          {isNew
+            ? t("profileEditor.createProfile")
+            : t("profileEditor.saveChanges")}
         </button>
         {nameBlank && (
           <p className="text-center text-[11px] text-primary-400 mt-2">
-            Enter a profile name to continue
+            {t("profileEditor.enterName")}
           </p>
         )}
         {!nameBlank && hasValidationErrors && (
           <p className="text-center text-[11px] text-red-400 mt-2">
-            Fix the highlighted fields above
+            {t("profileEditor.fixFields")}
           </p>
         )}
       </div>
@@ -394,24 +379,25 @@ export default function ProfileEditorScreen({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-semibold text-primary-900 text-base mb-1">
-              Replace your changes?
+              {t("profileEditor.replaceTitle")}
             </h3>
             <p className="text-primary-500 text-sm mb-6">
-              Applying "{confirmPreset.label}" will overwrite all your current
-              measurement entries.
+              {t("profileEditor.replaceBody", {
+                label: tl(confirmPreset.label),
+              })}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmPreset(null)}
                 className="flex-1 py-2.5 rounded-xl border border-primary-200 text-primary-700 text-sm font-medium"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => applyPreset(confirmPreset)}
                 className="flex-1 py-2.5 rounded-xl bg-secondary-300 text-secondary-900 text-sm font-semibold"
               >
-                Replace
+                {t("common.replace")}
               </button>
             </div>
           </div>
@@ -432,10 +418,10 @@ export default function ProfileEditorScreen({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-semibold text-primary-900 text-base mb-1">
-              Profile saved with no measurements
+              {t("profileEditor.emptyTitle")}
             </h3>
             <p className="text-primary-500 text-sm mb-6">
-              Add measurements now so patterns can be fitted to your body.
+              {t("profileEditor.emptyBody")}
             </p>
             <div className="flex gap-3">
               <button
@@ -445,13 +431,13 @@ export default function ProfileEditorScreen({
                 }}
                 className="flex-1 py-2.5 rounded-xl border border-primary-200 text-primary-700 text-sm font-medium"
               >
-                Later
+                {t("profileEditor.later")}
               </button>
               <button
                 onClick={() => setEmptyPrompt(false)}
                 className="flex-1 py-2.5 rounded-xl bg-secondary-300 text-secondary-900 text-sm font-semibold"
               >
-                Add now
+                {t("profileEditor.addNow")}
               </button>
             </div>
           </div>

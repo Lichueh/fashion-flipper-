@@ -13,6 +13,64 @@ const SYSTEM_PROMPT = `You are a fabric analysis assistant. When given an image 
 For tags, pick 2–4 relevant labels from: Natural Fiber, Synthetic, Blended, Machine Washable, Hand Wash Only, Dye-friendly, Stretch, Woven, Knit.
 Composition percentages must sum to 100.`;
 
+// Stage-2: takes the English fabric JSON and returns same shape with each
+// translatable string field replaced by { en, nb, zh } objects. Uses gpt-4o-mini
+// because pure terminology translation is cheap & fast.
+const TRANSLATE_SYSTEM_PROMPT = `You translate fabric / textile terminology into Norwegian Bokmål (nb) and Traditional Chinese (zh).
+
+Input: a JSON object describing analyzed fabric.
+Output: same JSON structure, but each translatable string value replaced with:
+  { "en": "<original English>", "nb": "<Norwegian Bokmål>", "zh": "<Traditional Chinese>" }
+
+Translate these string fields ONLY:
+- type, color, weight, texture, condition (top-level strings)
+- composition[].material (string inside array of objects — keep percentage numeric unchanged)
+- tags[] (array of strings — each element becomes a { en, nb, zh } object)
+
+Use natural textile vocabulary. Examples:
+- "Cotton Fabric" → { "en": "Cotton Fabric", "nb": "Bomullsstoff", "zh": "棉質布料" }
+- "Deep Blue" → { "en": "Deep Blue", "nb": "Dyp blå", "zh": "深藍" }
+- "Plain weave" → { "en": "Plain weave", "nb": "Lerretsbinding", "zh": "平織" }
+- "Medium weight" → { "en": "Medium weight", "nb": "Middels vekt", "zh": "中等厚度" }
+- "Good (slight fading)" → { "en": "Good (slight fading)", "nb": "God (litt falming)", "zh": "良好（輕微褪色）" }
+- "Natural Fiber" → { "en": "Natural Fiber", "nb": "Naturfiber", "zh": "天然纖維" }
+- "Unknown" → { "en": "Unknown", "nb": "Ukjent", "zh": "未知" }
+
+Return ONLY a valid JSON object. No markdown, no explanation.`;
+
+async function translateFabricResult(parsed, token) {
+  try {
+    const upstream = await fetch(GITHUB_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: TRANSLATE_SYSTEM_PROMPT },
+          { role: "user", content: JSON.stringify(parsed) },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0,
+        max_tokens: 800,
+      }),
+    });
+    if (!upstream.ok) {
+      console.warn("[analyze] translate upstream", upstream.status);
+      return parsed;
+    }
+    const data = await upstream.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return parsed;
+    return JSON.parse(content);
+  } catch (err) {
+    console.warn("[analyze] translate threw:", err?.message);
+    return parsed;
+  }
+}
+
 // ── Retry helper ──────────────────────────────────────────────────────────────
 // Retries on transient server errors (502/503/504) with exponential backoff.
 // Does NOT retry on client errors (400, 401, 429) since those won't self-resolve.
@@ -109,7 +167,8 @@ export default async function handler(req, res) {
     }
 
     const parsed = JSON.parse(content);
-    return res.status(200).json(parsed);
+    const translated = await translateFabricResult(parsed, token);
+    return res.status(200).json(translated);
   } catch (err) {
     return res.status(500).json({ error: err?.message ?? "Internal error" });
   }

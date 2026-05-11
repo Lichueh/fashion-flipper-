@@ -44,9 +44,123 @@ home → upload → analysis → templateSelect → stepGuide → result
 
 ## 變更紀錄
 
+## 2026-05-12 00:15
+- 修改檔案:vite.config.js、api/analyze.js、src/services/fabricAnalysis.js、LOG.md
+- 修改內容:布料分析結果改為三語(server-side 翻譯)。原本 GPT-4o vision 回的是純英文字串(`type/color/texture/weight/condition` + composition[].material + tags[]),即使 UI 切到 nb / zh 也只有「布料分析卡」永遠英文。
+  - **Stage-2 翻譯**(vite.config.js 與 api/analyze.js):Stage 1 拿到 vision JSON 後,再對 GitHub Models 打第二次 — 用 **gpt-4o-mini**(翻譯任務夠用、token 約 4o 的 1/15)+ 新的 `TRANSLATE_SYSTEM_PROMPT`,把每個 translatable string 包成 `{ en, nb, zh }` 物件。Prompt 含 7 個 few-shot example(常見 fabric type / color / weight / texture / condition / tag + Unknown),確保穩定 schema。`temperature: 0`、`response_format: json_object`、`max_tokens: 800`。
+  - **Graceful fallback**:Stage-2 任何步驟失敗(upstream non-200 / empty content / 解 JSON 失敗 / 拋例外)都退回 Stage-1 的純英文結果,client 端 `tl()` 看到 string 會原樣回傳,使用者最差就是看到英文而非看到錯誤頁。
+  - **CACHE_PREFIX v2 → v3**(fabricAnalysis.js):強制讓 sessionStorage 內舊的純英文 v2 cache 過期。
+  - **不改 client validator**:`!parsed.type` 在 type 是物件時仍 truthy、composition 仍是 Array、所以原檢查照常工作。
+  - **downstream 不用改**:`fabricProfile.js` 的 `asEnString()` 跟 `previewGeneration.js` 的 `enStr()` 早就同時支援 string 與 `{en,nb,zh}` 兩種 shape(5/3 23:40 修 i18n 時就埋好的)。AnalysisScreen 等地方都已用 `tl(...)`。
+- Smoke test:`curl /api/analyze` 拿 1×1 白點測 — Stage-1 6 秒、Stage-2 6 秒;回傳完整 `{en,nb,zh}` 物件,顏色「Bright Yellow → Lys gul → 明亮的黃色」、type 「Unknown → Ukjent → 未知」。Vite log 顯示 `[analyze] translate ok (6149ms)`。
+- 成本影響:每次分析多一次 gpt-4o-mini call(~150 input tokens + ~250 output tokens),GitHub Models 免費 quota 內可忽略。
+
+## 2026-05-12 00:05
+- 修改檔案:src/screens/TemplateSelectScreen.jsx、src/screens/PatternLayoutScreen.jsx、src/i18n/translations.js
+- 修改內容:把 i18n 三語線織回 22:00 merge 後失去 i18n 的兩個畫面。
+  - **TemplateSelectScreen**:import `useLang`、component 內 `const { t, tl } = useLang()`,把 ~30 個硬寫英文(title / subtitle / topNHint / 尺寸 overlay 整段 / intro / longPressHint / showGarmentDimensions / 性別 filter 顯示與切換鈕 / 三種 fail reason / 三種 badge / template.name/time/description/difficultyLabel / fabricUsed / steps&materials count / Start Making / 模態 title / 模態 profile/preset/cancel/generate/continue / save-to-profile)替換成 `t("...")` / `tl(...)`。21:20 加的 `topNHint` JSX 提示也補回(只有 `items.length > MAX_VISIBLE_PATTERNS` 時顯示)。
+  - **PatternLayoutScreen**:import `useLang`、新增 closure 內 `grainLabelI18n` 取代 module-level `grainLabel`(原本純函式拿不到 hook),dead `grainLabel` 刪掉。改 ~12 個硬寫字串(Pattern Layout title / subtitle / Print Pattern + tooltip / Reset + tooltip / Each panel / Grain / FRONT/BACK / 錯誤 banner 三段 / Retry / Drag-to-adjust badge / 移動側邊提示 / grainWarning / Pattern Pieces / Try on AR / Confirm Layout / Generating…)。
+  - **translations.js**:新增 templateSelect 7 個 key(yourGarment / widthLabel / heightLabel / usableFabricOneSide / totalFabricBothSides / measurementsUnavailable / showGarmentDimensions),更新 `intro` 為 Siri 5/11 改的「fabric-enough + 百分比說明」較長版本;新增 patternLayout 6 個 key(reset / resetTooltip / retry / grainVertical / grainHorizontal / grainBias)。三語(en/nb/zh)全部齊備。
+- Smoke test:`localhost:5180` HTTP 200、vite HMR ~40 次 update 全綠、無 syntax error。
+
+## 2026-05-11 22:00
+- 修改檔案:LOG.md(merge)、src/screens/TemplateSelectScreen.jsx、src/screens/PatternLayoutScreen.jsx、src/services/feasibility.js、public/logo.svg、src/utils/generateLayout.js(從 origin 新增)
+- 修改內容:把 origin/main 的兩個 commit fast-forward 進來 — Siri 5/11 早上的 567cd10「pattern layout + cut-count feasibility + 新 logo + utils/generateLayout.js」與我們晚上 push 的 9e42e8f「Limit template list to top 3 patterns」。Local 對 TemplateSelectScreen / PatternLayoutScreen / feasibility / logo 這 4 個衝突檔的未 commit 改動全部丟棄,以 origin 版本為準(因此這 4 個檔暫時失去 i18n 線);其他 ~40 個 i18n / RulerCalibration / fabricAnalysis v2 / useAnalysisPipeline 的 5/9 工作完全保留。Merge 前已 `cp -r fashion-flipper-local fashion-flipper-local-backup-20260511`(705 MB 完整快照),要還原直接複製回來即可。
+- 待辦:重新把 i18n 線織回 TemplateSelectScreen / PatternLayoutScreen(import useLang、把字串包成 t() 與 tl()、把下方 21:20 的 topNHint 提示 JSX 補回去);translations.js 內的 `templateSelect.topNHint` 在 i18n 沒織回之前是孤鍵但無害。
+
+## 2026-05-11 21:20
+- 修改檔案:src/i18n/translations.js(保留)、src/screens/TemplateSelectScreen.jsx(JSX hint 已在 22:00 merge 中被 origin 版覆蓋)
+- 修改內容:本來打算在標題下方掛一行 i18n 提示「僅顯示前 N 個推薦」,當 `items.length > MAX_VISIBLE_TEMPLATES` 才出現。新增 `templateSelect.topNHint` key:en `"Showing top {n} recommendations"` / nb `"Viser de {n} beste anbefalingene"` / zh `"僅顯示前 {n} 個推薦"`。translations.js 的 key 還在,但 JSX 那行在 22:00 取 origin/main 版本時被覆蓋掉,要在後續重織 i18n 時手動補回。
+
 ## 2026-05-11 20:45
-- 修改檔案：src/screens/TemplateSelectScreen.jsx
-- 修改內容：在 visibleItems 計算後加上 `slice(0, 3)`，限制版型清單一次最多只顯示 3 個 pattern（取排序後最前面的三個，gender filter 仍照舊套用）。常數抽成 `MAX_VISIBLE_PATTERNS` 方便日後調整。
+- 修改檔案:src/screens/TemplateSelectScreen.jsx、LOG.md
+- 修改內容:在 visibleItems 計算後加上 `slice(0, 3)`,限制版型清單一次最多只顯示 3 個 pattern(取排序後最前面的三個,gender filter 仍照舊套用)。常數抽成 `MAX_VISIBLE_PATTERNS` 方便日後調整。(這個 commit 是在 fresh 那份 repo 上做的、推到 origin/main = 9e42e8f,功能上和 local 5/9 18:41 的 `MAX_VISIBLE_TEMPLATES` 重複,merge 後取 origin 版即只剩 MAX_VISIBLE_PATTERNS 名稱。)
+
+## 2026-05-09 20:20
+- 修改檔案:src/services/fabricAnalysis.js、vite.config.js
+- 修改內容:布料檢測準確度修復(老師反映「檢測不準」)。問題根因在「送進 GPT-4o 的圖太爛」,不是 API 壞。
+  1. **`detail: "low"` → `"high"`**(vite.config.js):GPT-4o vision 在 low 模式下不論輸入多大都會內部縮成 ~85×85 px,在這解析度下織紋(jersey vs woven vs twill)幾乎只能用先驗常識亂猜。high 模式會把圖切成 ~1568×768 的 tile,真的看得到紋理。代價:每次呼叫 token 數約 6×,但研究 prototype 用量低、不痛。
+  2. **取消 300×300 中心裁剪、改成 1024 px 等比例 downscale**(fabricAnalysis.js):中心裁剪會把衣物輪廓資訊砍掉(分不出洋裝/襯衫),拍照時尺壓在中央(現在的尺校準流程!)會讓模型只看到尺。改成 `_downscale(maxPx=1024)`,送整張圖過去。
+  3. **System prompt 升級**:加上「忽略尺/手/背景」、「無法判定就回 'Unknown',不要編造」、「具體一點,Twill 不要寫 woven」等規則。loosen `weight` enum、`texture` 提供 list of options + "Other"。`max_tokens` 400→600 留空間,`temperature` 0.1→0.2 不會卡死同一答案。
+  4. **CACHE_PREFIX `v1_` → `v2_`**:讓使用者瀏覽器中的舊 cached 答案(用糊圖算的)失效,新流程一定 re-analyze。
+  5. **新增 force re-analyze**:`analyzeFabric(file, { force: true })` 跳過 sessionStorage cache 強制重新呼叫。日後可以在 UI 加「重新分析」按鈕。
+  6. **新增 dev log**:`[analyze] gpt-4o → {...}` 把每次 GPT-4o 實際回的 JSON 印出來,將來再 debug「為什麼這張識別錯」就有 ground truth。
+- Smoke test:vite 自動 restart server 兩次成功;直接 curl `/api/analyze` 拿空白圖,模型誠實回「全 Unknown」(以前會自信亂猜)。
+- 模型仍是 `gpt-4o`(不是 mini),沒換過,git 歷史可查。
+
+## 2026-05-09 18:41
+- 修改檔案:src/screens/TemplateSelectScreen.jsx
+- 修改內容:測試模式限制 — TemplateSelectScreen 只顯示前 3 個改造方向。
+  - 在檔案頂端新增常數 `MAX_VISIBLE_TEMPLATES = 3`(設為 null 即可關閉上限)
+  - `visibleItems` useMemo 在性別過濾後再 `.slice(0, MAX_VISIBLE_TEMPLATES)`
+  - 切片發生在 `items` 排序之後 — `items` 已先按 feasibility tier(可行 → 需襯料 → 不可行)、再按 compositeScore/fitScore 由高到低排序,所以「前 3 個」= 推薦度最高的 3 個
+- 動機:做使用者研究時減少受試者認知負擔,聚焦在最相關的選項。
+- 怎麼改回顯示全部:把 `MAX_VISIBLE_TEMPLATES` 改成 `null` 或刪掉那個常數+取消 slice 即可。
+- Smoke test:HMR update 兩次成功;`localhost:5173` HTTP 200。
+
+## 2026-05-09 18:36
+- 修改檔案:src/screens/RulerCalibrationScreen.jsx
+- 修改內容:修「上次加 zoom 後手機點不了」的 regression。`react-zoom-pan-pinch` 在 touch 裝置會 capture 並 swallow 所有 touch event 自己處理 pan/pinch,React 的 onClick 永遠不會在快點時觸發。
+  - 移除 `<img onClick>`
+  - 在包圖的 div 上改用 pointer events(`onPointerDown` / `Move` / `Up` / `Cancel`)
+  - 自己判斷:移動 ≤ 6 px 且持續 ≤ 350 ms = tap → 放標記;否則交給 library 做縮放/平移
+  - `e.isPrimary` 過濾多指輸入(pinch 的第二根手指)
+  - `imgRef.getBoundingClientRect()` 縮放後仍正確反映 img 的實際視覺邊界,所以歸一化座標公式不變
+- 動機:使用者手機測試回報「點不了」。
+- Smoke test:Vite HMR 兩次 update 都成功;`localhost:5173` HTTP 200。
+
+## 2026-05-09 18:34
+- 修改檔案:src/screens/RulerCalibrationScreen.jsx、src/i18n/translations.js、package.json、package-lock.json
+- 修改內容:RulerCalibrationScreen 加入 pinch-zoom + pan,解決手機點選不準的問題。
+  1. **新依賴**:`react-zoom-pan-pinch@4.0.3`(輕量、業界標準、支援 pinch / wheel / pan)。
+  2. **TransformWrapper / TransformComponent**:把照片+標記+連線都包進來,確保標記絕對定位仍跟著縮放。`maxScale: 8`、`doubleClick: disabled`(避免雙擊縮放跟「點兩下放標記」衝突)。
+  3. **座標精度**:仍用 `imgRef.getBoundingClientRect()` 算歸一化座標 — 縮放後 rect 反映變換後的視覺邊界,所以「(clickX - rect.left) / rect.width」永遠是原始圖的歸一化 [0,1]。完全不必額外處理 transform 矩陣。
+  4. **標記重設計**:外圈大環(7×7) 視覺辨識 + 中央十字準星(amber-300, 2px 線寬)+ 中心點(3×3) — 縮放放大後使用者仍能精確看到「測量點」在哪。number badge 移到右上角(-top-4 -right-4)避開準星。
+  5. **Zoom 控制**:右下角浮動三顆按鈕(+ / − / ↺ reset),鼠在 TransformComponent 外因此不會被縮放。
+  6. **i18n**:三語新增 `ruler.zoomHint`(「雙指縮放 · 拖曳平移 · 用 +/− 鈕微調」/「Pinch to zoom · drag to pan · use the +/− buttons for fine control」/「Klyp for å zoome · dra for å panorere · bruk +/− for finjustering」)。
+- 動機:手機 Safari 上,夾在 55vh 螢幕的尺刻度點不準確。用戶報「點擊的不准」。Pinch-zoom 是工業標準解法。
+- Smoke test:Vite 自動 detect 新依賴重新 pre-bundle、HMR 全綠;`http://localhost:5173/` HTTP 200;`react-zoom-pan-pinch` 模組 fetch 正常。
+
+## 2026-05-09 18:24
+- 修改檔案:src/services/measurements.js、src/hooks/useAnalysisPipeline.js、src/screens/AnalysisScreen.jsx、src/screens/UploadScreen.jsx、src/App.jsx、src/i18n/translations.js
+- 新增檔案:src/screens/RulerCalibrationScreen.jsx
+- 修改內容:加入「拍照時放尺」的 calibration 第三條路徑(老師建議,用以替代手量最長邊與 AR 量測)。對應 ImageJ-style 文獻方法(Song 2023 J. Clin. Med. 把 ImageJ 當 gold standard)。
+  1. **measurements.js**:`computeMeasurements` 新增第 6 個可選參數 `scaleCmPerMaskPxOverride`。當 caller 提供時,直接覆寫原本由 `lengthGarment / bbox.heightPx` 推出的 scale。Backward-compatible — 原 5-arg 呼叫照常運作。
+  2. **useAnalysisPipeline.js**:`run()` 新增 `rulerScale = { scaleCmPerImagePx, imageWidth }` 參數;在 `_measureAndCheck` 內把使用者點選兩點得到的「cm-per-natural-image-px」轉成「cm-per-mask-px」(乘以 `imageWidth / maskW`,因為 mask 是等比例 downscale),再傳給 `computeMeasurements`。`scaleCmPerImagePx > 0` 也能單獨成立、不再強制要 `lengthGarment`。
+  3. **RulerCalibrationScreen**(新):全螢幕顯示拍好的衣物照,使用者點兩下標出尺上兩個位置(座標以歸一化 [0,1] 存,圖片 layout 變動也對得齊),輸入「兩點之間 X cm」,確認後算出 `scaleCmPerImagePx = cm / sqrt((dx*W)² + (dy*H)²)` 並 `navigate("analysis", { ..., scaleCmPerImagePx, imageWidth })`。視覺:amber-400 的點+連線,跟 secondary-300 的 AR 區隔。
+  4. **UploadScreen.jsx**:在 AR 按鈕底下加一顆 📐「Use ruler in photo」按鈕(深色 bg-primary-800 與 AR 的 secondary-300 視覺對比),點擊時 `navigate("rulerCalibrate", { image, imageFile, hasLayers })`。
+  5. **App.jsx**:新增 `scaleCmPerImagePx` / `imageWidth` 兩個 state,新增 `rulerCalibrate` screen route,把這兩個值轉給 AnalysisScreen。
+  6. **i18n**:三語(en/nb/zh)新增 `upload.rulerOptionTitle/Hint` 與整個 `ruler.*` namespace(title / hintTapFirst / hintTapSecond / hintEnterCm / knownDistanceLabel / placePointsCta / enterCmCta / confirmCta / noImage)。
+- 動機:老師建議拍照時加尺更精準。學術定位 = ImageJ 校準物路線(Song et al. 2023 *J. Clin. Med.* 把 ImageJ 當 gold standard、AR Ruler app 也只要求達到同等精度);也讓沒 LiDAR 的 iPhone / Android 都能用,提高 study 的可及性。
+- Smoke test:dev server HMR 全部 update 成功,`http://localhost:5173/` HTTP 200,新模組可被 import。既有 `segmentation.test.js` / `feasibility.test.js` 11 個失敗是先前 stale tests 打到已棄用的 panel-breakdown API,跟此次變更無關(本次改的檔案沒對應 unit test)。
+- 待辦:(a) 用真實照片+尺實測精度;(b) `ArMeasureScreen` 退成「進階選項」可考慮;(c) 之後若加自動尺偵測,基礎已經在了(只要用同一條 navigate path 帶 scaleCmPerImagePx 即可)。
+
+## 2026-05-03 23:40
+- 修改檔案:src/services/fabricProfile.js、src/services/previewGeneration.js、src/services/feasibility.js(間接)、vite.config.js、api/preview.js
+- 修改內容:修兩個 i18n 後續引發的回歸 bug,以及 Gemini 預覽圖偶發失敗。
+  1. **mockAnalysis 物件化打破下游服務:** i18n 把 `mockAnalysis.fabric.texture / weight / condition / composition[].material` 改成 `{en,nb,zh}` 物件後,`fabricProfile.js` 的 `.toLowerCase()` 對物件會炸,`previewGeneration.js` 的字串模板會輸出 `[object Object]`。加 `asEnString()` / `enStr()` 內部 helper,匹配與 prompt 一律取英文(語言無關的內部邏輯,英文當 canonical key)。`feasibility.js` 透過 `getFabricProfile` 也跟著修好。症狀:每張上傳的圖布料分析結果都一模一樣 — 因為 pipeline 走到 mock 時會 throw,被吃掉後就沒呼叫 `setFabric`,使用者永遠看到 mock 的「棉質布料 / 深藍 / 85% 棉 15% 聚酯」。
+  2. **Gemini NO_IMAGE 直接 fall back 到 Pollinations:** 某些 template prompt 會被 `gemini-2.5-flash-image` 用 `finishReason: "NO_IMAGE"` 拒絕(內容政策過濾),先前 `tryPollinations` 在有 image 時會直接 return null,等於沒有 fallback。改為:client 上傳圖時除了 img2img prompt 之外多送一份 `fallbackPrompt`(`_buildPrompt(fabric, template, false)` 純文字版,沒有「in this image」自我參照);server 端 Gemini 失敗就改打 `tryPollinations(fallbackPrompt, seed, null)`(image 強制 null,Pollinations FLUX 沒 img2img 但會根據文字產出。代價:不會保留原布料花紋,Pollinations 的視覺風格也跟 Gemini 不同,但至少有圖)。Log 加上 finishReason 標記,下次失敗一眼可辨。
+- vite.config.js 改了所以 dev server 已重啟。Smoke test:`npm run build` 仍乾淨;測試流程在瀏覽器 console 清 `preview_v1_` localStorage cache 後重新開 TemplateSelectScreen 等所有版型生成。
+
+## 2026-05-03 16:55
+- 修改檔案：scripts/build-methodology-deck.cjs、docs/ahci-5-5-research-methodology.md、docs/fashion-flipper-methodology.pptx（重建）
+- 修改內容：根據 Lene 訪談原檔反推 Formative #1 實際 methodology，更新 Slide 2。重點修正：(1) 名稱從「Pile-of-Guilt」改為「Sewer Practices, Pain Points & Concept Reactions」，因實際內容遠超出單一 bottleneck；(2) Method 從「semi-structured + object elicitation」改為「semi-structured + embedded concept walkthrough」——實際是中段讀 sales pitch 給受訪者聽（pitch 文本在 Lene 檔 line 120-126），不是物件導引；(3) Tasks 改為 7-section script 列表；(4) Metrics 改為實際捕捉的 themes（pile-of-guilt、fabric-ID 焦慮、fitting 痛點、功能優先序、付費意願、deal-breakers）；(5) Analysis 加入「pitch 前段當 formative findings、pitch 後段當 concept validation」的分析切分；(6) Participants 改為「5 done: Lene/Claire/Yuqing/Mona/Linda」+ 標註全為 intermediate 以上、還缺 3 位 beginner 純 formative。Markdown 同步。
+
+## 2026-05-03 16:25
+- 修改檔案：scripts/build-methodology-deck.cjs、docs/ahci-5-5-research-methodology.md、docs/fashion-flipper-methodology.pptx（重建）
+- 修改內容：Design Iter #2「Gen-AI Quality Evaluation」改成 dual-perspective 設計——理由是只請裁縫師評布料準確度會漏掉 Fashion Flipper 的核心 contribution claim「novice-accessible pattern recommendations」。新版同時收 8 tailors + 8 beginners (n=16)：tailor 評布料準確度/pattern–布料適配/新手可達性/步驟完整性，beginner 評自覺可行性/preview 真實感/嘗試意願。Likert 從 4 維（realism/trust/helpfulness/specificity）擴成 6 維（fabric accuracy / project-fabric fit / novice accessibility / step completeness / visual realism / overall trust）。分析方法加「expert/novice convergence-divergence analysis」。Slide 5 Q4 同步更新；Q5 加註「matches GreenAR CHI 2026 Best Paper」。
+
+## 2026-05-03 15:53
+- 修改檔案：scripts/build-methodology-deck.cjs（新增）、docs/fashion-flipper-methodology.pptx（新增）
+- 修改內容：用 pptxgenjs 把 ahci-5-5-research-methodology.md 內容打包成 6-slide 全英文 pptx（widescreen 13.33×7.5），可直接上傳 Google Slides。配色 Warm Terracotta 系（primary #B85042 + sand #F8F6EE + sage 高亮列）；Georgia 標題 + Calibri body；Slide 1 dark 標題封面、Slide 2-4 各階段 8-col study table、Slide 4 加 Pinterest/YouTube baseline 理由 callout、Slide 5 5 個 key design questions、Slide 6 references。Design Iter #2（Gen-AI Quality Eval）和 Summative 用 sage 色高亮。執行：`node scripts/build-methodology-deck.cjs`。
+
+## 2026-05-03 15:33
+- 修改檔案：docs/ahci-5-5-research-methodology.md（新增）
+- 修改內容：依 AHCI 5/5 投影片兩項 deliverables 整理研究方法文件——三階段 study summary table（Understand / Design / Evaluate）+ 5 個關鍵設計問題（含證據層級）。Design Iter #2 設計成 Gen-AI Quality Evaluation vs Pinterest/YouTube（mirror RoomDreaming 結構）；Summative 比較條件改為 Pinterest+YouTube 工作流 baseline（mirror MR.Drum 結構，且 Pinterest/YouTube 是 Slide 32 列的 current workaround，比 ReStitch 更具生態效度）。Reference paper 對應 Sung et al.、Cheatle & Jackson、MR.Drum、RoomDreaming、Ji et al.、CSI（Cherry & Latulipe）。
+
+## 2026-05-03 (三語 i18n 完工)
+- 修改檔案:src/i18n/LanguageContext.jsx(新增)、src/i18n/translations.js(新增)、src/main.jsx、src/components/PhoneFrame.jsx、src/components/BottomNav.jsx、src/components/MeasurementsModal.jsx、src/components/GlossaryTerm.jsx、src/components/ArOverlays.jsx、src/screens/* (14 個全改)、src/data/templates.js、src/data/communityPosts.js、src/data/mockAnalysis.js、src/data/glossary.js、src/data/tutorials.js、src/data/arTutorials.js、src/data/fabricRequirements.js、src/data/measurementPresets.js、src/services/feasibility.js、src/patterns/bag.js、src/patterns/hat.js、src/patterns/noSewTote.js、src/utils/measurementValidation.js
+- 修改內容:三語(英 / 挪威語 Bokmål / 繁體中文)切換完工。`LanguageContext` 提供 `lang / setLang / t(key, params) / tl(field)`,localStorage 鍵 `ff_lang_v1` 保存選擇,支援 `{name}` 參數插值。`PhoneFrame` 右上角加 EN / NO / 中 三鍵切換;`translations.js` 集中所有 UI 文案 key(home / upload / analysis / templateSelect / stepGuide / result / community / learn / profiles / profileEditor / arMeasure / arPattern / arTutorial / patternLayout / measurementsModal / measurements / measurementGroups / validation / common / nav 等命名空間)。資料檔的字串欄位(templates name / style / time / description / materials、tutorials title / steps、arTutorials labels、glossary definitions、mockAnalysis fabric / tags、measurementPresets label、fabricRequirements reason、feasibility note、patterns 的 piece label 與 step title-description-tip-duration、communityPosts item / tag)全部改成 `{ en, nb, zh }` 物件,顯示時用 `tl()`。`measurementValidation.js` 的 `humanise()` / `validateField()` 接受 optional `t` 參數(沒傳則回退英文)。`MEASUREMENT_GROUPS` 仍以英文鍵儲存(用作 lookup),顯示時透過 `t('measurementGroups.<key>')` 翻譯。Smoke test:`npm run build` 成功(608 modules),dev server 啟動,所有 14 screens + 5 components vite transform 皆回 200。
 
 ## 2026-05-02 15:00
 - 修改檔案：src/services/previewGeneration.js、src/data/templates.js

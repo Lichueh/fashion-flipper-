@@ -50,8 +50,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: true,
     rejectFibers: [],
     preferredFibers: [],
-    reason:
-      "Tote bag needs structured fabric to hold weight — add interfacing for lighter fabrics",
+    reason: {
+      en: "Tote bag needs structured fabric to hold weight — add interfacing for lighter fabrics",
+      nb: "Bærepose trenger strukturert stoff for å bære vekt — legg til mellomfôr for lettere stoffer",
+      zh: "托特包需要有結構的布料才能承重 — 較輕的布料請加襯布",
+    },
   },
 
   hat: {
@@ -64,8 +67,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: true,
     rejectFibers: [],
     preferredFibers: [],
-    reason:
-      "Bucket hat brim needs to hold its shape — add interfacing for lighter fabrics",
+    reason: {
+      en: "Bucket hat brim needs to hold its shape — add interfacing for lighter fabrics",
+      nb: "Bøttehattens brem må holde formen — legg til mellomfôr for lettere stoffer",
+      zh: "漁夫帽帽簷需要支撐力 — 較輕的布料請加襯布",
+    },
   },
 
   // ── FreeSewing patterns ────────────────────────────────────────────────────
@@ -95,8 +101,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: [],
     preferredFibers: ["natural>=50"],
-    reason:
-      "Fitted bodice block requires ≥50% natural fiber for proper drape and ease of sewing",
+    reason: {
+      en: "Fitted bodice block requires ≥50% natural fiber for proper drape and ease of sewing",
+      nb: "Tilpasset livgrunnform krever minst 50 % naturfiber for riktig fall og lett søm",
+      zh: "貼身上身原型需 ≥50% 天然纖維,才有適當垂墜感且好縫",
+    },
   },
 
   bent: {
@@ -110,7 +119,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: [],
     preferredFibers: [],
-    reason: "Sleeve block requires stable woven fabric for accurate shaping",
+    reason: {
+      en: "Sleeve block requires stable woven fabric for accurate shaping",
+      nb: "Ermegrunnformen krever stabilt vevd stoff for nøyaktig form",
+      zh: "袖子原型需穩定梭織布才能塑出準確輪廓",
+    },
   },
 
   brian: {
@@ -124,7 +137,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: [],
     preferredFibers: [],
-    reason: "Body block requires stable woven fabric",
+    reason: {
+      en: "Body block requires stable woven fabric",
+      nb: "Kroppsgrunnformen krever stabilt vevd stoff",
+      zh: "身片原型需穩定的梭織布",
+    },
   },
 
   charlie: {
@@ -138,7 +155,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: [],
     preferredFibers: [],
-    reason: "Structured chinos need midweight or heavier woven fabric",
+    reason: {
+      en: "Structured chinos need midweight or heavier woven fabric",
+      nb: "Strukturerte chinos trenger middels eller tyngre vevd stoff",
+      zh: "結構感卡其褲需中等以上厚度的梭織布",
+    },
   },
 
   diana: {
@@ -166,8 +187,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: true,
     rejectFibers: [],
     preferredFibers: [],
-    reason:
-      "Handbag needs structured fabric to hold shape — add interfacing for lighter fabrics",
+    reason: {
+      en: "Handbag needs structured fabric to hold shape — add interfacing for lighter fabrics",
+      nb: "Håndvesken trenger strukturert stoff for å holde formen — legg til mellomfôr for lettere stoffer",
+      zh: "手提包需有結構的布料維持形狀 — 較輕的布料請加襯布",
+    },
   },
 
   penelope: {
@@ -181,8 +205,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: [],
     preferredFibers: [],
-    reason:
-      "Pencil skirt requires stable woven fabric — heavyweight will be too stiff",
+    reason: {
+      en: "Pencil skirt requires stable woven fabric — heavyweight will be too stiff",
+      nb: "Blyantskjørtet krever stabilt vevd stoff — for tungt vil bli for stivt",
+      zh: "鉛筆裙需穩定的梭織布 — 太厚會過硬",
+    },
   },
 
   simon: {
@@ -196,8 +223,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: ["polyester>60"],
     preferredFibers: [],
-    reason:
-      "Shirt requires woven fabric that presses well — high polyester blends don't hold a crisp seam",
+    reason: {
+      en: "Shirt requires woven fabric that presses well — high polyester blends don't hold a crisp seam",
+      nb: "Skjorten krever vevd stoff som lar seg stryke godt — blandinger med mye polyester holder ikke skarpe sømmer",
+      zh: "襯衫需熨燙效果佳的梭織布 — 高聚酯纖維混紡無法保持挺直的縫線",
+    },
   },
 
   simone: {
@@ -211,8 +241,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: ["polyester>60"],
     preferredFibers: [],
-    reason:
-      "Shirt requires woven fabric that presses well — high polyester blends don't hold a crisp seam",
+    reason: {
+      en: "Shirt requires woven fabric that presses well — high polyester blends don't hold a crisp seam",
+      nb: "Skjorten krever vevd stoff som lar seg stryke godt — blandinger med mye polyester holder ikke skarpe sømmer",
+      zh: "襯衫需熨燙效果佳的梭織布 — 高聚酯纖維混紡無法保持挺直的縫線",
+    },
   },
 
   sophie: {
@@ -226,8 +259,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: [],
     preferredFibers: [],
-    reason:
-      "Shorts pattern requires stable woven fabric — heavyweight will be too stiff",
+    reason: {
+      en: "Shorts pattern requires stable woven fabric — heavyweight will be too stiff",
+      nb: "Shortsmønsteret krever stabilt vevd stoff — for tungt vil bli for stivt",
+      zh: "短褲版型需穩定的梭織布 — 太厚會過硬",
+    },
   },
 
   teagan: {
@@ -269,8 +305,11 @@ export const FABRIC_REQUIREMENTS = {
     canInterfaceFix: false,
     rejectFibers: [],
     preferredFibers: [],
-    reason:
-      "Waistcoat requires firm woven fabric — knits and lightweight fabrics won't hold the structured shape",
+    reason: {
+      en: "Waistcoat requires firm woven fabric — knits and lightweight fabrics won't hold the structured shape",
+      nb: "Vesten krever fast vevd stoff — strikk og lette stoffer holder ikke den strukturerte formen",
+      zh: "西裝背心需挺括的梭織布 — 針織與輕薄布料無法撐起結構",
+    },
   },
 };
 

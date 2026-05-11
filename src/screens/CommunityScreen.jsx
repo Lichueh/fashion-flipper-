@@ -1,14 +1,15 @@
 import { useState } from "react";
 import BottomNav from "../components/BottomNav";
 import { communityPosts as posts } from "../data/communityPosts";
-
-const tabs = [
-  { id: "featured", label: "Featured" },
-  { id: "latest", label: "Latest" },
-  { id: "following", label: "Following" },
-];
+import { useLang } from "../i18n/LanguageContext";
 
 export default function CommunityScreen({ navigate, activeProfile }) {
+  const { t, tl } = useLang();
+  const tabs = [
+    { id: "featured", label: t("community.tabFeatured") },
+    { id: "latest", label: t("community.tabLatest") },
+    { id: "following", label: t("community.tabFollowing") },
+  ];
   const [tab, setTab] = useState("featured");
   const [liked, setLiked] = useState({});
 
@@ -23,26 +24,26 @@ export default function CommunityScreen({ navigate, activeProfile }) {
       <div className="px-5 pt-8 pb-3">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-primary-100">
-            Community Works
+            {t("community.title")}
           </h2>
           <button className="w-9 h-9 bg-primary-700 rounded-full border border-primary-600 flex items-center justify-center text-base shadow-sm">
             🔍
           </button>
         </div>
 
-        {/* Tabs — primary-900 pill track, active tab is primary-100 card */}
+        {/* Tabs */}
         <div className="flex gap-1 bg-primary-900 rounded-xl p-1">
-          {tabs.map((t) => (
+          {tabs.map((ti) => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={ti.id}
+              onClick={() => setTab(ti.id)}
               className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-all ${
-                tab === t.id
+                tab === ti.id
                   ? "bg-primary-100 text-primary-900 shadow-sm"
                   : "text-primary-100"
               }`}
             >
-              {t.label}
+              {ti.label}
             </button>
           ))}
         </div>
@@ -54,10 +55,10 @@ export default function CommunityScreen({ navigate, activeProfile }) {
           <div className="flex flex-col items-center justify-center h-48 text-center">
             <span className="text-5xl mb-3">🌱</span>
             <p className="text-primary-300 text-sm font-medium">
-              No users followed yet
+              {t("community.noFollowing")}
             </p>
             <p className="text-primary-500 text-xs mt-1">
-              Go to Featured to discover works you like
+              {t("community.noFollowingHint")}
             </p>
           </div>
         ) : (
@@ -67,14 +68,13 @@ export default function CommunityScreen({ navigate, activeProfile }) {
                 key={post.id}
                 className="bg-primary-100 rounded-2xl overflow-hidden border border-primary-200 active:scale-[0.97] transition-transform cursor-pointer"
               >
-                {/* Image — gradient backgrounds stay warm/colourful as community content */}
                 <div
                   className={`h-36 relative overflow-hidden ${!post.image ? `bg-gradient-to-br ${post.bg} flex items-center justify-center` : ""}`}
                 >
                   {post.image ? (
                     <img
                       src={post.image}
-                      alt={post.item}
+                      alt={tl(post.item)}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -82,14 +82,13 @@ export default function CommunityScreen({ navigate, activeProfile }) {
                   )}
                   <div className="absolute top-2 right-2 bg-primary-900/60 backdrop-blur-sm rounded-full px-2 py-0.5">
                     <span className="text-[10px] text-primary-200 font-medium">
-                      #{post.tag}
+                      #{tl(post.tag)}
                     </span>
                   </div>
                 </div>
-                {/* Info */}
                 <div className="p-3">
                   <p className="font-semibold text-primary-900 text-xs truncate mb-1.5">
-                    {post.item}
+                    {tl(post.item)}
                   </p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">

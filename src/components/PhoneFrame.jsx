@@ -1,8 +1,46 @@
+import { useLang, SUPPORTED_LANGS } from "../i18n/LanguageContext";
+
+function LanguageSwitcher({ position = "absolute" }) {
+  const { lang, setLang, t } = useLang();
+  return (
+    <div
+      className="flex items-center gap-1 bg-white rounded-full border border-stone-400 shadow-md px-1.5 py-1"
+      style={{
+        position,
+        top: position === "absolute" ? 8 : undefined,
+        right: position === "absolute" ? 8 : undefined,
+        zIndex: 60,
+      }}
+      aria-label={t("languageSwitcher.label")}
+    >
+      <span className="text-base mr-0.5" aria-hidden="true">
+        🌐
+      </span>
+      {SUPPORTED_LANGS.map((code) => (
+        <button
+          key={code}
+          onClick={() => setLang(code)}
+          className={`text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+            lang === code
+              ? "bg-primary-700 text-primary-50 shadow-sm"
+              : "text-stone-600 hover:bg-stone-100"
+          }`}
+        >
+          {t(`languageSwitcher.${code}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function PhoneFrame({ children }) {
   return (
     <>
       {/* Desktop: phone mockup */}
-      <div className="hidden sm:flex min-h-screen bg-neutral-300 items-center justify-center">
+      <div className="hidden sm:flex min-h-screen bg-neutral-300 items-center justify-center relative">
+        <div className="absolute top-4 right-4 z-50">
+          <LanguageSwitcher position="static" />
+        </div>
         <div
           className="relative shadow-2xl"
           style={{
@@ -46,6 +84,7 @@ export default function PhoneFrame({ children }) {
 
       {/* Mobile: full screen */}
       <div className="sm:hidden fixed inset-0 bg-[#f5f4f0] overflow-hidden">
+        <LanguageSwitcher />
         {children}
       </div>
     </>

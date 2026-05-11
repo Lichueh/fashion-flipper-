@@ -8,6 +8,7 @@ import {
   KnotPairsOverlay,
   NumberedCalloutOverlay,
 } from "../components/ArOverlays";
+import { useLang } from "../i18n/LanguageContext";
 
 const PX_PER_DEG = 6;
 const DEFAULT_FALLBACK_PX_PER_CM = 5.6;
@@ -18,6 +19,7 @@ export default function ArTutorialScreen({
   calibPxPerCm,
   from = "templateSelect",
 }) {
+  const { t, tl } = useLang();
   const tutorial = arTutorials[template];
   const backTarget = tutorial?.backTarget ?? from;
 
@@ -130,7 +132,7 @@ export default function ArTutorialScreen({
         }}
       >
         <p style={{ color: "white", marginBottom: 16 }}>
-          No AR tutorial defined for "{template}".
+          {t("arTutorial.noTutorial", { template })}
         </p>
         <button
           onClick={() => navigate(backTarget)}
@@ -144,7 +146,7 @@ export default function ArTutorialScreen({
             cursor: "pointer",
           }}
         >
-          ← Back to Templates
+          {t("arTutorial.backToTemplates")}
         </button>
       </div>
     );
@@ -239,7 +241,7 @@ export default function ArTutorialScreen({
             textAlign: "center",
           }}
         >
-          Camera Access Required
+          {t("arTutorial.cameraRequired")}
         </p>
         <p
           style={{
@@ -250,7 +252,7 @@ export default function ArTutorialScreen({
             marginBottom: 24,
           }}
         >
-          Allow camera access to see the AR cutting guide on your garment.
+          {t("arTutorial.cameraDeniedBody")}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
           <button
@@ -266,7 +268,7 @@ export default function ArTutorialScreen({
               cursor: "pointer",
             }}
           >
-            ← Back
+            {t("arMeasure.backToBack")}
           </button>
           {backTarget === "templateSelect" && (
             <button
@@ -282,7 +284,7 @@ export default function ArTutorialScreen({
                 cursor: "pointer",
               }}
             >
-              📖 View text steps instead
+              {t("arTutorial.viewTextSteps")}
             </button>
           )}
         </div>
@@ -419,8 +421,11 @@ export default function ArTutorialScreen({
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ color: "white", fontWeight: 700, fontSize: 14, margin: 0 }}>
-            Step {currentStepIdx + 1} of {tutorial.steps.length} ·{" "}
-            {step.title}
+            {t("arTutorial.stepLabel", {
+              current: currentStepIdx + 1,
+              total: tutorial.steps.length,
+              title: tl(step.title),
+            })}
           </p>
           <p
             style={{
@@ -432,7 +437,7 @@ export default function ArTutorialScreen({
               whiteSpace: "nowrap",
             }}
           >
-            {step.instruction}
+            {tl(step.instruction)}
           </p>
         </div>
         {isApproximate && phase === "ready" && (
@@ -452,7 +457,7 @@ export default function ArTutorialScreen({
             }}
             title="Approximate sizing — tap to calibrate"
           >
-            ⚠ Approx
+            {t("arTutorial.approxBadge")}
           </button>
         )}
         {scale !== 1 && phase === "ready" && (
@@ -499,7 +504,7 @@ export default function ArTutorialScreen({
             maxWidth: "90%",
           }}
         >
-          🖐 🖐 Set phone on a flat surface — both hands free for tying
+          {t("arTutorial.handsOff")}
         </div>
       )}
 
@@ -525,7 +530,7 @@ export default function ArTutorialScreen({
             zIndex: 10,
           }}
         >
-          💡 {step.tip}
+          💡 {tl(step.tip)}
         </div>
       )}
 
@@ -561,7 +566,7 @@ export default function ArTutorialScreen({
               minWidth: 90,
             }}
           >
-            {isFirst ? "← Cancel" : "← Previous"}
+            {isFirst ? t("arTutorial.cancel") : t("arTutorial.previous")}
           </button>
 
           {/* Step 3 escape hatch */}
@@ -580,7 +585,7 @@ export default function ArTutorialScreen({
                 textUnderlineOffset: 3,
               }}
             >
-              Mark all done
+              {t("arTutorial.markAllDone")}
             </button>
           )}
 
@@ -602,7 +607,7 @@ export default function ArTutorialScreen({
                 : "none",
             }}
           >
-            {isLast ? "Done →" : "Next →"}
+            {isLast ? t("arTutorial.done") : t("arTutorial.next")}
           </button>
         </div>
       )}

@@ -8,8 +8,10 @@ import {
   preprocessFreesewingMarkdown,
 } from "../utils/markdownHelpers.jsx";
 import { EmRenderer } from "../components/GlossaryTerm";
+import { useLang } from "../i18n/LanguageContext";
 
 export default function StepGuideScreen({ navigate, template: templateId }) {
+  const { t, tl } = useLang();
   const template = templates[templateId] || templates.bag;
   const [steps, setSteps] = useState(template.steps ?? []);
 
@@ -73,7 +75,7 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
 
   return (
     <div className="h-full flex flex-col bg-primary-800">
-      {/* Header — stays on dark shell */}
+      {/* Header */}
       <div className="px-5 pt-8 pb-3">
         <div className="flex items-center mb-3">
           <button
@@ -86,16 +88,19 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
             <div className="flex items-center gap-2">
               <span className="text-lg">{template.emoji}</span>
               <h2 className="font-semibold text-primary-100 truncate">
-                {template.name}
+                {tl(template.name)}
               </h2>
             </div>
           </div>
           <span className="text-xs text-primary-100 flex-shrink-0 ml-2">
             {stepIdx === -1 && !onInstructionsPage
-              ? "Materials List"
+              ? t("stepGuide.materialsList")
               : onInstructionsPage
-                ? "Sewing Instructions"
-                : `Step ${stepIdx + 1}/${totalSteps}`}
+                ? t("stepGuide.sewingInstructions")
+                : t("stepGuide.stepIndicator", {
+                    current: stepIdx + 1,
+                    total: totalSteps,
+                  })}
           </span>
         </div>
 
@@ -108,16 +113,15 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
         </div>
       </div>
 
-      {/* Content — light green inset cards on dark bg */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto px-5 pb-4">
         {stepIdx === -1 && !onInstructionsPage ? (
-          /* Materials list */
           <div className="fade-in pt-2">
             <h3 className="font-bold text-primary-100 text-lg mb-1">
-              Required Materials
+              {t("stepGuide.requiredMaterials")}
             </h3>
             <p className="text-primary-100 text-sm mb-4 leading-5">
-              Gather all materials before you begin
+              {t("stepGuide.gatherFirst")}
             </p>
             <div className="space-y-2.5">
               {template.materials.map((mat, i) => (
@@ -128,16 +132,15 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
                   <div className="w-7 h-7 bg-primary-700 rounded-full flex items-center justify-center text-primary-100 font-bold text-xs flex-shrink-0">
                     {i + 1}
                   </div>
-                  <span className="text-primary-900 text-sm">{mat}</span>
+                  <span className="text-primary-900 text-sm">{tl(mat)}</span>
                 </div>
               ))}
             </div>
           </div>
         ) : onInstructionsPage ? (
-          /* Sewing instructions page */
           <div className="fade-in pt-2">
             <h3 className="font-bold text-primary-100 text-lg mb-4">
-              Sewing Instructions
+              {t("stepGuide.sewingInstructions")}
             </h3>
             <div className="bg-primary-700 border border-primary-600 rounded-2xl overflow-hidden">
               <div className="overflow-y-auto px-4 py-4">
@@ -145,13 +148,13 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
                   <div className="flex items-center gap-3 py-4 justify-center">
                     <div className="w-5 h-5 border-2 border-primary-300 border-t-transparent rounded-full animate-spin" />
                     <span className="text-primary-300 text-sm">
-                      Loading instructions…
+                      {t("stepGuide.loadingInstructions")}
                     </span>
                   </div>
                 ) : instrError ? (
                   <div className="flex items-center justify-between">
                     <span className="text-primary-300 text-sm">
-                      Could not load instructions.
+                      {t("stepGuide.couldNotLoad")}
                     </span>
                     <button
                       onClick={() => {
@@ -160,7 +163,7 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
                       }}
                       className="text-xs text-secondary-300 font-semibold underline ml-3"
                     >
-                      Retry
+                      {t("common.retry")}
                     </button>
                   </div>
                 ) : (
@@ -228,7 +231,7 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
                               <span>
                                 {alt ? `"${alt}" — ` : ""}
                                 <span className="underline text-secondary-300">
-                                  View diagram on freesewing.eu
+                                  {t("stepGuide.viewDiagram")}
                                 </span>
                               </span>
                             </a>
@@ -257,79 +260,77 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
                   rel="noopener noreferrer"
                   className="text-[11px] text-primary-100 hover:text-primary-300"
                 >
-                  Instructions from FreeSewing.eu — freesewing.org
+                  {t("stepGuide.instructionsCredit")}
                 </a>
               </div>
             </div>
           </div>
         ) : (
-          /* Step content */
           <div key={stepIdx} className="fade-in pt-2">
-            {/* Step number + title */}
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-secondary-300 rounded-2xl flex items-center justify-center text-white font-bold flex-shrink-0">
                 {stepIdx + 1}
               </div>
               <h3 className="font-bold text-primary-100 text-lg leading-tight">
-                {currentStep.title}
+                {tl(currentStep.title)}
               </h3>
             </div>
 
-            {/* Step illustration */}
             <div className="rounded-3xl overflow-hidden mb-4 border border-primary-700 aspect-square">
               {currentStep.image ? (
                 <img
                   src={currentStep.image}
-                  alt={currentStep.title}
+                  alt={tl(currentStep.title)}
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full bg-primary-700 flex flex-col items-center justify-center">
                   <span className="text-6xl mb-2">{template.emoji}</span>
                   <p className="text-primary-100 text-xs">
-                    Step {stepIdx + 1} Illustration
+                    {t("stepGuide.stepIllustration", { n: stepIdx + 1 })}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Description card */}
             <div className="bg-primary-100 rounded-3xl p-4 mb-3 border border-primary-200">
               <p className="text-primary-800 text-sm leading-6">
-                {currentStep.description}
+                {tl(currentStep.description)}
               </p>
             </div>
 
-            {/* Tip — secondary/terracotta tint for warm callout */}
             <div className="bg-secondary-100 border border-secondary-200 rounded-2xl p-3.5 mb-3 flex gap-3">
               <span className="text-xl flex-shrink-0">💡</span>
               <div>
                 <p className="text-secondary-800 text-xs font-semibold mb-0.5">
-                  Tips
+                  {t("stepGuide.tips")}
                 </p>
                 <p className="text-secondary-700 text-xs leading-5">
-                  {currentStep.tip}
+                  {tl(currentStep.tip)}
                 </p>
               </div>
             </div>
 
-            {/* Duration */}
             <div className="flex items-center gap-1.5 text-primary-100 text-xs px-1">
               <span>⏱</span>
-              <span>Estimated Time: {currentStep.duration}</span>
+              <span>
+                {t("stepGuide.estimatedTime", {
+                  value: tl(currentStep.duration),
+                })}
+              </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Bottom nav — back on dark shell, border as separator */}
+      {/* Bottom nav */}
       <div className="px-5 pb-5 pt-3 border-t border-primary-700 flex gap-3">
         {(stepIdx > -1 || onInstructionsPage) && (
           <button
             onClick={goPrev}
             className="flex-1 py-3.5 rounded-2xl bg-primary-700 border border-primary-600 text-primary-100 font-semibold text-sm active:scale-95 transition-transform"
           >
-            ← Previous
+            {t("stepGuide.previous")}
           </button>
         )}
         <button
@@ -337,14 +338,14 @@ export default function StepGuideScreen({ navigate, template: templateId }) {
           className="flex-1 py-3.5 rounded-2xl bg-secondary-300 text-white font-bold text-sm active:scale-[0.97] transition-transform shadow-md shadow-black/20"
         >
           {stepIdx === -1 && !onInstructionsPage
-            ? "Start Making →"
+            ? t("stepGuide.startMaking")
             : onInstructionsPage
               ? totalSteps > 0
-                ? "Begin Steps →"
-                : "Done! View Results ✨"
+                ? t("stepGuide.beginSteps")
+                : t("stepGuide.doneViewResults")
               : stepIdx < totalSteps - 1
-                ? "Next →"
-                : "Done! View Results ✨"}
+                ? t("stepGuide.next")
+                : t("stepGuide.doneViewResults")}
         </button>
       </div>
     </div>

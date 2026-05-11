@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { tutorials } from "../data/tutorials";
 import BottomNav from "../components/BottomNav";
+import { useLang } from "../i18n/LanguageContext";
 
 export default function BasicTutorialScreen({ navigate, activeProfile }) {
+  const { t, tl } = useLang();
   const [checked, setChecked] = useState(new Set());
   const [expanded, setExpanded] = useState(null);
 
@@ -18,7 +20,7 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
     setExpanded((prev) => (prev === id ? null : id));
   }
 
-  const totalSteps = tutorials.reduce((s, t) => s + t.steps.length, 0);
+  const totalSteps = tutorials.reduce((s, ti) => s + ti.steps.length, 0);
   const doneCount = checked.size;
   const pct = Math.round((doneCount / totalSteps) * 100);
 
@@ -26,19 +28,17 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
     <div className="h-full flex flex-col bg-primary-800">
       {/* Header */}
       <div className="px-5 pt-8 pb-4">
-        <h1 className="text-xl font-bold text-primary-50">Sewing Basics</h1>
-        <p className="text-primary-100 text-xs mt-0.5">
-          Master the fundamentals before you start
-        </p>
+        <h1 className="text-xl font-bold text-primary-50">{t("learn.title")}</h1>
+        <p className="text-primary-100 text-xs mt-0.5">{t("learn.subtitle")}</p>
 
         {/* Overall progress */}
         <div className="mt-3 bg-primary-700 rounded-2xl px-4 py-3 border border-primary-600 shadow-sm">
           <div className="flex justify-between items-center mb-1.5">
             <span className="text-xs font-medium text-primary-100">
-              Overall Progress
+              {t("learn.overallProgress")}
             </span>
             <span className="text-xs font-bold text-secondary-200">
-              {doneCount} / {totalSteps} steps
+              {t("learn.stepsLabel", { done: doneCount, total: totalSteps })}
             </span>
           </div>
           <div className="h-2 bg-primary-800 rounded-full overflow-hidden">
@@ -49,7 +49,7 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
           </div>
           {doneCount === totalSteps && (
             <p className="text-[11px] text-secondary-300 font-semibold mt-1.5 text-center">
-              🎉 You've completed all basics!
+              {t("learn.allDone")}
             </p>
           )}
         </div>
@@ -84,11 +84,11 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-primary-50 text-sm">
-                      {tutorial.title}
+                      {tl(tutorial.title)}
                     </span>
                     {allDone && (
                       <span className="text-[10px] bg-secondary-100 text-secondary-700 font-bold px-1.5 py-0.5 rounded-full">
-                        ✓ Done
+                        {t("learn.done")}
                       </span>
                     )}
                   </div>
@@ -130,10 +130,10 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
                       <span className="text-xl">🪡</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-white font-bold text-sm">
-                          Try AR-Guided Walkthrough
+                          {t("learn.tryAr")}
                         </p>
                         <p className="text-white/85 text-[11px]">
-                          Numbered callouts overlaid on your camera view
+                          {t("learn.tryArHint")}
                         </p>
                       </div>
                       <span className="text-white text-base">→</span>
@@ -193,12 +193,12 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
                           <p
                             className={`text-sm font-semibold leading-snug ${isDone ? "text-primary-500 line-through" : "text-primary-50"}`}
                           >
-                            {step.title}
+                            {tl(step.title)}
                           </p>
                           {!isDone && (
                             <>
                               <p className="text-primary-200 text-xs leading-[1.55] mt-1">
-                                {step.description}
+                                {tl(step.description)}
                               </p>
                               {step.tip && (
                                 <div className="flex items-start gap-1.5 mt-2 bg-warning-50 rounded-lg px-2.5 py-2">
@@ -206,7 +206,7 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
                                     💡
                                   </span>
                                   <p className="text-warning-900 text-[11px] leading-[1.5]">
-                                    {step.tip}
+                                    {tl(step.tip)}
                                   </p>
                                 </div>
                               )}

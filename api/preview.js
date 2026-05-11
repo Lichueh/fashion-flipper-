@@ -70,7 +70,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { prompt, seed = "1", image = null } = req.body ?? {};
+  const {
+    prompt,
+    seed = "1",
+    image = null,
+    fallbackPrompt,
+  } = req.body ?? {};
   if (!prompt) {
     return res.status(400).json({ error: "prompt is required" });
   }
@@ -82,9 +87,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Gemini failure (network error, NO_IMAGE refusal, content filter)
+    // → fall through to Pollinations text-only. Pollinations FLUX has no
+    // image-to-image, so use the self-contained `fallbackPrompt`.
     const result =
       (await tryGemini(prompt, seed, image).catch(() => null)) ??
-      (await tryPollinations(prompt, seed, image).catch(() => null));
+      (await tryPollinations(fallbackPrompt ?? prompt, seed, null).catch(
+        () => null,
+      ));
 
     if (!result) {
       return res.status(502).json({ error: "All upstream providers failed" });

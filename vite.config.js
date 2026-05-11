@@ -3,18 +3,46 @@ import react from "@vitejs/plugin-react";
 
 const GITHUB_API_URL = "https://models.inference.ai.azure.com/chat/completions";
 
-const SYSTEM_PROMPT = `You are a fabric analysis assistant. When given an image of a garment, analyze its fabric and return ONLY a valid JSON object with this exact structure — no markdown, no explanation, only the JSON:
+// Stage-2 prompt: takes the English fabric JSON and returns same shape with
+// each translatable string field replaced by { en, nb, zh } objects. Uses
+// gpt-4o-mini because pure terminology translation is cheap & fast.
+const TRANSLATE_SYSTEM_PROMPT = `You translate fabric / textile terminology into Norwegian Bokmål (nb) and Traditional Chinese (zh).
+
+Input: a JSON object describing analyzed fabric.
+Output: same JSON structure, but each translatable string value replaced with:
+  { "en": "<original English>", "nb": "<Norwegian Bokmål>", "zh": "<Traditional Chinese>" }
+
+Translate these string fields ONLY:
+- type, color, weight, texture, condition (top-level strings)
+- composition[].material (string inside array of objects — keep percentage numeric unchanged)
+- tags[] (array of strings — each element becomes a { en, nb, zh } object)
+
+Use natural textile vocabulary. Examples:
+- "Cotton Fabric" → { "en": "Cotton Fabric", "nb": "Bomullsstoff", "zh": "棉質布料" }
+- "Deep Blue" → { "en": "Deep Blue", "nb": "Dyp blå", "zh": "深藍" }
+- "Plain weave" → { "en": "Plain weave", "nb": "Lerretsbinding", "zh": "平織" }
+- "Medium weight" → { "en": "Medium weight", "nb": "Middels vekt", "zh": "中等厚度" }
+- "Good (slight fading)" → { "en": "Good (slight fading)", "nb": "God (litt falming)", "zh": "良好（輕微褪色）" }
+- "Natural Fiber" → { "en": "Natural Fiber", "nb": "Naturfiber", "zh": "天然纖維" }
+- "Unknown" → { "en": "Unknown", "nb": "Ukjent", "zh": "未知" }
+
+Return ONLY a valid JSON object. No markdown, no explanation.`;
+
+const SYSTEM_PROMPT = `You are a fabric analysis assistant for an upcycling app. Analyse the garment's fabric carefully — look at weave/knit pattern, sheen, drape, surface texture, color saturation, and visible wear. Ignore any ruler, hand, or background object in the photo. Then return ONLY a valid JSON object — no markdown, no explanation:
 {
-  "type": "string (e.g. Cotton Fabric, Denim, Linen, Polyester Blend)",
-  "color": "string (e.g. Deep Blue, Cream White, Burgundy Red)",
+  "type": "string (e.g. Cotton Fabric, Denim, Linen, Polyester Blend, Wool Knit, Silk Blend)",
+  "color": "string (e.g. Deep Blue, Cream White, Burgundy Red, Charcoal)",
   "composition": [{ "material": "string", "percentage": number }],
-  "weight": "string (one of: Lightweight, Medium weight, Heavy)",
-  "texture": "string (e.g. Plain weave, Twill, Jersey knit, Denim twill, Ribbed knit)",
-  "condition": "string (e.g. Excellent, Good, Good (slight fading), Fair (visible wear))",
+  "weight": "string — one of: Lightweight, Medium weight, Heavy",
+  "texture": "string — pick the best match: Plain weave, Twill, Jersey knit, Ribbed knit, Denim twill, Fleece, Satin, Canvas, Corduroy, Other (...)",
+  "condition": "string (e.g. Excellent, Good, Good (slight fading), Fair (visible wear), Worn)",
   "tags": ["string"]
 }
-For tags, pick 2–4 relevant labels from: Natural Fiber, Synthetic, Blended, Machine Washable, Hand Wash Only, Dye-friendly, Stretch, Woven, Knit.
-Composition percentages must sum to 100.`;
+Rules:
+- For tags, pick 2–4 from: Natural Fiber, Synthetic, Blended, Machine Washable, Hand Wash Only, Dye-friendly, Stretch, Woven, Knit.
+- Composition percentages must sum to 100.
+- If a field genuinely cannot be determined from the photo (e.g. fabric not in frame, severe blur), return "Unknown" for that string field. Do NOT invent details to fill gaps — saying Unknown is preferred over wrong.
+- Be concrete: "Twill" not "woven", "Jersey knit" not "soft fabric".`;
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ""); // loads ALL env vars, no VITE_ filter
@@ -63,19 +91,23 @@ export default defineConfig(({ mode }) => {
                             type: "image_url",
                             image_url: {
                               url: `data:${mimeType ?? "image/jpeg"};base64,${imageBase64}`,
-                              detail: "low",
+                              // High detail = model tiles the image up to ~1568×768
+                              // and reads real weave/knit detail. Low detail squashed
+                              // every photo down to ~85×85 and made texture detection
+                              // basically guessing. Worth the extra tokens.
+                              detail: "high",
                             },
                           },
                           {
                             type: "text",
-                            text: "Analyze this garment's fabric and return the JSON object.",
+                            text: "Analyse this garment's fabric and return the JSON object.",
                           },
                         ],
                       },
                     ],
                     response_format: { type: "json_object" },
-                    temperature: 0.1,
-                    max_tokens: 400,
+                    temperature: 0.2,
+                    max_tokens: 600,
                   }),
                 });
                 if (!upstream.ok) {
@@ -98,6 +130,11 @@ export default defineConfig(({ mode }) => {
                 const data = await upstream.json();
                 const content = data.choices?.[0]?.message?.content;
                 res.setHeader("Content-Type", "application/json");
+                if (content) {
+                  // Help diagnose "fabric analysis is wrong" by surfacing what
+                  // gpt-4o actually returned for each call.
+                  console.log("[analyze] gpt-4o →", content.replace(/\s+/g, " "));
+                }
                 if (!content) {
                   console.error(
                     "[analyze] empty content from model",
@@ -113,8 +150,62 @@ export default defineConfig(({ mode }) => {
                   );
                   return;
                 }
+                // Stage 2 — translate the English JSON into { en, nb, zh } shape
+                let translated = content;
+                try {
+                  const parsed = JSON.parse(content);
+                  const t0 = Date.now();
+                  const tRes = await fetch(GITHUB_API_URL, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                      model: "gpt-4o-mini",
+                      messages: [
+                        {
+                          role: "system",
+                          content: TRANSLATE_SYSTEM_PROMPT,
+                        },
+                        {
+                          role: "user",
+                          content: JSON.stringify(parsed),
+                        },
+                      ],
+                      response_format: { type: "json_object" },
+                      temperature: 0,
+                      max_tokens: 800,
+                    }),
+                  });
+                  if (tRes.ok) {
+                    const tData = await tRes.json();
+                    const tContent = tData.choices?.[0]?.message?.content;
+                    if (tContent) {
+                      // Validate it parses — otherwise fall back to English
+                      JSON.parse(tContent);
+                      translated = tContent;
+                      console.log(
+                        `[analyze] translate ok (${Date.now() - t0}ms)`,
+                      );
+                    } else {
+                      console.warn(
+                        "[analyze] translate empty content, keeping English",
+                      );
+                    }
+                  } else {
+                    console.warn(
+                      `[analyze] translate upstream ${tRes.status}, keeping English`,
+                    );
+                  }
+                } catch (tErr) {
+                  console.warn(
+                    "[analyze] translate threw, keeping English:",
+                    tErr.message,
+                  );
+                }
                 res.statusCode = 200;
-                res.end(content);
+                res.end(translated);
               } catch (e) {
                 res.statusCode = 500;
                 res.setHeader("Content-Type", "application/json");
@@ -173,9 +264,9 @@ export default defineConfig(({ mode }) => {
               (p) => p.inlineData?.data,
             );
             if (!part) {
+              const finishReason = json?.candidates?.[0]?.finishReason;
               console.error(
-                `[preview] gemini ok but no inlineData in ${Date.now() - t0}ms:`,
-                JSON.stringify(json).slice(0, 500),
+                `[preview] gemini ok but no inlineData in ${Date.now() - t0}ms (${finishReason ?? "unknown"}) — falling back to Pollinations`,
               );
               return null;
             }
@@ -247,6 +338,7 @@ export default defineConfig(({ mode }) => {
                 const prompt = parsed.prompt ?? "";
                 const seed = String(parsed.seed ?? "1");
                 const image = parsed.image ?? null;
+                const fallbackPrompt = parsed.fallbackPrompt ?? prompt;
 
                 if (!prompt) {
                   res.statusCode = 400;
@@ -255,9 +347,14 @@ export default defineConfig(({ mode }) => {
                   return;
                 }
 
+                // Gemini failure (network error, NO_IMAGE refusal, content
+                // filter) → fall through to Pollinations text-only. Pollinations
+                // FLUX has no image-to-image, so we pass `null` for image and
+                // use `fallbackPrompt` (a self-contained prompt without
+                // "in this image" references).
                 const result =
                   (await tryGemini(prompt, seed, image).catch(() => null)) ??
-                  (await tryPollinations(prompt, seed, image).catch(
+                  (await tryPollinations(fallbackPrompt, seed, null).catch(
                     () => null,
                   ));
 

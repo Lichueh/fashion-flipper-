@@ -3,12 +3,13 @@ import { templates } from "../data/templates";
 import { mockAnalysis } from "../data/mockAnalysis";
 import useDeviceOrientation from "../hooks/useDeviceOrientation";
 import usePinchScale from "../hooks/usePinchScale";
+import { useLang } from "../i18n/LanguageContext";
 
 // Small-angle approximation: 1° of phone rotation ≈ this many pixels of
 // scene shift. Same constant as ArMeasureScreen — tune both together.
 const PX_PER_DEG = 6;
 
-function CameraPiece({ piece, scale, pos, dragging, onPointerDown }) {
+function CameraPiece({ piece, scale, pos, dragging, onPointerDown, tl }) {
   const pw = piece.widthCm * scale;
   const ph = piece.heightCm * scale;
   const seam = Math.min(5, pw * 0.07, ph * 0.07);
@@ -148,7 +149,7 @@ function CameraPiece({ piece, scale, pos, dragging, onPointerDown }) {
               textShadow: "0 1px 3px rgba(0,0,0,0.8)",
             }}
           >
-            {piece.label}
+            {tl(piece.label)}
           </div>
           <div
             style={{
@@ -192,6 +193,7 @@ export default function CameraPatternScreen({
   lengthGarment,
   calibPxPerCm,
 }) {
+  const { t, tl } = useLang();
   const template = templates[templateId];
   const { garmentLayout } = mockAnalysis;
 
@@ -426,7 +428,7 @@ export default function CameraPatternScreen({
                 animation: "pulse 1s infinite",
               }}
             />
-            Detecting garment &amp; grain direction…
+            {t("arPattern.detecting")}
           </div>
           <div
             style={{
@@ -489,6 +491,7 @@ export default function CameraPatternScreen({
                     pos={positions[piece.id]}
                     dragging={dragging?.id === piece.id}
                     onPointerDown={(e) => handlePointerDown(e, piece.id)}
+                    tl={tl}
                   />
                 ))}
               </div>
@@ -510,7 +513,7 @@ export default function CameraPatternScreen({
                   pointerEvents: "none",
                 }}
               >
-                ✓ Grain detected: Vertical (Warp)
+                {t("arPattern.grainDetected")}
                 {calibPxPerCm && (
                   <span
                     style={{
@@ -544,7 +547,7 @@ export default function CameraPatternScreen({
                   pointerEvents: "none",
                 }}
               >
-                Drag pieces onto your garment
+                {t("arPattern.dragOntoGarment")}
               </div>
             </>
           );
@@ -573,7 +576,7 @@ export default function CameraPatternScreen({
               textAlign: "center",
             }}
           >
-            Camera Access Required
+            {t("arPattern.cameraRequired")}
           </p>
           <p
             style={{
@@ -584,8 +587,7 @@ export default function CameraPatternScreen({
               marginBottom: 24,
             }}
           >
-            Please allow camera access in your browser settings to use the AR
-            Pattern view.
+            {t("arPattern.cameraDeniedBody")}
           </p>
           <button
             onClick={() => navigate("patternLayout")}
@@ -600,7 +602,7 @@ export default function CameraPatternScreen({
               cursor: "pointer",
             }}
           >
-            ← Back to Layout
+            {t("arMeasure.backToLayout")}
           </button>
         </div>
       )}
@@ -649,7 +651,7 @@ export default function CameraPatternScreen({
                 margin: 0,
               }}
             >
-              AR Pattern View
+              {t("arPattern.title")}
             </p>
             <p
               style={{
@@ -658,7 +660,10 @@ export default function CameraPatternScreen({
                 margin: 0,
               }}
             >
-              {template.name} · {template.patternPieces.length} pieces
+              {t("arPattern.piecesCount", {
+                name: tl(template.name),
+                count: template.patternPieces.length,
+              })}
             </p>
           </div>
           {phase === "ready" && (
@@ -680,7 +685,7 @@ export default function CameraPatternScreen({
                 }}
               />
               <span style={{ color: "#90a480", fontSize: 11, fontWeight: 600 }}>
-                LIVE
+                {t("arPattern.live")}
               </span>
               {scale !== 1 && (
                 <button
@@ -740,7 +745,7 @@ export default function CameraPatternScreen({
                   whiteSpace: "nowrap",
                 }}
               >
-                {p.label.replace(" Panel ", "\n").replace(" Strip", "\n Strip")}
+                {tl(p.label)}
               </div>
             ))}
           </div>
@@ -759,7 +764,7 @@ export default function CameraPatternScreen({
               flexShrink: 0,
             }}
           >
-            Start Cutting →
+            {t("arPattern.startCutting")}
           </button>
         </div>
       )}

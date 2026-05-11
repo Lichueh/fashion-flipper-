@@ -4,12 +4,70 @@ import freesewingPatterns from "../data/freesewingPatterns.json";
 import { extractPatternPieces } from "../utils/extractFreeSewingPieces";
 import patternMeasurements from "../data/patternMeasurements";
 import MeasurementsModal from "../components/MeasurementsModal";
+import { generateLayout } from "../utils/generateLayout";
 
 /* ── Layout constants ────────────────────────────────────────────── */
 const PANEL_W = 290; // each panel takes the full available width
 
 // TODO: replace DEFAULT_GRAIN_ANGLE with real fabric data from user input
 const DEFAULT_GRAIN_ANGLE = 90; // degrees
+
+/**
+ * Convert generateLayout output into the positions state map used by
+ * PatternLayoutScreen. Pieces not placed by the packer fall back to their
+ * defaultX / defaultY percentages.
+ */
+function _layoutToPositions(
+  pieces,
+  panelWCm,
+  panelHCm,
+  segmentation = null,
+  bboxFraction = null,
+  garmentGrainDeg = 90,
+) {
+  if (!pieces.length) return {};
+  const scale = PANEL_W / panelWCm;
+  const panelPxH = Math.round(panelHCm * scale);
+  // Thread the segmentation mask into the packer so pieces land on real fabric.
+  // Merge bboxFraction (from measurements) into the seg object for the grid builder.
+  const seg = segmentation?.garmentMask
+    ? {
+        ...segmentation,
+        bboxFraction: bboxFraction ??
+          segmentation.bboxFraction ?? { x: 0, y: 0, w: 1, h: 1 },
+      }
+    : null;
+  const { placements } = generateLayout(
+    pieces,
+    {
+      front: { widthCm: panelWCm, heightCm: panelHCm },
+      back: { widthCm: panelWCm, heightCm: panelHCm },
+    },
+    seg,
+    garmentGrainDeg,
+  );
+  const posMap = {};
+  for (const piece of pieces) {
+    const p = placements[piece.id];
+    if (p) {
+      posMap[piece.id] = {
+        x: p.xCm * scale,
+        y: p.yCm * scale,
+        rotation: p.rotationDeg,
+        panel: p.panelKey,
+      };
+    } else {
+      // Fallback: piece couldn't be placed by the packer (too large)
+      posMap[piece.id] = {
+        x: (piece.defaultX / 100) * PANEL_W,
+        y: (piece.defaultY / 100) * panelPxH,
+        rotation: 0,
+        panel: piece.panel === "back" ? "back" : "front",
+      };
+    }
+  }
+  return posMap;
+}
 
 function grainLabel(angle) {
   if (angle === 90) return "Vertical (Warp)";
@@ -448,18 +506,19 @@ export default function PatternLayoutScreen({
 
   /* ── piece state: x, y, rotation, panel per piece ── */
   const [positions, setPositions] = useState(() =>
-    Object.fromEntries(
-      template.patternPieces.map((p) => [
-        p.id,
-        {
-          x: (p.defaultX / 100) * PANEL_W,
-          y: (p.defaultY / 100) * panelPxH,
-          rotation: 0,
-          panel: p.panel === "back" ? "back" : "front",
-        },
-      ]),
+    _layoutToPositions(
+      template.patternPieces,
+      panelW,
+      panelH,
+      segmentation,
+      bboxFraction,
+      grainAngleDeg,
     ),
   );
+
+  // Stores the most-recently computed suggested layout so the Reset button
+  // can restore it after the user moves pieces around.
+  const suggestedLayoutRef = useRef(null);
 
   const [dragging, setDragging] = useState(null);
   const [dragOverPanel, setDragOverPanel] = useState(null);
@@ -483,19 +542,16 @@ export default function PatternLayoutScreen({
   useEffect(() => {
     if (template.patternSource !== "freesewing") return;
     const pieces = freesewingPatterns[templateId] ?? [];
-    setPositions(
-      Object.fromEntries(
-        pieces.map((p) => [
-          p.id,
-          {
-            x: (p.defaultX / 100) * PANEL_W,
-            y: (p.defaultY / 100) * panelPxH,
-            rotation: 0,
-            panel: p.panel === "back" ? "back" : "front",
-          },
-        ]),
-      ),
+    const posMap = _layoutToPositions(
+      pieces,
+      panelW,
+      panelH,
+      segmentation,
+      bboxFraction,
+      grainAngleDeg,
     );
+    suggestedLayoutRef.current = posMap;
+    setPositions(posMap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
 
@@ -506,19 +562,16 @@ export default function PatternLayoutScreen({
       const { patternPieces } = mod.default ?? mod;
       if (!patternPieces?.length) return;
       setCustomPieces(patternPieces);
-      setPositions(
-        Object.fromEntries(
-          patternPieces.map((p) => [
-            p.id,
-            {
-              x: (p.defaultX / 100) * PANEL_W,
-              y: (p.defaultY / 100) * panelPxH,
-              rotation: 0,
-              panel: p.panel === "back" ? "back" : "front",
-            },
-          ]),
-        ),
+      const posMap = _layoutToPositions(
+        patternPieces,
+        panelW,
+        panelH,
+        segmentation,
+        bboxFraction,
+        grainAngleDeg,
       );
+      suggestedLayoutRef.current = posMap;
+      setPositions(posMap);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
@@ -552,19 +605,16 @@ export default function PatternLayoutScreen({
         );
         if (!cancelled) {
           setRuntimePieces(pieces);
-          setPositions(
-            Object.fromEntries(
-              pieces.map((p) => [
-                p.id,
-                {
-                  x: (p.defaultX / 100) * PANEL_W,
-                  y: (p.defaultY / 100) * panelPxH,
-                  rotation: 0,
-                  panel: p.panel === "back" ? "back" : "front",
-                },
-              ]),
-            ),
+          const posMap = _layoutToPositions(
+            pieces,
+            panelW,
+            panelH,
+            segmentation,
+            bboxFraction,
+            grainAngleDeg,
           );
+          suggestedLayoutRef.current = posMap;
+          setPositions(posMap);
           setFsError(null);
         }
       })
@@ -898,6 +948,16 @@ export default function PatternLayoutScreen({
             🖨 Print Pattern
           </button>
         )}
+        <button
+          onClick={() => {
+            if (suggestedLayoutRef.current)
+              setPositions({ ...suggestedLayoutRef.current });
+          }}
+          title="Reset all pieces to suggested layout"
+          className="ml-2 h-9 px-3 bg-primary-700 border border-primary-600 rounded-full text-primary-100 text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform whitespace-nowrap"
+        >
+          ⟳ Reset
+        </button>
       </div>
 
       {/* Garment info strip */}
@@ -916,7 +976,6 @@ export default function PatternLayoutScreen({
           </span>
         </span>
       </div>
-
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto pb-4">

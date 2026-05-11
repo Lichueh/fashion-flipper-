@@ -53,7 +53,7 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       : null;
     const totalRequiredArea =
       totalPieces > 0
-        ? pieces.reduce((sum, p) => sum + p.areaCm2, 0)
+        ? pieces.reduce((sum, p) => sum + p.areaCm2 * (p.cutCount ?? 1), 0)
         : (fallbackArea ?? 0);
     const totalRequiredWithBuffer = totalRequiredArea * 1.1;
     const usedAreaPct = Math.min(
@@ -77,8 +77,16 @@ export function checkFeasibility(measurements, templates, fabric = null) {
     // ── Stage 2: bounding-box fit check ─────────────────────────────────────
     // Skipped when pieces are loaded dynamically (totalPieces === 0);
     // the fallback area check above is sufficient for those patterns.
-    let piecesFit = totalPieces === 0 ? 0 : 0;
-    for (const piece of pieces) {
+    // Expand each piece by cutCount so every physical cut is checked.
+    const physicalPieces =
+      totalPieces === 0
+        ? []
+        : pieces.flatMap((p) =>
+            Array.from({ length: p.cutCount ?? 1 }, () => p),
+          );
+    const totalPhysical = physicalPieces.length;
+    let piecesFit = 0;
+    for (const piece of physicalPieces) {
       const pw = piece.widthCm;
       const ph = piece.heightCm;
       const fits = availablePanels.some((panel) => {
@@ -90,8 +98,8 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       if (fits) piecesFit++;
     }
 
-    const pieceFitScore = totalPieces > 0 ? piecesFit / totalPieces : 1;
-    if (totalPieces > 0 && piecesFit < totalPieces) {
+    const pieceFitScore = totalPhysical > 0 ? piecesFit / totalPhysical : 1;
+    if (totalPhysical > 0 && piecesFit < totalPhysical) {
       return {
         ...template,
         feasible: false,

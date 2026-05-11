@@ -44,6 +44,10 @@ home → upload → analysis → templateSelect → stepGuide → result
 
 ## 變更紀錄
 
+## 2026-05-11 20:45
+- 修改檔案：src/screens/TemplateSelectScreen.jsx
+- 修改內容：在 visibleItems 計算後加上 `slice(0, 3)`，限制版型清單一次最多只顯示 3 個 pattern（取排序後最前面的三個，gender filter 仍照舊套用）。常數抽成 `MAX_VISIBLE_PATTERNS` 方便日後調整。
+
 ## 2026-05-02 15:00
 - 修改檔案：src/services/previewGeneration.js、src/data/templates.js
 - 修改內容：把 image-to-image 套用到所有版型，不再只限 noSewTote。移除 `template.useSourceImage` 旗標（已是 dead flag），改成「只要 caller 有傳 imageFile 就走 image-to-image」。`_buildPrompt` 在有 source image 時改用新 default prompt — `Reimagine the garment in this image as {visualDescription}`，並加上「保留原 fabric / color / 正面圖案 / print / logo / text，同 hue 同 placement」的強制指示。沒有 image 時退回原本 flat-lay 純文字 prompt。`previewPromptOverride` 機制保留（noSewTote 仍用客製 prompt 描述 slouchy + fringe + 打結）。

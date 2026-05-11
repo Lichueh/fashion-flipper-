@@ -170,15 +170,18 @@ export default function TemplateSelectScreen({
     return ep?.gender ?? null; // "female" | "male" | "nonbinary" | null
   }, [sessionProfileOverride, activeProfile]);
 
-  // Apply gender filter on top of the sorted items
+  // Apply gender filter on top of the sorted items, then cap to the top 3
+  // so the list never shows more than three patterns at once.
+  const MAX_VISIBLE_PATTERNS = 3;
   const visibleItems = useMemo(() => {
     // No filtering when toggled off, no profile, or profile is non-binary
-    if (showAllGenders || !profileGender || profileGender === "nonbinary") {
-      return items;
-    }
-    return items.filter(
-      (t) => t.forGender === "any" || t.forGender === profileGender,
-    );
+    const filtered =
+      showAllGenders || !profileGender || profileGender === "nonbinary"
+        ? items
+        : items.filter(
+            (t) => t.forGender === "any" || t.forGender === profileGender,
+          );
+    return filtered.slice(0, MAX_VISIBLE_PATTERNS);
   }, [items, showAllGenders, profileGender]);
 
   // ── Measurements modal state ────────────────────────────────────────────

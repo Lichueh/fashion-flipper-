@@ -3,21 +3,18 @@ import react from "@vitejs/plugin-react";
 
 const GITHUB_API_URL = "https://models.inference.ai.azure.com/chat/completions";
 
-// Stage-2 prompt: takes the English fabric JSON and returns same shape with
-// each translatable string field replaced by { en, nb, zh } objects. Uses
-// gpt-4o-mini because pure terminology translation is cheap & fast.
-const TRANSLATE_SYSTEM_PROMPT = `You translate fabric / textile terminology into Norwegian Bokmål (nb) and Traditional Chinese (zh).
+const SYSTEM_PROMPT = `You are a fabric analysis assistant for an upcycling app. Analyse the garment's fabric carefully — look at weave/knit pattern, sheen, drape, surface texture, color saturation, and visible wear. Ignore any ruler, hand, or background object in the photo. Then return ONLY a valid JSON object — no markdown, no explanation:
+{
+  "type": { "en": "...", "nb": "...", "zh": "..." },
+  "color": { "en": "...", "nb": "...", "zh": "..." },
+  "composition": [{ "material": { "en": "...", "nb": "...", "zh": "..." }, "percentage": number }],
+  "weight": { "en": "...", "nb": "...", "zh": "..." },
+  "texture": { "en": "...", "nb": "...", "zh": "..." },
+  "condition": { "en": "...", "nb": "...", "zh": "..." },
+  "tags": [{ "en": "...", "nb": "...", "zh": "..." }]
+}
 
-Input: a JSON object describing analyzed fabric.
-Output: same JSON structure, but each translatable string value replaced with:
-  { "en": "<original English>", "nb": "<Norwegian Bokmål>", "zh": "<Traditional Chinese>" }
-
-Translate these string fields ONLY:
-- type, color, weight, texture, condition (top-level strings)
-- composition[].material (string inside array of objects — keep percentage numeric unchanged)
-- tags[] (array of strings — each element becomes a { en, nb, zh } object)
-
-Use natural textile vocabulary. Examples:
+For every text value: provide English (en), Norwegian Bokmål (nb), and Traditional Chinese (zh) — same meaning, natural textile vocabulary in each language. Examples:
 - "Cotton Fabric" → { "en": "Cotton Fabric", "nb": "Bomullsstoff", "zh": "棉質布料" }
 - "Deep Blue" → { "en": "Deep Blue", "nb": "Dyp blå", "zh": "深藍" }
 - "Plain weave" → { "en": "Plain weave", "nb": "Lerretsbinding", "zh": "平織" }
@@ -26,22 +23,13 @@ Use natural textile vocabulary. Examples:
 - "Natural Fiber" → { "en": "Natural Fiber", "nb": "Naturfiber", "zh": "天然纖維" }
 - "Unknown" → { "en": "Unknown", "nb": "Ukjent", "zh": "未知" }
 
-Return ONLY a valid JSON object. No markdown, no explanation.`;
-
-const SYSTEM_PROMPT = `You are a fabric analysis assistant for an upcycling app. Analyse the garment's fabric carefully — look at weave/knit pattern, sheen, drape, surface texture, color saturation, and visible wear. Ignore any ruler, hand, or background object in the photo. Then return ONLY a valid JSON object — no markdown, no explanation:
-{
-  "type": "string (e.g. Cotton Fabric, Denim, Linen, Polyester Blend, Wool Knit, Silk Blend)",
-  "color": "string (e.g. Deep Blue, Cream White, Burgundy Red, Charcoal)",
-  "composition": [{ "material": "string", "percentage": number }],
-  "weight": "string — one of: Lightweight, Medium weight, Heavy",
-  "texture": "string — pick the best match: Plain weave, Twill, Jersey knit, Ribbed knit, Denim twill, Fleece, Satin, Canvas, Corduroy, Other (...)",
-  "condition": "string (e.g. Excellent, Good, Good (slight fading), Fair (visible wear), Worn)",
-  "tags": ["string"]
-}
 Rules:
-- For tags, pick 2–4 from: Natural Fiber, Synthetic, Blended, Machine Washable, Hand Wash Only, Dye-friendly, Stretch, Woven, Knit.
+- type: e.g. Cotton Fabric, Denim, Linen, Polyester Blend, Wool Knit, Silk Blend.
+- weight (en): one of "Lightweight" / "Medium weight" / "Heavy" / "Unknown" (then translated).
+- texture (en): pick the best match from "Plain weave", "Twill", "Jersey knit", "Ribbed knit", "Denim twill", "Fleece", "Satin", "Canvas", "Corduroy", "Other (...)" / "Unknown" (then translated).
+- For tags (en), pick 2–4 from: Natural Fiber, Synthetic, Blended, Machine Washable, Hand Wash Only, Dye-friendly, Stretch, Woven, Knit. Each tag becomes its own { en, nb, zh } object.
 - Composition percentages must sum to 100.
-- If a field genuinely cannot be determined from the photo (e.g. fabric not in frame, severe blur), return "Unknown" for that string field. Do NOT invent details to fill gaps — saying Unknown is preferred over wrong.
+- If a field genuinely cannot be determined from the photo (e.g. fabric not in frame, severe blur), return { "en": "Unknown", "nb": "Ukjent", "zh": "未知" }. Do NOT invent details to fill gaps — saying Unknown is preferred over wrong.
 - Be concrete: "Twill" not "woven", "Jersey knit" not "soft fabric".`;
 
 export default defineConfig(({ mode }) => {
@@ -107,7 +95,7 @@ export default defineConfig(({ mode }) => {
                     ],
                     response_format: { type: "json_object" },
                     temperature: 0.2,
-                    max_tokens: 600,
+                    max_tokens: 1500,
                   }),
                 });
                 if (!upstream.ok) {
@@ -150,62 +138,9 @@ export default defineConfig(({ mode }) => {
                   );
                   return;
                 }
-                // Stage 2 — translate the English JSON into { en, nb, zh } shape
-                let translated = content;
-                try {
-                  const parsed = JSON.parse(content);
-                  const t0 = Date.now();
-                  const tRes = await fetch(GITHUB_API_URL, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                      model: "gpt-4o-mini",
-                      messages: [
-                        {
-                          role: "system",
-                          content: TRANSLATE_SYSTEM_PROMPT,
-                        },
-                        {
-                          role: "user",
-                          content: JSON.stringify(parsed),
-                        },
-                      ],
-                      response_format: { type: "json_object" },
-                      temperature: 0,
-                      max_tokens: 800,
-                    }),
-                  });
-                  if (tRes.ok) {
-                    const tData = await tRes.json();
-                    const tContent = tData.choices?.[0]?.message?.content;
-                    if (tContent) {
-                      // Validate it parses — otherwise fall back to English
-                      JSON.parse(tContent);
-                      translated = tContent;
-                      console.log(
-                        `[analyze] translate ok (${Date.now() - t0}ms)`,
-                      );
-                    } else {
-                      console.warn(
-                        "[analyze] translate empty content, keeping English",
-                      );
-                    }
-                  } else {
-                    console.warn(
-                      `[analyze] translate upstream ${tRes.status}, keeping English`,
-                    );
-                  }
-                } catch (tErr) {
-                  console.warn(
-                    "[analyze] translate threw, keeping English:",
-                    tErr.message,
-                  );
-                }
+                // Single-stage prompt already returns { en, nb, zh } shape.
                 res.statusCode = 200;
-                res.end(translated);
+                res.end(content);
               } catch (e) {
                 res.statusCode = 500;
                 res.setHeader("Content-Type", "application/json");

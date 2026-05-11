@@ -44,6 +44,23 @@ home → upload → analysis → templateSelect → stepGuide → result
 
 ## 變更紀錄
 
+## 2026-05-12 00:45
+- 修改檔案:vite.config.js、api/analyze.js、src/services/fabricAnalysis.js
+- 修改內容:修「多分析幾張就會看到 mock Deep Blue」的退化問題。Root cause:之前 00:15 的兩段式設計(Stage-1 vision + Stage-2 gpt-4o-mini 翻譯)每次分析吃 2 個 GitHub Models quota,免費額度大約撞到第 3、4 張就會在某一階段(常是 Stage-1 因為 4o 配額較緊)拿 429。Server 回非 200 → `analyzeFabric` catch 後 return null → `useAnalysisPipeline.run()` 內 `if (fabricResult) setFabric(...)` 不觸發 → fabric state 留在 reset 後的 `mockAnalysis.fabric` 預設值,UI 就顯示 Cotton 85% / Polyester 15% / Deep Blue。
+  - **單階段 prompt**(vite.config.js + api/analyze.js):把 Stage-2 整塊砍掉,改寫 `SYSTEM_PROMPT` 讓 gpt-4o vision 直接回 `{ en, nb, zh }` 物件。每次分析從 2 calls → 1 call,quota 壓力減半;同時省掉 Stage-2 ~6 秒等待。
+  - **token 配額**:max_tokens 600 → 1500(輸出變約 3 倍長,因為每個 string 變成三語物件)。
+  - **CACHE_PREFIX v3 → v4**:舊 cache 雖 shape 正確,但其中部分是 Stage-2 失敗時靜默 fallback 的純英文 + 補的 nb/zh 翻譯品質不一,bump 確保都重新跑乾淨的 v4 路徑。
+  - **graceful fallback 不再需要**:單一 call 失敗就讓 server 回 5xx,UI 後續會看到 null fabric 沿用 mock — 雖然外觀仍是 Deep Blue,但這是 rate-limit 真的撞到的情況,跟 Stage-2 半成功完全不同。
+- TODO(UX,單獨任務):analyzeFabric 失敗時應該顯示「Analysis failed, retry?」按鈕,而不是讓使用者誤以為自己看到的就是 AI 的真實答案。
+- Smoke test:`curl /api/analyze` 拿 1×1 白點測 — 一次 call 回完整 `{en,nb,zh}`,Stage-2 log 已消失。
+
+## 2026-05-12 00:30
+- 修改檔案:src/screens/PatternLayoutScreen.jsx
+- 修改內容:修「點帽子(或 bag / noSewTote)進到 PatternLayout 就閃退/白屏」的 React crash。Root cause:`PieceShape` 三處直接 `{piece.label}` render,但 custom pattern 的 `patternPieces[i].label` 是 `{ en, nb, zh }` 物件(hat.js 等),React 看到物件當 child 直接 throw `Objects are not valid as a React child` 把整個 tree 拆掉,UI 等於消失。
+  - **修正**:`PieceShape` signature 加 `tl` prop,default 用新增的 module-level `_enLabel` fallback(看 string 就回 string、看物件就取 `.en`),保證 PieceShape 在 caller 沒傳 tl 時也不會炸。三處 `{piece.label}` 統一改成 `{tl(piece.label)}`(replace_all,含 legend 那個)。Main component 從 `useLang()` 解構多拿一個 `tl`,在 mount 點 `<PieceShape ... tl={tl} />` 傳進去。
+  - **為什麼之前 bag / noSewTote 沒爆**:它們其實也會爆,只是測試流程沒走到「進 PatternLayout 看 pieces 名稱」這一步;noSewTote 的 patternSource 是 `ar-tutorial`,TemplateSelectScreen 對它的 navigate 分支直接跳過 PatternLayout 進 ArTutorial,所以一直沒踩到。
+- Smoke test:vite HMR 5 次 update 全綠;`http://localhost:5173/` HTTP 200。
+
 ## 2026-05-12 00:15
 - 修改檔案:vite.config.js、api/analyze.js、src/services/fabricAnalysis.js、LOG.md
 - 修改內容:布料分析結果改為三語(server-side 翻譯)。原本 GPT-4o vision 回的是純英文字串(`type/color/texture/weight/condition` + composition[].material + tags[]),即使 UI 切到 nb / zh 也只有「布料分析卡」永遠英文。

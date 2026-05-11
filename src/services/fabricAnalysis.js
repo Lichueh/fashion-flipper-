@@ -16,10 +16,11 @@
  * } | null>}
  */
 
-// v3: bumped after adding server-side Stage-2 translation (gpt-4o-mini wraps
-// each text field as { en, nb, zh }) — old v2 entries are English-only and
-// would leave the analysis card stuck in English when the UI is in nb/zh.
-const CACHE_PREFIX = "fabric_analysis_v3_";
+// v4: collapsed Stage-1 + Stage-2 into a single vision call so the model
+// returns { en, nb, zh } directly — half the API calls, half the rate-limit
+// risk. v3 entries are valid shape but were written when Stage-2 sometimes
+// silently fell back to English-only; bumping forces a clean re-analyse.
+const CACHE_PREFIX = "fabric_analysis_v4_";
 const _inFlight = new Map();
 
 /**

@@ -190,7 +190,17 @@ function GrainArrow({ angle, pw, ph }) {
 }
 
 /* ── Single pattern piece (visual only) ──────────────────────────── */
-function PieceShape({ piece, scale }) {
+// Fallback that mirrors useLang.tl(): unwraps { en, nb, zh } to en when
+// PieceShape is rendered without a tl prop. Stops React from crashing on
+// "Objects are not valid as a React child" when a custom pattern (hat / bag
+// / noSewTote) ships i18n-shaped piece labels.
+function _enLabel(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  return v.en ?? "";
+}
+
+function PieceShape({ piece, scale, tl = _enLabel }) {
   const pw = piece.widthCm * scale;
   const ph = piece.heightCm * scale;
   const seam = Math.min(3, pw * 0.07, ph * 0.07);
@@ -272,7 +282,7 @@ function PieceShape({ piece, scale }) {
             className="text-primary-900 font-bold font-mono"
             style={{ fontSize: 6, lineHeight: 1.3 }}
           >
-            {piece.label}
+            {tl(piece.label)}
           </div>
           {(piece.cutCount ?? 1) > 1 && (
             <div
@@ -356,7 +366,7 @@ function PieceShape({ piece, scale }) {
           className="text-primary-900 font-bold font-mono"
           style={{ fontSize: 6, lineHeight: 1.3 }}
         >
-          {piece.label}
+          {tl(piece.label)}
         </div>
         {(piece.cutCount ?? 1) > 1 && (
           <div
@@ -390,7 +400,7 @@ export default function PatternLayoutScreen({
   updateProfile,
   from = "templateSelect",
 }) {
-  const { t } = useLang();
+  const { t, tl } = useLang();
   const template = templates[templateId];
   const grainAngleDeg =
     measurements?.garmentLayout?.grainAngleDeg ?? DEFAULT_GRAIN_ANGLE;
@@ -882,7 +892,7 @@ export default function PatternLayoutScreen({
                   transformOrigin: "center center",
                 }}
               >
-                <PieceShape piece={piece} scale={scale} />
+                <PieceShape piece={piece} scale={scale} tl={tl} />
               </div>
               {misaligned && (
                 <div
@@ -1091,7 +1101,7 @@ export default function PatternLayoutScreen({
                   }}
                 />
                 <span className="text-[11px] text-primary-200 truncate font-mono">
-                  {piece.label}
+                  {tl(piece.label)}
                 </span>
                 <button
                   onClick={() => {

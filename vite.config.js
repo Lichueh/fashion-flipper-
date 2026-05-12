@@ -392,19 +392,30 @@ export default defineConfig(({ mode }) => {
               const imageUrl = `data:${mimeType};base64,${base64}`;
 
               // Call BiRefNet via fal.ai
-              const TIMEOUT_MS = 8000;
+              const TIMEOUT_MS = 15000;
 
               async function callFal(modelId) {
                 console.log(`[segment] calling ${modelId}...`);
                 const t0 = Date.now();
-                const falRes = await fetch(`https://fal.run/${modelId}`, {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Key ${falApiKey}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ image_url: imageUrl }),
-                });
+
+                // Only timeout the fal.ai API call itself, not the image download
+                const falRes = await Promise.race([
+                  fetch(`https://fal.run/${modelId}`, {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Key ${falApiKey}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ image_url: imageUrl }),
+                  }),
+                  new Promise((_, reject) =>
+                    setTimeout(
+                      () => reject(new Error(`${modelId} API timeout`)),
+                      9000,
+                    ),
+                  ),
+                ]);
+
                 if (!falRes.ok) {
                   const errText = await falRes.text();
                   throw new Error(
@@ -417,10 +428,9 @@ export default defineConfig(({ mode }) => {
                 );
                 const outputUrl = data?.image?.url ?? data?.output?.image?.url;
                 if (!outputUrl)
-                  throw new Error(
-                    `No output image URL from ${modelId}: ${JSON.stringify(data).slice(0, 200)}`,
-                  );
+                  throw new Error(`No output image URL from ${modelId}`);
 
+                // No timeout on image download — let it complete
                 console.log(
                   "[segment] fetching output image:",
                   outputUrl.slice(0, 80),
@@ -437,6 +447,24 @@ export default defineConfig(({ mode }) => {
                   "bytes",
                 );
                 return pngBytes;
+              }
+
+              // And simplify the call — no withTimeout wrapper needed anymore:
+              let pngBytes = await callFal("fal-ai/birefnet").catch((err) => {
+                console.warn(
+                  "[segment] BiRefNet failed —",
+                  err.message,
+                  "— trying rembg",
+                );
+                return null;
+              });
+              if (!pngBytes) {
+                pngBytes = await callFal("fal-ai/imageutils/rembg").catch(
+                  (err) => {
+                    console.error("[segment] rembg also failed —", err.message);
+                    return null;
+                  },
+                );
               }
 
               function withTimeout(fn, ms) {

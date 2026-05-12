@@ -23,6 +23,22 @@
 const CACHE_PREFIX = "fabric_analysis_v4_";
 const _inFlight = new Map();
 
+async function _sha256hex(buffer) {
+  if (crypto?.subtle?.digest) {
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(hashBuffer))
+      .slice(0, 8)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  // HTTP fallback (crypto.subtle requires HTTPS)
+  let hash = 0;
+  const view = new Uint8Array(buffer);
+  for (let i = 0; i < view.length; i++) {
+    hash = (Math.imul(31, hash) + view[i]) | 0;
+  }
+  return Math.abs(hash).toString(16).padStart(8, "0");
+}
 /**
  * Generates a short hex hash of the first 64 KB of the file.
  * Fast enough for UI use; good enough to distinguish different uploads.
@@ -30,11 +46,7 @@ const _inFlight = new Map();
 async function _fileHash(file) {
   const slice = file.slice(0, 65536);
   const buffer = await slice.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .slice(0, 8) // 8 bytes → 16 hex chars, collision-resistant enough
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return _sha256hex(buffer);
 }
 
 function _fileToBase64(file) {

@@ -29,14 +29,26 @@ const SOURCE_IMAGE_MAX_SIDE = 768; // downscale before sending to Gemini
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+async function _sha256hex(buffer) {
+  if (crypto?.subtle?.digest) {
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(hashBuffer))
+      .slice(0, 8)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  // HTTP fallback (crypto.subtle requires HTTPS)
+  let hash = 0;
+  const view = new Uint8Array(buffer);
+  for (let i = 0; i < view.length; i++) {
+    hash = (Math.imul(31, hash) + view[i]) | 0;
+  }
+  return Math.abs(hash).toString(16).padStart(8, "0");
+}
+
 async function _hashFabric(fabric) {
-  const json = JSON.stringify(fabric);
-  const buffer = new TextEncoder().encode(json);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .slice(0, 8)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const buffer = new TextEncoder().encode(JSON.stringify(fabric));
+  return _sha256hex(buffer);
 }
 
 // Downscale + JPEG-encode the source image, returning {mimeType, data, hash}.
@@ -69,12 +81,8 @@ async function _imageToInlineData(imageFile) {
     binary += String.fromCharCode(bytes[i]);
   const data = btoa(binary);
 
-  const hashBuf = await crypto.subtle.digest("SHA-256", arrayBuffer);
-  const hash = Array.from(new Uint8Array(hashBuf))
-    .slice(0, 8)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return { mimeType: "image/jpeg", data, hash };
+const hash = await _sha256hex(arrayBuffer);
+return { mimeType: "image/jpeg", data, hash };
 }
 
 function _buildPrompt(fabric, template, hasSourceImage) {

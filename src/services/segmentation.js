@@ -1,128 +1,79 @@
 /**
- * Garment segmentation service using Transformers.js (in-browser, no backend).
+ * Garment segmentation service — calls /api/segment (Vercel serverless),
+ * which proxies to fal.ai BiRefNet (primary) or rembg (fallback).
  *
- * Uses Xenova/segformer_b2_clothes — a SegFormer model fine-tuned on the ATR
- * dataset — to classify every pixel of the input image into clothing labels.
+ * Replaces the previous Transformers.js / ONNX WASM in-browser pipeline.
+ * The return shape is identical so nothing downstream breaks.
  *
  * @typedef {Object} SegmentationResult
  * @property {'tshirt'|'dress'|'pants'|'unknown'} garmentCategory
- * @property {number}  totalPixelArea - Sum of all garment pixels across labels.
- * @property {number}  confidence     - totalPixelArea / imagePixels (0–1).
- * @property {boolean} lowConfidence  - true when confidence is below 0.15.
- * @property {Object}  rawLabels      - label → pixelArea map, for debugging.
+ * @property {Uint8Array} garmentMask   - flat binary mask (1 = garment, 0 = bg)
+ * @property {number}     totalPixelArea
+ * @property {number}     maskWidth
+ * @property {number}     maskHeight
+ * @property {number}     confidence    - garment pixels / total pixels (0–1)
+ * @property {boolean}    lowConfidence - true when confidence < 0.15
+ * @property {Object}     rawLabels     - always {} (no semantic labels from BiRefNet)
  *
  * On any error: { error: true, message: string, lowConfidence: true }
  */
 
-import { pipeline } from "@huggingface/transformers";
-
-// Loaded once per page session and reused on every subsequent call.
-let _segmentationPipeline = null;
-
-export async function getSegmentationPipeline() {
-  if (!_segmentationPipeline) {
-    _segmentationPipeline = await pipeline(
-      "image-segmentation",
-      "Xenova/segformer_b2_clothes",
-    );
-  }
-  return _segmentationPipeline;
-}
-
-// Labels the model can return that represent actual garment fabric.
-// Skirt counts toward pants since both represent lower-body fabric area.
-const ALL_GARMENT_LABELS = [
-  "upper-clothes",
-  "dress",
-  "coat",
-  "pants",
-  "skirt",
-  "left-arm",
-  "right-arm",
-];
-
 /**
- * Segment the garment visible in a browser File.
+ * Segment the garment visible in a browser File or Blob.
+ * Sends the image to /api/segment as FormData and returns a SegmentationResult.
  *
- * @param {File} imageFile - A browser File object from <input type="file">.
+ * @param {File|Blob} imageFile
  * @returns {Promise<SegmentationResult>}
  */
 export async function segmentGarment(imageFile) {
   try {
-    const pipe = await getSegmentationPipeline();
+    const formData = new FormData();
+    formData.append("image", imageFile);
 
-    // Short-lived object URL so Transformers.js can fetch the image bytes.
-    const objectUrl = URL.createObjectURL(imageFile);
-    let segments;
-    try {
-      segments = await pipe(objectUrl);
-    } finally {
-      URL.revokeObjectURL(objectUrl);
+    const res = await fetch("/api/segment", { method: "POST", body: formData });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      return {
+        error: true,
+        message: data.message ?? `HTTP ${res.status}`,
+        lowConfidence: true,
+      };
     }
 
-    // Count active pixels per label. mask.data is Uint8ClampedArray: 0 = out, 255 = in.
-    const labelMap = {};
-    let imagePixels = 0;
-    for (const { label, mask } of segments) {
-      if (imagePixels === 0) imagePixels = mask.data.length;
-      let area = 0;
-      for (let i = 0; i < mask.data.length; i++) {
-        if (mask.data[i] > 0) area++;
-      }
-      labelMap[label.toLowerCase()] = area;
-    }
+    const {
+      garmentMask: maskArray,
+      totalPixelArea,
+      maskWidth,
+      maskHeight,
+    } = data;
 
-    const px = (lbl) => labelMap[lbl] ?? 0;
+    // API returns a plain Array from JSON — restore typed array for callers.
+    const garmentMask = new Uint8Array(maskArray);
 
-    const totalPixelArea = ALL_GARMENT_LABELS.reduce(
-      (sum, lbl) => sum + px(lbl),
-      0,
-    );
-    const confidence = imagePixels > 0 ? totalPixelArea / imagePixels : 0;
+    // Confidence: fraction of image pixels covered by the garment mask.
+    const confidence =
+      maskWidth * maskHeight > 0
+        ? totalPixelArea / (maskWidth * maskHeight)
+        : 0;
     const lowConfidence = confidence < 0.15;
 
-    // Dominant label group determines garment category.
-    const tshirtPx = px("upper-clothes") + px("coat");
-    const dressPx = px("dress");
-    const pantsPx = px("pants") + px("skirt");
-    const maxPx = Math.max(tshirtPx, dressPx, pantsPx);
-
-    let garmentCategory = "unknown";
-    if (maxPx > 0) {
-      if (maxPx === dressPx) garmentCategory = "dress";
-      else if (maxPx === pantsPx) garmentCategory = "pants";
-      else garmentCategory = "tshirt";
-    }
-
-    // After the labelMap loop, build a combined garment mask for rendering
-    let garmentMask = null;
-    let maskWidth = 0;
-    let maskHeight = 0;
-
-    for (const lbl of ALL_GARMENT_LABELS) {
-      const seg = segments.find((s) => s.label.toLowerCase() === lbl);
-      const src = seg?.mask?.data;
-      if (!src) continue;
-      if (!garmentMask) {
-        garmentMask = new Uint8Array(src.length);
-        // mask.width / mask.height are set by Transformers.js on the mask object
-        maskWidth = seg.mask.width;
-        maskHeight = seg.mask.height;
-      }
-      for (let i = 0; i < src.length; i++) {
-        if (src[i] > 0) garmentMask[i] = 1;
-      }
-    }
+    // BiRefNet is a binary background-removal model with no semantic labels.
+    // garmentCategory is derived from the mask bounding-box aspect ratio as a
+    // geometric heuristic, replacing SegFormer's per-label pixel counts.
+    let garmentCategory = "tshirt";
+    if (maskHeight > 1.4 * maskWidth) garmentCategory = "dress";
+    else if (maskWidth > maskHeight) garmentCategory = "pants";
 
     return {
       garmentCategory,
+      garmentMask,
       totalPixelArea,
+      maskWidth,
+      maskHeight,
       confidence,
       lowConfidence,
-      rawLabels: labelMap,
-      garmentMask,
-      maskWidth, 
-      maskHeight,
+      rawLabels: {},
     };
   } catch (err) {
     return {
@@ -131,4 +82,10 @@ export async function segmentGarment(imageFile) {
       lowConfidence: true,
     };
   }
+}
+
+// Kept for backwards compatibility with segmentation.worker.js which calls this
+// on startup to pre-warm the pipeline. Now a no-op — the model lives server-side.
+export async function getSegmentationPipeline() {
+  return null;
 }

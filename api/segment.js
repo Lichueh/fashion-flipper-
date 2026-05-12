@@ -1,132 +1,258 @@
 // api/segment.js
-// Vercel serverless function — calls fal.ai SAM 3 and maps output
-// to the exact same SegmentationResult shape as the old segmentation.js.
+// Vercel serverless function — calls fal.ai BiRefNet (primary) or rembg (fallback)
+// and returns a flat binary alpha mask compatible with computeMeasurements().
 
-export const config = { maxDuration: 30 }; // extend beyond 10s default for slow images
+import { fal } from "@fal-ai/client";
+
+export const config = {
+  maxDuration: 30,
+  api: { bodyParser: false }, // required to read raw multipart stream
+};
+
+const TIMEOUT_MS = 8000;
+
+// Configure fal client with server-side key
+fal.config({ credentials: process.env.FAL_API_KEY });
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: true, message: "Method not allowed", lowConfidence: true });
+    return res.status(405).json({ error: true, message: "Method not allowed" });
   }
 
-  
-  const { imageBase64, mimeType = "image/jpeg" } = req.body ?? {};
-
-  if (!imageBase64) {
-    return res.status(400).json({ error: true, message: "Missing imageBase64", lowConfidence: true });
-  }
-
+  // Read raw body stream, then parse as FormData via the Web Fetch API (Node 18+).
+  // This avoids adding a multipart-parsing dependency such as busboy.
+  let imageFile;
   try {
-    const falRes = await fetch("https://fal.run/fal-ai/sam-3/image", {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const rawBody = Buffer.concat(chunks);
+
+    const webReq = new Request("http://localhost", {
       method: "POST",
-      headers: {
-        "Authorization": `Key ${process.env.FAL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        image_url: `data:${mimeType};base64,${imageBase64}`,
-        // Prompt SAM to focus on the garment, not the background/person
-        text_prompt: "garment, clothing, shirt, dress, pants, jacket, coat",
-      }),
+      headers: { "content-type": req.headers["content-type"] },
+      body: rawBody,
     });
-
-    if (!falRes.ok) {
-      const errText = await falRes.text();
-      return res.status(500).json({ error: true, message: `fal.ai error: ${errText}`, lowConfidence: true });
-    }
-
-    const falData = await falRes.json();
-    console.log("RAW FAL RESPONSE:", JSON.stringify(falData, null, 2));
-    return res.json(mapFalToSegmentationResult(falData));
-
-  } catch (err) {
-    return res.status(500).json({
-      error: true,
-      message: err?.message ?? String(err),
-      lowConfidence: true,
-    });
-  }
-}
-
-
-// ---------------------------------------------------------------------------
-// Map fal.ai response → SegmentationResult
-// fal.ai returns: { masks: [{ label, score, mask_url }], ... }
-// We don't get pixel-level Uint8Array masks from the API so mask is null,
-// but pixelArea is approximated from the bounding box area × score.
-// ---------------------------------------------------------------------------
-function mapFalToSegmentationResult(falData) {
-  const masks = falData?.masks ?? falData?.objects ?? [];
-
-  // fal.ai SAM returns masks with a `score` (0–1) and bounding box dimensions.
-  // We use score + bbox area as a proxy for pixelArea since we don't download
-  // the raw mask PNG in the serverless function.
-  const FRONT_LABELS = ["shirt", "upper-clothes", "dress", "coat", "jacket", "top", "garment", "clothing"];
-  const LEFT_LABELS  = ["left-arm", "left sleeve", "left arm"];
-  const RIGHT_LABELS = ["right-arm", "right sleeve", "right arm"];
-  const PANT_LABELS  = ["pants", "trousers", "jeans", "skirt", "bottom"];
-
-  function bboxArea(mask) {
-    const b = mask?.box ?? mask?.bbox;
-    if (!b) return mask?.score ? Math.round(mask.score * 10000) : 0;
-    return Math.round((b.w ?? b.width ?? 0) * (b.h ?? b.height ?? 0));
+    const formData = await webReq.formData();
+    imageFile = formData.get("image");
+  } catch (e) {
+    return res
+      .status(400)
+      .json({ error: true, message: "Failed to parse FormData" });
   }
 
-  function mergeRegion(labelKeywords) {
-    const matched = masks.filter(m =>
-      labelKeywords.some(kw => m.label?.toLowerCase().includes(kw))
-    );
-    const area = matched.reduce((sum, m) => sum + bboxArea(m), 0);
-    const avgScore = matched.length
-      ? matched.reduce((s, m) => s + (m.score ?? 0), 0) / matched.length
-      : 0;
-    return { pixelArea: area, confidence: avgScore, mask: null };
+  if (!imageFile) {
+    return res
+      .status(400)
+      .json({ error: true, message: "Missing 'image' field in FormData" });
   }
 
-  const frontPanel  = mergeRegion(FRONT_LABELS);
-  const sleeveLeft  = mergeRegion(LEFT_LABELS);
-  const sleeveRight = mergeRegion(RIGHT_LABELS);
-  const backPanel   = { pixelArea: 0, confidence: 0, mask: null };
+  const arrayBuffer = await imageFile.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+  const mimeType = imageFile.type || "image/jpeg";
+  const imageUrl = `data:${mimeType};base64,${base64}`;
 
-  const totalGarmentPixels = frontPanel.pixelArea + sleeveLeft.pixelArea + sleeveRight.pixelArea;
-
-  // Re-normalise confidence against total garment pixels (same logic as original)
-  function normalise(region) {
-    return {
-      ...region,
-      confidence: totalGarmentPixels > 0 ? region.pixelArea / totalGarmentPixels : 0,
-    };
-  }
-
-  const fp = normalise(frontPanel);
-  const sl = normalise(sleeveLeft);
-  const sr = normalise(sleeveRight);
-
-  // Garment category
-  const pantArea = mergeRegion(PANT_LABELS).pixelArea;
-  const maxPx = Math.max(fp.pixelArea, pantArea);
-  let garmentCategory = "unknown";
-  if (maxPx > 0) {
-    if (maxPx === pantArea && pantArea > fp.pixelArea) garmentCategory = "pants";
-    else if (fp.pixelArea > 0) {
-      const hasDress = masks.some(m => m.label?.toLowerCase().includes("dress"));
-      garmentCategory = hasDress ? "dress" : "tshirt";
-    }
-  }
-
-  const dominantConfidence = Math.max(fp.confidence, sl.confidence, sr.confidence);
-  const lowConfidence = dominantConfidence < 0.15;
-
-  const rawLabels = Object.fromEntries(
-    masks.map(m => [m.label ?? "unknown", bboxArea(m)])
+  // Primary: BiRefNet
+  let result = await _runWithTimeout(
+    () => _callFal("fal-ai/birefnet", imageUrl),
+    TIMEOUT_MS,
   );
 
-  
+  // Fallback: rembg
+  if (!result) {
+    console.warn(
+      "[segment] BiRefNet failed or timed out — trying rembg fallback",
+    );
+    result = await _runWithTimeout(
+      () => _callFal("fal-ai/imageutils/rembg", imageUrl),
+      TIMEOUT_MS,
+    );
+  }
+
+  if (!result) {
+    return res
+      .status(500)
+      .json({ error: true, message: "Both segmentation models failed" });
+  }
+
+  return res.status(200).json(result);
+}
+
+// ── fal.ai call + alpha extraction ───────────────────────────────────────────
+
+async function _callFal(modelId, imageUrl) {
+  const output = await fal.run(modelId, {
+    input: { image_url: imageUrl },
+  });
+
+  // Both BiRefNet and rembg return { image: { url: "..." } }
+  const outputImageUrl = output?.image?.url ?? output?.output?.image?.url;
+  if (!outputImageUrl) throw new Error(`No output image URL from ${modelId}`);
+
+  // Fetch the RGBA PNG and extract the alpha channel
+  const imgRes = await fetch(outputImageUrl);
+  if (!imgRes.ok)
+    throw new Error(`Failed to fetch output image: ${imgRes.status}`);
+
+  const arrayBuffer = await imgRes.arrayBuffer();
+  return await _extractAlphaMask(new Uint8Array(arrayBuffer));
+}
+
+// ── PNG alpha extraction (pure Node, no canvas) ──────────────────────────────
+// Parses just enough of a PNG to find IHDR (dimensions) and IDAT (pixel data),
+// applies scanline filter reconstruction per the PNG spec, then extracts alpha.
+// BiRefNet/rembg return non-interlaced RGBA PNG.
+
+async function _extractAlphaMask(pngBytes) {
+  // Validate PNG signature
+  const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (let i = 0; i < 8; i++) {
+    if (pngBytes[i] !== PNG_SIG[i]) throw new Error("Not a valid PNG");
+  }
+
+  const view = new DataView(
+    pngBytes.buffer,
+    pngBytes.byteOffset,
+    pngBytes.byteLength,
+  );
+
+  // Read IHDR — always at byte 8, chunk data starts at byte 16
+  const width = view.getUint32(16);
+  const height = view.getUint32(20);
+  const bitDepth = pngBytes[24];
+  const colorType = pngBytes[25]; // 6 = RGBA
+  const interlace = pngBytes[28];
+
+  if (bitDepth !== 8) throw new Error(`Unsupported PNG bit depth: ${bitDepth}`);
+  if (colorType !== 6)
+    throw new Error(`Expected RGBA PNG (colorType 6), got ${colorType}`);
+  if (interlace !== 0) throw new Error("Interlaced PNG not supported");
+
+  // Collect all IDAT chunks
+  const idatChunks = [];
+  let offset = 8;
+  while (offset + 12 <= pngBytes.byteLength) {
+    const chunkLen = view.getUint32(offset);
+    const chunkType = String.fromCharCode(
+      pngBytes[offset + 4],
+      pngBytes[offset + 5],
+      pngBytes[offset + 6],
+      pngBytes[offset + 7],
+    );
+    if (chunkType === "IDAT") {
+      idatChunks.push(pngBytes.slice(offset + 8, offset + 8 + chunkLen));
+    }
+    if (chunkType === "IEND") break;
+    offset += 12 + chunkLen;
+  }
+
+  if (idatChunks.length === 0) throw new Error("No IDAT chunks found in PNG");
+
+  // Decompress with DecompressionStream (Node 18+)
+  const compressed = _concatUint8Arrays(idatChunks);
+  const ds = new DecompressionStream("deflate");
+  const writer = ds.writable.getWriter();
+  const reader = ds.readable.getReader();
+  writer.write(compressed);
+  writer.close();
+
+  const chunks = [];
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (value) chunks.push(value);
+  }
+  const raw = _concatUint8Arrays(chunks);
+
+  // Apply PNG filter reconstruction then extract alpha channel.
+  // Each scanline: 1 filter byte + width*4 pixel bytes.
+  const bpp = 4; // bytes per pixel for RGBA-8
+  const scanlineLen = width * bpp;
+  const recon = new Uint8Array(height * scanlineLen); // reconstructed pixel data
+
+  for (let row = 0; row < height; row++) {
+    const rawBase = row * (1 + scanlineLen);
+    const filter = raw[rawBase];
+    const reconBase = row * scanlineLen;
+    const prevBase = reconBase - scanlineLen; // row above (may be negative for row 0)
+
+    for (let i = 0; i < scanlineLen; i++) {
+      const x = raw[rawBase + 1 + i];
+      const a = i >= bpp ? recon[reconBase + i - bpp] : 0; // left pixel
+      const b = row > 0 ? recon[prevBase + i] : 0; // above pixel
+      const c = row > 0 && i >= bpp ? recon[prevBase + i - bpp] : 0; // above-left
+
+      let val;
+      switch (filter) {
+        case 0:
+          val = x;
+          break; // None
+        case 1:
+          val = (x + a) & 0xff;
+          break; // Sub
+        case 2:
+          val = (x + b) & 0xff;
+          break; // Up
+        case 3:
+          val = (x + Math.floor((a + b) / 2)) & 0xff;
+          break; // Average
+        case 4:
+          val = (x + _paeth(a, b, c)) & 0xff;
+          break; // Paeth
+        default:
+          throw new Error(`Unknown PNG filter type: ${filter}`);
+      }
+      recon[reconBase + i] = val;
+    }
+  }
+
+  // Extract alpha (byte index 3 of each RGBA pixel)
+  const alphaMask = new Uint8Array(width * height);
+  let totalPixelArea = 0;
+  for (let i = 0; i < width * height; i++) {
+    if (recon[i * bpp + 3] > 128) {
+      alphaMask[i] = 1;
+      totalPixelArea++;
+    }
+  }
 
   return {
-    garmentCategory,
-    lowConfidence,
-    regions: { frontPanel: fp, sleeveLeft: sl, sleeveRight: sr, backPanel },
-    rawLabels,
+    garmentMask: Array.from(alphaMask),
+    totalPixelArea,
+    maskWidth: width,
+    maskHeight: height,
   };
+}
+
+// PNG Paeth predictor (spec §9.4)
+function _paeth(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  if (pa <= pb && pa <= pc) return a;
+  if (pb <= pc) return b;
+  return c;
+}
+
+function _concatUint8Arrays(arrays) {
+  const total = arrays.reduce((s, a) => s + a.byteLength, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arrays) {
+    out.set(a, offset);
+    offset += a.byteLength;
+  }
+  return out;
+}
+
+// ── Timeout wrapper ───────────────────────────────────────────────────────────
+
+function _runWithTimeout(fn, ms) {
+  return Promise.race([
+    fn().catch((err) => {
+      console.error("[segment] model error:", err.message);
+      return null;
+    }),
+    new Promise((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
 }

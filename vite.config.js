@@ -121,7 +121,10 @@ export default defineConfig(({ mode }) => {
                 if (content) {
                   // Help diagnose "fabric analysis is wrong" by surfacing what
                   // gpt-4o actually returned for each call.
-                  console.log("[analyze] gpt-4o →", content.replace(/\s+/g, " "));
+                  console.log(
+                    "[analyze] gpt-4o →",
+                    content.replace(/\s+/g, " "),
+                  );
                 }
                 if (!content) {
                   console.error(
@@ -252,7 +255,8 @@ export default defineConfig(({ mode }) => {
               res.setHeader("Content-Type", "application/json");
               res.end(
                 JSON.stringify({
-                  error: "Neither GEMINI_API_KEY nor POLLINATIONS_KEY set in .env",
+                  error:
+                    "Neither GEMINI_API_KEY nor POLLINATIONS_KEY set in .env",
                 }),
               );
               return;
@@ -313,12 +317,325 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
+      {
+        name: "segment-dev-proxy",
+        configureServer(server) {
+          server.middlewares.use("/api/segment", async (req, res) => {
+            console.log("[segment] incoming", req.method);
+            if (req.method !== "POST") {
+              res.statusCode = 405;
+              res.setHeader("Content-Type", "application/json");
+              res.end(
+                JSON.stringify({ error: true, message: "Method not allowed" }),
+              );
+              return;
+            }
+
+            const falApiKey = env.FAL_API_KEY;
+            if (!falApiKey) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(
+                JSON.stringify({
+                  error: true,
+                  message: "FAL_API_KEY not set in .env",
+                }),
+              );
+              return;
+            }
+
+            // Dynamically import the handler from api/segment.js.
+            // Using createRequire / dynamic import avoids bundling it into the
+            // Vite client bundle. The file uses top-level fal.config() which
+            // runs immediately on import — FAL_API_KEY must already be in env.
+            try {
+              // Collect raw multipart body
+              const chunks = [];
+              req.on("data", (c) => chunks.push(c));
+              await new Promise((resolve, reject) => {
+                req.on("end", resolve);
+                req.on("error", reject);
+              });
+              const rawBody = Buffer.concat(chunks);
+
+              // Parse FormData using the Web Fetch API (Node 18+)
+              const webReq = new Request("http://localhost", {
+                method: "POST",
+                headers: { "content-type": req.headers["content-type"] },
+                body: rawBody,
+              });
+              const formData = await webReq.formData();
+              const imageFile = formData.get("image");
+
+              if (!imageFile) {
+                res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json");
+                res.end(
+                  JSON.stringify({
+                    error: true,
+                    message: "Missing 'image' field in FormData",
+                  }),
+                );
+                return;
+              }
+
+              console.log(
+                "[segment] image received, size:",
+                imageFile.size,
+                "type:",
+                imageFile.type,
+              );
+
+              const arrayBuffer = await imageFile.arrayBuffer();
+              const base64 = Buffer.from(arrayBuffer).toString("base64");
+              const mimeType = imageFile.type || "image/jpeg";
+              const imageUrl = `data:${mimeType};base64,${base64}`;
+
+              // Call BiRefNet via fal.ai
+              const TIMEOUT_MS = 8000;
+
+              async function callFal(modelId) {
+                console.log(`[segment] calling ${modelId}...`);
+                const t0 = Date.now();
+                const falRes = await fetch(`https://fal.run/${modelId}`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Key ${falApiKey}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ image_url: imageUrl }),
+                });
+                if (!falRes.ok) {
+                  const errText = await falRes.text();
+                  throw new Error(
+                    `fal.ai ${modelId} ${falRes.status}: ${errText.slice(0, 200)}`,
+                  );
+                }
+                const data = await falRes.json();
+                console.log(
+                  `[segment] ${modelId} responded in ${Date.now() - t0}ms`,
+                );
+                const outputUrl = data?.image?.url ?? data?.output?.image?.url;
+                if (!outputUrl)
+                  throw new Error(
+                    `No output image URL from ${modelId}: ${JSON.stringify(data).slice(0, 200)}`,
+                  );
+
+                console.log(
+                  "[segment] fetching output image:",
+                  outputUrl.slice(0, 80),
+                );
+                const imgRes = await fetch(outputUrl);
+                if (!imgRes.ok)
+                  throw new Error(
+                    `Failed to fetch output image: ${imgRes.status}`,
+                  );
+                const pngBytes = new Uint8Array(await imgRes.arrayBuffer());
+                console.log(
+                  "[segment] output image size:",
+                  pngBytes.byteLength,
+                  "bytes",
+                );
+                return pngBytes;
+              }
+
+              function withTimeout(fn, ms) {
+                return Promise.race([
+                  fn().catch((err) => {
+                    console.error("[segment] error:", err.message);
+                    return null;
+                  }),
+                  new Promise((r) =>
+                    setTimeout(() => {
+                      console.warn("[segment] timeout after", ms, "ms");
+                      r(null);
+                    }, ms),
+                  ),
+                ]);
+              }
+
+              let pngBytes = await withTimeout(
+                () => callFal("fal-ai/birefnet"),
+                TIMEOUT_MS,
+              );
+              if (!pngBytes) {
+                console.warn("[segment] BiRefNet failed — trying rembg");
+                pngBytes = await withTimeout(
+                  () => callFal("fal-ai/imageutils/rembg"),
+                  TIMEOUT_MS,
+                );
+              }
+
+              if (!pngBytes) {
+                res.statusCode = 500;
+                res.setHeader("Content-Type", "application/json");
+                res.end(
+                  JSON.stringify({
+                    error: true,
+                    message: "Both segmentation models failed",
+                  }),
+                );
+                return;
+              }
+
+              // Inline PNG alpha extraction (same logic as api/segment.js)
+              const result = await extractAlphaMask(pngBytes);
+              console.log(
+                "[segment] mask extracted, totalPixelArea:",
+                result.totalPixelArea,
+                "dims:",
+                result.maskWidth,
+                "x",
+                result.maskHeight,
+              );
+
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify(result));
+            } catch (e) {
+              console.error("[segment] unexpected error:", e.message);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: true, message: e.message }));
+            }
+          });
+        },
+      },
     ],
     resolve: {
       dedupe: ["react", "react-dom"],
     },
     server: {
+      host: true,
       allowedHosts: [".trycloudflare.com", ".ngrok.io", ".ngrok-free.app"],
     },
   };
 });
+
+// ── PNG alpha extraction (shared between vite dev proxy and api/segment.js) ──
+// Exported so vite.config can reference it in the inline proxy closure above.
+// Not imported by any browser bundle.
+async function extractAlphaMask(pngBytes) {
+  const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (let i = 0; i < 8; i++) {
+    if (pngBytes[i] !== PNG_SIG[i]) throw new Error("Not a valid PNG");
+  }
+  const view = new DataView(
+    pngBytes.buffer,
+    pngBytes.byteOffset,
+    pngBytes.byteLength,
+  );
+  const width = view.getUint32(16);
+  const height = view.getUint32(20);
+  const bitDepth = pngBytes[24];
+  const colorType = pngBytes[25];
+  const interlace = pngBytes[28];
+  if (bitDepth !== 8) throw new Error(`Unsupported PNG bit depth: ${bitDepth}`);
+  if (colorType !== 6)
+    throw new Error(`Expected RGBA PNG (colorType 6), got ${colorType}`);
+  if (interlace !== 0) throw new Error("Interlaced PNG not supported");
+
+  const idatChunks = [];
+  let offset = 8;
+  while (offset + 12 <= pngBytes.byteLength) {
+    const chunkLen = view.getUint32(offset);
+    const chunkType = String.fromCharCode(
+      pngBytes[offset + 4],
+      pngBytes[offset + 5],
+      pngBytes[offset + 6],
+      pngBytes[offset + 7],
+    );
+    if (chunkType === "IDAT")
+      idatChunks.push(pngBytes.slice(offset + 8, offset + 8 + chunkLen));
+    if (chunkType === "IEND") break;
+    offset += 12 + chunkLen;
+  }
+  if (idatChunks.length === 0) throw new Error("No IDAT chunks found in PNG");
+
+  const total = idatChunks.reduce((s, a) => s + a.byteLength, 0);
+  const compressed = new Uint8Array(total);
+  let off = 0;
+  for (const a of idatChunks) {
+    compressed.set(a, off);
+    off += a.byteLength;
+  }
+
+  const ds = new DecompressionStream("deflate");
+  const writer = ds.writable.getWriter();
+  const reader = ds.readable.getReader();
+  writer.write(compressed);
+  writer.close();
+  const rawChunks = [];
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (value) rawChunks.push(value);
+  }
+  const rawTotal = rawChunks.reduce((s, a) => s + a.byteLength, 0);
+  const raw = new Uint8Array(rawTotal);
+  let rawOff = 0;
+  for (const a of rawChunks) {
+    raw.set(a, rawOff);
+    rawOff += a.byteLength;
+  }
+
+  const bpp = 4;
+  const scanlineLen = width * bpp;
+  const recon = new Uint8Array(height * scanlineLen);
+  function paeth(a, b, c) {
+    const p = a + b - c,
+      pa = Math.abs(p - a),
+      pb = Math.abs(p - b),
+      pc = Math.abs(p - c);
+    return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+  }
+
+  for (let row = 0; row < height; row++) {
+    const rawBase = row * (1 + scanlineLen);
+    const filter = raw[rawBase];
+    const reconBase = row * scanlineLen;
+    const prevBase = reconBase - scanlineLen;
+    for (let i = 0; i < scanlineLen; i++) {
+      const x = raw[rawBase + 1 + i];
+      const a = i >= bpp ? recon[reconBase + i - bpp] : 0;
+      const b = row > 0 ? recon[prevBase + i] : 0;
+      const c = row > 0 && i >= bpp ? recon[prevBase + i - bpp] : 0;
+      let val;
+      switch (filter) {
+        case 0:
+          val = x;
+          break;
+        case 1:
+          val = (x + a) & 0xff;
+          break;
+        case 2:
+          val = (x + b) & 0xff;
+          break;
+        case 3:
+          val = (x + Math.floor((a + b) / 2)) & 0xff;
+          break;
+        case 4:
+          val = (x + paeth(a, b, c)) & 0xff;
+          break;
+        default:
+          throw new Error(`Unknown PNG filter type: ${filter}`);
+      }
+      recon[reconBase + i] = val;
+    }
+  }
+
+  const alphaMask = new Uint8Array(width * height);
+  let totalPixelArea = 0;
+  for (let i = 0; i < width * height; i++) {
+    if (recon[i * bpp + 3] > 128) {
+      alphaMask[i] = 1;
+      totalPixelArea++;
+    }
+  }
+  return {
+    garmentMask: Array.from(alphaMask),
+    totalPixelArea,
+    maskWidth: width,
+    maskHeight: height,
+  };
+}

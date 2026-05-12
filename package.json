@@ -12,6 +12,7 @@
     "extract-patterns": "node scripts/extractPatterns.mjs"
   },
   "dependencies": {
+    "@fal-ai/client": "^1.10.1",
     "@freesewing/aaron": "^4.8.0",
     "@freesewing/bella": "^4.8.0",
     "@freesewing/bent": "^4.8.0",

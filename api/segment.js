@@ -10,18 +10,9 @@ const TIMEOUT_MS = 25000;
 fal.config({ credentials: process.env.FAL_API_KEY });
 
 export default async function handler(req, res) {
-  if (req.method === "GET") {
-    return res.status(200).json({
-      hasFalKey: !!process.env.FAL_API_KEY,
-      keyPrefix: process.env.FAL_API_KEY?.slice(0, 8) + "...",
-    });
-  }
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: true, message: "Method not allowed" });
   }
-
-  console.log("[segment] incoming POST");
 
   let imageFile;
   try {
@@ -31,7 +22,6 @@ export default async function handler(req, res) {
       req.on("end", () => resolve(Buffer.concat(chunks)));
       req.on("error", reject);
     });
-    console.log("[segment] raw body size:", rawBody.byteLength);
 
     const webReq = new Request("http://localhost", {
       method: "POST",
@@ -40,12 +30,6 @@ export default async function handler(req, res) {
     });
     const formData = await webReq.formData();
     imageFile = formData.get("image");
-    console.log(
-      "[segment] image parsed, size:",
-      imageFile?.size,
-      "type:",
-      imageFile?.type,
-    );
   } catch (e) {
     console.error("[segment] FormData parse error:", e.message);
     return res
@@ -54,7 +38,6 @@ export default async function handler(req, res) {
   }
 
   if (!imageFile) {
-    console.error("[segment] no image field in FormData");
     return res
       .status(400)
       .json({ error: true, message: "Missing 'image' field in FormData" });
@@ -64,60 +47,44 @@ export default async function handler(req, res) {
   const base64 = Buffer.from(arrayBuffer).toString("base64");
   const mimeType = imageFile.type || "image/jpeg";
   const imageUrl = `data:${mimeType};base64,${base64}`;
-  console.log("[segment] imageUrl length:", imageUrl.length);
 
-  console.log("[segment] calling BiRefNet...");
+  const errors = {};
+
   let result = await _runWithTimeout(
     () => _callFal("fal-ai/birefnet", imageUrl),
     TIMEOUT_MS,
+    errors,
+    "birefnet",
   );
-  const birefnetError = result?._error;
 
-  if (result?._error) {
-    console.warn(
-      "[segment] BiRefNet failed —",
-      result._error,
-      "— trying rembg",
-    );
+  if (!result) {
     result = await _runWithTimeout(
       () => _callFal("fal-ai/imageutils/rembg", imageUrl),
       TIMEOUT_MS,
+      errors,
+      "rembg",
     );
   }
 
-  if (!result || result._error) {
+  if (!result) {
     return res.status(500).json({
       error: true,
       message: "Both segmentation models failed",
-      birefnetError, // ← shows in browser Network tab
-      rembgError: result?._error, // ← shows in browser Network tab
+      birefnetError: errors.birefnet,
+      rembgError: errors.rembg,
     });
   }
 
-  console.log("[segment] success, totalPixelArea:", result.totalPixelArea);
   return res.status(200).json(result);
 }
 
 async function _callFal(modelId, imageUrl) {
-  console.log(`[segment] _callFal ${modelId} start`);
-  const t0 = Date.now();
-  let output;
-  try {
-    output = await fal.run(modelId, { input: { image_url: imageUrl } });
-    console.log(`[segment] fal.run ${modelId} ok in ${Date.now() - t0}ms`);
-  } catch (e) {
-    console.error(`[segment] fal.run ${modelId} threw:`, e.message);
-    throw e;
-  }
+  const output = await fal.run(modelId, { input: { image_url: imageUrl } });
 
   const outputImageUrl =
     output?.data?.image?.url ??
     output?.image?.url ??
     output?.output?.image?.url;
-  console.log(
-    `[segment] output URL:`,
-    outputImageUrl?.slice(0, 80) ?? "MISSING",
-  );
   if (!outputImageUrl)
     throw new Error(
       `No output image URL from ${modelId}: ${JSON.stringify(output).slice(0, 200)}`,
@@ -126,10 +93,8 @@ async function _callFal(modelId, imageUrl) {
   const imgRes = await fetch(outputImageUrl);
   if (!imgRes.ok)
     throw new Error(`Failed to fetch output image: ${imgRes.status}`);
-  console.log(`[segment] output image fetched, status ${imgRes.status}`);
 
   const arrayBuffer = await imgRes.arrayBuffer();
-  console.log(`[segment] output image size: ${arrayBuffer.byteLength} bytes`);
   return await _extractAlphaMask(new Uint8Array(arrayBuffer));
 }
 
@@ -237,9 +202,6 @@ async function _extractAlphaMask(pngBytes) {
     }
   }
 
-  console.log(
-    `[segment] mask extracted ${width}x${height}, totalPixelArea: ${totalPixelArea}`,
-  );
   return {
     garmentMask: Array.from(alphaMask),
     totalPixelArea,
@@ -269,14 +231,17 @@ function _concatUint8Arrays(arrays) {
   return out;
 }
 
-function _runWithTimeout(fn, ms) {
+function _runWithTimeout(fn, ms, errors, key) {
   return Promise.race([
     fn().catch((err) => {
-      console.error("[segment] model error:", err.message);
-      return { _error: err.message };
+      if (errors && key) errors[key] = err.message;
+      return null;
     }),
     new Promise((resolve) =>
-      setTimeout(() => resolve({ _error: "timeout" }), ms),
+      setTimeout(() => {
+        if (errors && key && !errors[key]) errors[key] = "timeout";
+        resolve(null);
+      }, ms),
     ),
   ]);
 }

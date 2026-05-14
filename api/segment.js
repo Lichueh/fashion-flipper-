@@ -110,7 +110,10 @@ async function _callFal(modelId, imageUrl) {
     throw e;
   }
 
-  const outputImageUrl = output?.image?.url ?? output?.output?.image?.url;
+  const outputImageUrl =
+    output?.data?.image?.url ??
+    output?.image?.url ??
+    output?.output?.image?.url;
   console.log(
     `[segment] output URL:`,
     outputImageUrl?.slice(0, 80) ?? "MISSING",

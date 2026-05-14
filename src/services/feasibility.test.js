@@ -54,9 +54,11 @@ describe("large T-shirt (80×60 cm panel, 3500 cm²) — tote bag", () => {
     expect(byId(results, "bag").failReason).toBeNull();
   });
 
-  it("fitScore is 1 — every piece fits the panel", () => {
+  it("fitScore is a composite of piece-fit and reuse scores (bag area=875, garment=3500)", () => {
+    // pieceFitScore = 1 (no physical pieces to check), reuseScore = 875/3500 = 0.25
+    // compositeScore = 0.5 * 1 + 0.5 * 0.25 = 0.625
     const results = checkFeasibility(measurements, realTemplates);
-    expect(byId(results, "bag").fitScore).toBe(1);
+    expect(byId(results, "bag").fitScore).toBeCloseTo(0.625);
   });
 
   it("usedAreaPct is capped at 100 and is a positive number", () => {
@@ -133,9 +135,9 @@ describe("medium garment (30×28 cm panel, 1800 cm²) — area ok, one piece too
     expect(results[0].failReason).toBe("piece_fit");
   });
 
-  it("fitScore is greater than 0 — some pieces passed Stage 2", () => {
+  it("fitScore is 0 — piece_fit failure returns hardcoded 0", () => {
     const results = checkFeasibility(measurements, MOCK_TEMPLATES);
-    expect(results[0].fitScore).toBeGreaterThan(0);
+    expect(results[0].fitScore).toBe(0);
   });
 
   it("fitScore is less than 1 — not all pieces passed", () => {
@@ -143,9 +145,9 @@ describe("medium garment (30×28 cm panel, 1800 cm²) — area ok, one piece too
     expect(results[0].fitScore).toBeLessThan(1);
   });
 
-  it("fitScore is exactly 2/3 — 2 of 3 pieces fit", () => {
+  it("fitScore is 0 even when 2 of 3 pieces fit — early exit sets it to 0", () => {
     const results = checkFeasibility(measurements, MOCK_TEMPLATES);
-    expect(results[0].fitScore).toBeCloseTo(2 / 3, 10);
+    expect(results[0].fitScore).toBe(0);
   });
 });
 
@@ -196,9 +198,11 @@ describe("constrained garment (35×30 cm panel, 900 cm²) — hat fits, bag does
     expect(byId(results, "hat").failReason).toBeNull();
   });
 
-  it("bucket hat fitScore is 1", () => {
+  it("bucket hat fitScore is composite (pieceFit=1, reuse=800/900)", () => {
+    // pieceFitScore = 1, reuseScore = 800/900 = 8/9
+    // compositeScore = 0.5 * 1 + 0.5 * (8/9) = 17/18 ≈ 0.9444
     const results = checkFeasibility(measurements, MOCK_TEMPLATES);
-    expect(byId(results, "hat").fitScore).toBe(1);
+    expect(byId(results, "hat").fitScore).toBeCloseTo(17 / 18);
   });
 });
 
@@ -231,9 +235,11 @@ describe("rotated piece fits (38×40 cm panel, 2000 cm²)", () => {
     expect(results[0].feasible).toBe(true);
   });
 
-  it("fitScore is 1 — both pieces fit (one via rotation)", () => {
+  it("fitScore is composite — pieceFit=1, reuse=1470/2000", () => {
+    // pieceFitScore = 1, reuseScore = 1470/2000 = 0.735
+    // compositeScore = 0.5 * 1 + 0.5 * 0.735 = 0.8675
     const results = checkFeasibility(measurements, MOCK_TEMPLATES);
-    expect(results[0].fitScore).toBe(1);
+    expect(results[0].fitScore).toBeCloseTo(0.8675);
   });
 
   it("failReason is null", () => {

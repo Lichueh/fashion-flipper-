@@ -1,113 +1,91 @@
 /**
  * Unit tests for segmentGarment.
  *
- * The Transformers.js pipeline is fully mocked so no model weights are loaded.
- * URL.createObjectURL / revokeObjectURL are stubbed because Node has no DOM.
+ * fetch() is mocked globally — no real HTTP requests are made.
+ * The implementation POSTs to /api/segment and derives garmentCategory
+ * from the mask bounding-box aspect ratio returned by the server.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-
-// ---------------------------------------------------------------------------
-// Mock @huggingface/transformers BEFORE importing the module under test.
-// vi.mock hoists to the top of the file automatically.
-// ---------------------------------------------------------------------------
-const mockPipelineFn = vi.fn();
-
-vi.mock("@huggingface/transformers", () => ({
-  pipeline: vi.fn(() => Promise.resolve(mockPipelineFn)),
-}));
-
-// Stub browser globals that Node doesn't provide.
-globalThis.URL.createObjectURL = vi.fn(() => "blob:mock-url");
-globalThis.URL.revokeObjectURL = vi.fn();
-
-// Import AFTER mocks are in place.
 import { segmentGarment } from "./segmentation.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Minimal File-like object — only the type matters for FormData. */
+const fakeFile = new Blob([""], { type: "image/jpeg" });
+
 /**
- * Build a fake segment object the way Transformers.js returns it.
- * `hotPixels` is the number of pixels set to 255 (active), the rest are 0.
+ * Build a Response-like mock that fetch() will resolve with.
+ * @param {object} body   JSON-serialisable response body
+ * @param {number} status HTTP status code (default 200)
  */
-function makeSeg(label, hotPixels, totalPixels = 100) {
-  const data = new Uint8ClampedArray(totalPixels);
-  for (let i = 0; i < hotPixels; i++) data[i] = 255;
-  return { label, mask: { data } };
+function mockFetchResponse(body, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(body),
+  };
 }
 
-/** A minimal File-like object is sufficient – the real File API is never called. */
-const fakeFile = new Blob([""], { type: "image/jpeg" });
+/**
+ * Convenience: set up globalThis.fetch to return a successful mask response.
+ * @param {object} overrides Fields to merge into the default payload.
+ */
+function mockSuccess({
+  maskWidth = 100,
+  maskHeight = 100,
+  totalPixelArea = 50,
+  garmentMask = Array(maskWidth * maskHeight).fill(0),
+} = {}) {
+  globalThis.fetch = vi
+    .fn()
+    .mockResolvedValue(
+      mockFetchResponse({ garmentMask, totalPixelArea, maskWidth, maskHeight }),
+    );
+}
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("segmentGarment – garmentCategory inference", () => {
+describe("segmentGarment – garmentCategory inference (aspect ratio)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    globalThis.URL.createObjectURL.mockReturnValue("blob:mock-url");
   });
 
-  it('returns "tshirt" when upper-clothes has the most garment pixels', async () => {
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("upper-clothes", 60),
-      makeSeg("left-arm", 10),
-      makeSeg("right-arm", 10),
-    ]);
-
+  it('returns "tshirt" for a roughly square mask (100×100)', async () => {
+    mockSuccess({ maskWidth: 100, maskHeight: 100, totalPixelArea: 60 });
     const result = await segmentGarment(fakeFile);
-
     expect(result.garmentCategory).toBe("tshirt");
   });
 
-  it('returns "tshirt" when coat has the most garment pixels', async () => {
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("coat", 70),
-      makeSeg("left-arm", 5),
-    ]);
-
+  it('returns "dress" when height > 1.4 × width (portrait, narrow)', async () => {
+    // height 150, width 100 → 150 > 1.4 * 100 = 140 → dress
+    mockSuccess({ maskWidth: 100, maskHeight: 150, totalPixelArea: 80 });
     const result = await segmentGarment(fakeFile);
-
-    expect(result.garmentCategory).toBe("tshirt");
-  });
-
-  it('returns "dress" when dress has the most garment pixels', async () => {
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("dress", 80),
-      makeSeg("left-arm", 5),
-      makeSeg("right-arm", 5),
-    ]);
-
-    const result = await segmentGarment(fakeFile);
-
     expect(result.garmentCategory).toBe("dress");
   });
 
-  it('returns "pants" when pants has the most garment pixels', async () => {
-    mockPipelineFn.mockResolvedValue([makeSeg("pants", 75)]);
-
+  it('returns "tshirt" when height is exactly 1.4 × width (boundary)', async () => {
+    // height 140, width 100 → 140 > 140 is false → tshirt
+    mockSuccess({ maskWidth: 100, maskHeight: 140, totalPixelArea: 80 });
     const result = await segmentGarment(fakeFile);
+    expect(result.garmentCategory).toBe("tshirt");
+  });
 
+  it('returns "pants" when width > height (landscape)', async () => {
+    // width 120, height 80 → 120 > 80 → pants
+    mockSuccess({ maskWidth: 120, maskHeight: 80, totalPixelArea: 60 });
+    const result = await segmentGarment(fakeFile);
     expect(result.garmentCategory).toBe("pants");
   });
 
-  it('returns "unknown" when only non-category labels are present (skirt)', async () => {
-    mockPipelineFn.mockResolvedValue([makeSeg("skirt", 60)]);
-
+  it('returns "tshirt" for square mask (width === height, not landscape)', async () => {
+    mockSuccess({ maskWidth: 90, maskHeight: 90, totalPixelArea: 40 });
     const result = await segmentGarment(fakeFile);
-
-    expect(result.garmentCategory).toBe("unknown");
-  });
-
-  it('returns "unknown" when the model returns no segments', async () => {
-    mockPipelineFn.mockResolvedValue([]);
-
-    const result = await segmentGarment(fakeFile);
-
-    expect(result.garmentCategory).toBe("unknown");
+    expect(result.garmentCategory).toBe("tshirt");
   });
 });
 
@@ -116,76 +94,39 @@ describe("segmentGarment – garmentCategory inference", () => {
 describe("segmentGarment – lowConfidence threshold", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    globalThis.URL.createObjectURL.mockReturnValue("blob:mock-url");
   });
 
-  it("sets lowConfidence: false when dominant region confidence >= 0.15", async () => {
-    // frontPanel (upper-clothes) = 50 out of 100 total → confidence 0.50
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("upper-clothes", 50, 100),
-      makeSeg("left-arm", 30, 100),
-      makeSeg("right-arm", 20, 100),
-    ]);
-
+  it("sets lowConfidence: false when confidence >= 0.15 (50% coverage)", async () => {
+    // 50 garment pixels out of 100 total → confidence 0.50
+    mockSuccess({ maskWidth: 10, maskHeight: 10, totalPixelArea: 50 });
     const result = await segmentGarment(fakeFile);
+    expect(result.lowConfidence).toBe(false);
+    expect(result.confidence).toBeCloseTo(0.5);
+  });
 
+  it("sets lowConfidence: false when confidence is exactly 0.15", async () => {
+    // 15 / 100 = 0.15 → 0.15 < 0.15 is false
+    mockSuccess({ maskWidth: 10, maskHeight: 10, totalPixelArea: 15 });
+    const result = await segmentGarment(fakeFile);
     expect(result.lowConfidence).toBe(false);
   });
 
-  it("sets lowConfidence: true when dominant region confidence < 0.15", async () => {
-    // Only 10 hot pixels out of 100 total per segment → max confidence 0.10
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("upper-clothes", 10, 100),
-      makeSeg("left-arm", 5, 100),
-    ]);
-
+  it("sets lowConfidence: true when confidence is just below 0.15 (14/100)", async () => {
+    mockSuccess({ maskWidth: 10, maskHeight: 10, totalPixelArea: 14 });
     const result = await segmentGarment(fakeFile);
-
-    // totalGarmentPixels = 10 + 5 = 15
-    // frontPanel confidence = 10/15 ≈ 0.67 → should NOT be low… let's recalculate.
-    // Actually the test above will pass as false. Use skirt to push dominant below threshold.
-  });
-
-  it("sets lowConfidence: true when only non-front-panel labels detected with tiny coverage", async () => {
-    // 100-pixel grid; only 10 are garment pixels (skirt), none map to front/sleeve regions.
-    // dominant confidence of frontPanel/sleeveLeft/sleeveRight each = 0 < 0.15
-    mockPipelineFn.mockResolvedValue([makeSeg("skirt", 10, 100)]);
-
-    const result = await segmentGarment(fakeFile);
-
     expect(result.lowConfidence).toBe(true);
   });
 
-  it("sets lowConfidence: true when no garment pixels detected at all", async () => {
-    mockPipelineFn.mockResolvedValue([]);
-
+  it("sets lowConfidence: true when totalPixelArea is 0", async () => {
+    mockSuccess({ maskWidth: 10, maskHeight: 10, totalPixelArea: 0 });
     const result = await segmentGarment(fakeFile);
-
     expect(result.lowConfidence).toBe(true);
   });
 
-  it("confidence exactly at 0.15 is NOT low confidence", async () => {
-    // frontPanel = 15 px, total garment = 100 px → confidence exactly 0.15
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("upper-clothes", 15, 100),
-      makeSeg("skirt", 85, 100),
-    ]);
-
+  it("sets confidence to 0 when maskWidth and maskHeight are 0", async () => {
+    mockSuccess({ maskWidth: 0, maskHeight: 0, totalPixelArea: 0 });
     const result = await segmentGarment(fakeFile);
-
-    // frontPanel.confidence = 15/100 = 0.15; lowConfidence = 0.15 < 0.15 → false
-    expect(result.lowConfidence).toBe(false);
-  });
-
-  it("confidence just below 0.15 IS low confidence", async () => {
-    // frontPanel = 14 px, total garment = 100 px → confidence 0.14
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("upper-clothes", 14, 100),
-      makeSeg("skirt", 86, 100),
-    ]);
-
-    const result = await segmentGarment(fakeFile);
-
+    expect(result.confidence).toBe(0);
     expect(result.lowConfidence).toBe(true);
   });
 });
@@ -195,61 +136,40 @@ describe("segmentGarment – lowConfidence threshold", () => {
 describe("segmentGarment – return shape", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    globalThis.URL.createObjectURL.mockReturnValue("blob:mock-url");
   });
 
-  it("always returns backPanel with null mask", async () => {
-    mockPipelineFn.mockResolvedValue([makeSeg("upper-clothes", 50)]);
-
+  it("returns garmentMask as a Uint8Array", async () => {
+    const arr = Array(100).fill(0);
+    mockSuccess({
+      maskWidth: 10,
+      maskHeight: 10,
+      totalPixelArea: 50,
+      garmentMask: arr,
+    });
     const result = await segmentGarment(fakeFile);
-
-    expect(result.regions.backPanel.mask).toBeNull();
-    expect(result.regions.backPanel.pixelArea).toBe(0);
-    expect(result.regions.backPanel.confidence).toBe(0);
+    expect(result.garmentMask).toBeInstanceOf(Uint8Array);
+    expect(result.garmentMask.length).toBe(100);
   });
 
-  it("populates rawLabels with pixel counts for debugging", async () => {
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("upper-clothes", 40),
-      makeSeg("left-arm", 20),
-    ]);
-
+  it("returns rawLabels as an empty object (no semantic labels from BiRefNet)", async () => {
+    mockSuccess();
     const result = await segmentGarment(fakeFile);
-
-    expect(result.rawLabels["upper-clothes"]).toBe(40);
-    expect(result.rawLabels["left-arm"]).toBe(20);
+    expect(result.rawLabels).toEqual({});
   });
 
-  it("merges coat pixels into frontPanel alongside upper-clothes", async () => {
-    mockPipelineFn.mockResolvedValue([
-      makeSeg("upper-clothes", 30, 100),
-      makeSeg("coat", 25, 100),
-    ]);
-
+  it("returns totalPixelArea and mask dimensions from the server response", async () => {
+    mockSuccess({ maskWidth: 200, maskHeight: 300, totalPixelArea: 12000 });
     const result = await segmentGarment(fakeFile);
-
-    // frontPanel area = 30 + 25 = 55, total = 55, confidence = 1.0
-    expect(result.regions.frontPanel.pixelArea).toBe(55);
-    expect(result.regions.frontPanel.confidence).toBeCloseTo(1.0);
+    expect(result.totalPixelArea).toBe(12000);
+    expect(result.maskWidth).toBe(200);
+    expect(result.maskHeight).toBe(300);
   });
 
-  it("returns mask as Uint8Array for detected regions", async () => {
-    mockPipelineFn.mockResolvedValue([makeSeg("left-arm", 10, 50)]);
-
+  it("includes confidence in the returned object", async () => {
+    mockSuccess({ maskWidth: 10, maskHeight: 10, totalPixelArea: 40 });
     const result = await segmentGarment(fakeFile);
-
-    expect(result.regions.sleeveLeft.mask).toBeInstanceOf(Uint8Array);
-    expect(result.regions.sleeveLeft.mask.length).toBe(50);
-  });
-
-  it("returns null mask for regions with no detected pixels", async () => {
-    mockPipelineFn.mockResolvedValue([makeSeg("upper-clothes", 50)]);
-
-    const result = await segmentGarment(fakeFile);
-
-    // No left-arm or right-arm segment → mask should be null
-    expect(result.regions.sleeveLeft.mask).toBeNull();
-    expect(result.regions.sleeveRight.mask).toBeNull();
+    expect(typeof result.confidence).toBe("number");
+    expect(result.confidence).toBeCloseTo(0.4);
   });
 });
 
@@ -258,47 +178,48 @@ describe("segmentGarment – return shape", () => {
 describe("segmentGarment – error handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    globalThis.URL.createObjectURL.mockReturnValue("blob:mock-url");
   });
 
-  it("returns error shape when the pipeline throws", async () => {
-    mockPipelineFn.mockRejectedValue(new Error("model load failed"));
-
+  it("returns error shape when fetch throws a network error", async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("network failure"));
     const result = await segmentGarment(fakeFile);
+    expect(result.error).toBe(true);
+    expect(result.lowConfidence).toBe(true);
+    expect(result.message).toContain("network failure");
+  });
 
+  it("returns error shape when the server responds with a non-ok status", async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        mockFetchResponse(
+          { error: true, message: "internal server error" },
+          500,
+        ),
+      );
+    const result = await segmentGarment(fakeFile);
     expect(result.error).toBe(true);
     expect(result.lowConfidence).toBe(true);
     expect(typeof result.message).toBe("string");
-    expect(result.message).toContain("model load failed");
   });
 
-  it("returns error shape when createObjectURL throws", async () => {
-    globalThis.URL.createObjectURL.mockImplementation(() => {
-      throw new Error("blob URL not supported");
-    });
-
+  it("returns error shape when response body contains data.error flag", async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        mockFetchResponse({ error: true, message: "fal.ai timeout" }, 200),
+      );
     const result = await segmentGarment(fakeFile);
-
     expect(result.error).toBe(true);
-    expect(result.message).toContain("blob URL not supported");
+    expect(result.message).toContain("fal.ai timeout");
   });
-});
 
-// ---------------------------------------------------------------------------
-
-describe("segmentGarment – pipeline caching", () => {
-  it("calls the pipeline() factory only once across multiple invocations", async () => {
-    const { pipeline } = await import("@huggingface/transformers");
-    vi.clearAllMocks();
-    mockPipelineFn.mockResolvedValue([makeSeg("dress", 50)]);
-    globalThis.URL.createObjectURL.mockReturnValue("blob:mock-url");
-
-    await segmentGarment(fakeFile);
-    await segmentGarment(fakeFile);
-    await segmentGarment(fakeFile);
-
-    // pipeline() factory should have been called at most once (may be 0 if
-    // the module-level cache was already populated by earlier tests).
-    expect(pipeline.mock.calls.length).toBeLessThanOrEqual(1);
+  it("uses HTTP status as message when server body has no message field", async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(mockFetchResponse({ error: true }, 503));
+    const result = await segmentGarment(fakeFile);
+    expect(result.error).toBe(true);
+    expect(result.message).toContain("503");
   });
 });

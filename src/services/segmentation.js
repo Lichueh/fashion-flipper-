@@ -2,9 +2,6 @@
  * Garment segmentation service — calls /api/segment (Vercel serverless),
  * which proxies to fal.ai BiRefNet (primary) or rembg (fallback).
  *
- * Replaces the previous Transformers.js / ONNX WASM in-browser pipeline.
- * The return shape is identical so nothing downstream breaks.
- *
  * @typedef {Object} SegmentationResult
  * @property {'tshirt'|'dress'|'pants'|'unknown'} garmentCategory
  * @property {Uint8Array} garmentMask   - flat binary mask (1 = garment, 0 = bg)
@@ -82,10 +79,4 @@ export async function segmentGarment(imageFile) {
       lowConfidence: true,
     };
   }
-}
-
-// Kept for backwards compatibility with segmentation.worker.js which calls this
-// on startup to pre-warm the pipeline. Now a no-op — the model lives server-side.
-export async function getSegmentationPipeline() {
-  return null;
 }

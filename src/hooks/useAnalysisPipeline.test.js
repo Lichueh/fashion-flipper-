@@ -8,7 +8,7 @@
  *   - retry() force-bypass of the sessionStorage fabric cache
  *
  * All external dependencies (worker, services) are mocked so the tests run
- * without a real ONNX model, camera, or API key.
+ * without a real camera or API key.
  */
 
 import { renderHook, act } from "@testing-library/react";

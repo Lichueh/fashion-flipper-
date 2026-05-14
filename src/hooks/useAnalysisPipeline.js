@@ -47,7 +47,7 @@ const templatesWithPieces = Object.fromEntries(
  */
 // ── Worker singleton ──────────────────────────────────────────────────────────
 // Lives at module level so it survives re-renders and is shared across hook
-// instances. The worker (and its ONNX WASM) is created only once per page.
+// instances. The worker is created only once per page.
 let _segWorker = null;
 const _segPending = new Map(); // id → { resolve, reject }
 let _segIdSeq = 0;

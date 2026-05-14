@@ -411,7 +411,7 @@ export default defineConfig(({ mode }) => {
                   new Promise((_, reject) =>
                     setTimeout(
                       () => reject(new Error(`${modelId} API timeout`)),
-                      9000,
+                      20000,
                     ),
                   ),
                 ]);

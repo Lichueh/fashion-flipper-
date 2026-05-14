@@ -56,7 +56,11 @@ export default function ManualFabricForm({ setManualFabric, onCancel }) {
   const resolvedType =
     typeChoice === "custom"
       ? customType.trim()
-        ? { en: customType.trim(), nb: customType.trim(), zh: customType.trim() }
+        ? {
+            en: customType.trim(),
+            nb: customType.trim(),
+            zh: customType.trim(),
+          }
         : null
       : typeChoice;
 
@@ -88,9 +92,7 @@ export default function ManualFabricForm({ setManualFabric, onCancel }) {
   function handleSubmit() {
     const validParts = composition.filter(
       (c) =>
-        c.material !== null &&
-        c.percentage !== "" &&
-        Number(c.percentage) > 0,
+        c.material !== null && c.percentage !== "" && Number(c.percentage) > 0,
     );
 
     // Fall back to a single entry using the fabric type when no composition rows are filled.
@@ -224,12 +226,16 @@ export default function ManualFabricForm({ setManualFabric, onCancel }) {
           <select
             value={texture?.en ?? ""}
             onChange={(e) => {
-              const found = TEXTURE_OPTIONS.find((o) => o.en === e.target.value);
+              const found = TEXTURE_OPTIONS.find(
+                (o) => o.en === e.target.value,
+              );
               setTexture(found ?? null);
             }}
             className="w-full bg-primary-700 border border-primary-600 rounded-xl px-3 py-2.5 text-primary-100 text-sm outline-none focus:border-secondary-300"
           >
-            <option value="">{t("analysis.fabricFormTexturePlaceholder")}</option>
+            <option value="">
+              {t("analysis.fabricFormTexturePlaceholder")}
+            </option>
             {TEXTURE_OPTIONS.map((o) => (
               <option key={o.en} value={o.en}>
                 {tl(o)}

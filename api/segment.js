@@ -1,11 +1,8 @@
 // api/segment.js
-// Vercel serverless function — calls fal.ai BiRefNet (primary) or rembg (fallback)
-// and returns a flat binary alpha mask compatible with computeMeasurements().
-
 import { fal } from "@fal-ai/client";
 
 export const config = {
-  api: { bodyParser: false }, // required to read raw multipart stream
+  api: { bodyParser: false },
 };
 
 const TIMEOUT_MS = 25000;
@@ -13,7 +10,6 @@ const TIMEOUT_MS = 25000;
 fal.config({ credentials: process.env.FAL_API_KEY });
 
 export default async function handler(req, res) {
-  // Temporary debug endpoint — remove after confirming key is set
   if (req.method === "GET") {
     return res.status(200).json({
       hasFalKey: !!process.env.FAL_API_KEY,
@@ -25,12 +21,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: true, message: "Method not allowed" });
   }
 
-  // Read raw body stream, then parse as FormData via the Web Fetch API (Node 18+).
+  console.log("[segment] incoming POST");
+
   let imageFile;
   try {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const rawBody = Buffer.concat(chunks);
+    const rawBody = await new Promise((resolve, reject) => {
+      const chunks = [];
+      req.on("data", (chunk) => chunks.push(chunk));
+      req.on("end", () => resolve(Buffer.concat(chunks)));
+      req.on("error", reject);
+    });
+    console.log("[segment] raw body size:", rawBody.byteLength);
 
     const webReq = new Request("http://localhost", {
       method: "POST",
@@ -39,68 +40,72 @@ export default async function handler(req, res) {
     });
     const formData = await webReq.formData();
     imageFile = formData.get("image");
+    console.log("[segment] image parsed, size:", imageFile?.size, "type:", imageFile?.type);
   } catch (e) {
-    return res
-      .status(400)
-      .json({ error: true, message: "Failed to parse FormData" });
+    console.error("[segment] FormData parse error:", e.message);
+    return res.status(400).json({ error: true, message: `Failed to parse FormData: ${e.message}` });
   }
 
   if (!imageFile) {
-    return res
-      .status(400)
-      .json({ error: true, message: "Missing 'image' field in FormData" });
+    console.error("[segment] no image field in FormData");
+    return res.status(400).json({ error: true, message: "Missing 'image' field in FormData" });
   }
 
   const arrayBuffer = await imageFile.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString("base64");
   const mimeType = imageFile.type || "image/jpeg";
   const imageUrl = `data:${mimeType};base64,${base64}`;
+  console.log("[segment] imageUrl length:", imageUrl.length);
 
-  // Primary: BiRefNet
+  console.log("[segment] calling BiRefNet...");
   let result = await _runWithTimeout(
     () => _callFal("fal-ai/birefnet", imageUrl),
     TIMEOUT_MS,
   );
+  console.log("[segment] BiRefNet result:", result ? "ok" : "null");
 
-  // Fallback: rembg
   if (!result) {
-    console.warn(
-      "[segment] BiRefNet failed or timed out — trying rembg fallback",
-    );
+    console.warn("[segment] BiRefNet failed — trying rembg");
     result = await _runWithTimeout(
       () => _callFal("fal-ai/imageutils/rembg", imageUrl),
       TIMEOUT_MS,
     );
+    console.log("[segment] rembg result:", result ? "ok" : "null");
   }
 
   if (!result) {
-    return res
-      .status(500)
-      .json({ error: true, message: "Both segmentation models failed" });
+    console.error("[segment] both models failed");
+    return res.status(500).json({ error: true, message: "Both segmentation models failed" });
   }
 
+  console.log("[segment] success, totalPixelArea:", result.totalPixelArea);
   return res.status(200).json(result);
 }
 
-// ── fal.ai call + alpha extraction ───────────────────────────────────────────
-
 async function _callFal(modelId, imageUrl) {
-  const output = await fal.run(modelId, {
-    input: { image_url: imageUrl },
-  });
+  console.log(`[segment] _callFal ${modelId} start`);
+  const t0 = Date.now();
+  let output;
+  try {
+    output = await fal.run(modelId, { input: { image_url: imageUrl } });
+    console.log(`[segment] fal.run ${modelId} ok in ${Date.now() - t0}ms`);
+  } catch (e) {
+    console.error(`[segment] fal.run ${modelId} threw:`, e.message);
+    throw e;
+  }
 
   const outputImageUrl = output?.image?.url ?? output?.output?.image?.url;
-  if (!outputImageUrl) throw new Error(`No output image URL from ${modelId}`);
+  console.log(`[segment] output URL:`, outputImageUrl?.slice(0, 80) ?? "MISSING");
+  if (!outputImageUrl) throw new Error(`No output image URL from ${modelId}: ${JSON.stringify(output).slice(0, 200)}`);
 
   const imgRes = await fetch(outputImageUrl);
-  if (!imgRes.ok)
-    throw new Error(`Failed to fetch output image: ${imgRes.status}`);
+  if (!imgRes.ok) throw new Error(`Failed to fetch output image: ${imgRes.status}`);
+  console.log(`[segment] output image fetched, status ${imgRes.status}`);
 
   const arrayBuffer = await imgRes.arrayBuffer();
+  console.log(`[segment] output image size: ${arrayBuffer.byteLength} bytes`);
   return await _extractAlphaMask(new Uint8Array(arrayBuffer));
 }
-
-// ── PNG alpha extraction (pure Node, no canvas) ───────────────────────────────
 
 async function _extractAlphaMask(pngBytes) {
   const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10];
@@ -108,12 +113,7 @@ async function _extractAlphaMask(pngBytes) {
     if (pngBytes[i] !== PNG_SIG[i]) throw new Error("Not a valid PNG");
   }
 
-  const view = new DataView(
-    pngBytes.buffer,
-    pngBytes.byteOffset,
-    pngBytes.byteLength,
-  );
-
+  const view = new DataView(pngBytes.buffer, pngBytes.byteOffset, pngBytes.byteLength);
   const width = view.getUint32(16);
   const height = view.getUint32(20);
   const bitDepth = pngBytes[24];
@@ -121,8 +121,7 @@ async function _extractAlphaMask(pngBytes) {
   const interlace = pngBytes[28];
 
   if (bitDepth !== 8) throw new Error(`Unsupported PNG bit depth: ${bitDepth}`);
-  if (colorType !== 6)
-    throw new Error(`Expected RGBA PNG (colorType 6), got ${colorType}`);
+  if (colorType !== 6) throw new Error(`Expected RGBA PNG (colorType 6), got ${colorType}`);
   if (interlace !== 0) throw new Error("Interlaced PNG not supported");
 
   const idatChunks = [];
@@ -130,14 +129,10 @@ async function _extractAlphaMask(pngBytes) {
   while (offset + 12 <= pngBytes.byteLength) {
     const chunkLen = view.getUint32(offset);
     const chunkType = String.fromCharCode(
-      pngBytes[offset + 4],
-      pngBytes[offset + 5],
-      pngBytes[offset + 6],
-      pngBytes[offset + 7],
+      pngBytes[offset + 4], pngBytes[offset + 5],
+      pngBytes[offset + 6], pngBytes[offset + 7],
     );
-    if (chunkType === "IDAT") {
-      idatChunks.push(pngBytes.slice(offset + 8, offset + 8 + chunkLen));
-    }
+    if (chunkType === "IDAT") idatChunks.push(pngBytes.slice(offset + 8, offset + 8 + chunkLen));
     if (chunkType === "IEND") break;
     offset += 12 + chunkLen;
   }
@@ -177,23 +172,12 @@ async function _extractAlphaMask(pngBytes) {
 
       let val;
       switch (filter) {
-        case 0:
-          val = x;
-          break;
-        case 1:
-          val = (x + a) & 0xff;
-          break;
-        case 2:
-          val = (x + b) & 0xff;
-          break;
-        case 3:
-          val = (x + Math.floor((a + b) / 2)) & 0xff;
-          break;
-        case 4:
-          val = (x + _paeth(a, b, c)) & 0xff;
-          break;
-        default:
-          throw new Error(`Unknown PNG filter type: ${filter}`);
+        case 0: val = x; break;
+        case 1: val = (x + a) & 0xff; break;
+        case 2: val = (x + b) & 0xff; break;
+        case 3: val = (x + Math.floor((a + b) / 2)) & 0xff; break;
+        case 4: val = (x + _paeth(a, b, c)) & 0xff; break;
+        default: throw new Error(`Unknown PNG filter type: ${filter}`);
       }
       recon[reconBase + i] = val;
     }
@@ -208,12 +192,8 @@ async function _extractAlphaMask(pngBytes) {
     }
   }
 
-  return {
-    garmentMask: Array.from(alphaMask),
-    totalPixelArea,
-    maskWidth: width,
-    maskHeight: height,
-  };
+  console.log(`[segment] mask extracted ${width}x${height}, totalPixelArea: ${totalPixelArea}`);
+  return { garmentMask: Array.from(alphaMask), totalPixelArea, maskWidth: width, maskHeight: height };
 }
 
 function _paeth(a, b, c) {
@@ -230,19 +210,13 @@ function _concatUint8Arrays(arrays) {
   const total = arrays.reduce((s, a) => s + a.byteLength, 0);
   const out = new Uint8Array(total);
   let offset = 0;
-  for (const a of arrays) {
-    out.set(a, offset);
-    offset += a.byteLength;
-  }
+  for (const a of arrays) { out.set(a, offset); offset += a.byteLength; }
   return out;
 }
 
 function _runWithTimeout(fn, ms) {
   return Promise.race([
-    fn().catch((err) => {
-      console.error("[segment] model error:", err.message);
-      return null;
-    }),
+    fn().catch((err) => { console.error("[segment] model error:", err.message); return null; }),
     new Promise((resolve) => setTimeout(() => resolve(null), ms)),
   ]);
 }

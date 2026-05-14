@@ -2,6 +2,15 @@
 // Vercel serverless function — calls fal.ai BiRefNet (primary) or rembg (fallback)
 // and returns a flat binary alpha mask compatible with computeMeasurements().
 
+// Temporarily add at the TOP of your api/segment.js handler:
+if (req.method === 'GET') {
+  res.status(200).json({
+    hasFalKey: !!process.env.FAL_API_KEY,
+    keyPrefix: process.env.FAL_API_KEY?.slice(0, 8) + '...',
+  });
+  return;
+}
+
 import { fal } from "@fal-ai/client";
 
 export const config = {

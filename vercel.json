@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/segment.js": {
+      "maxDuration": 30
+    }
+  }
+}

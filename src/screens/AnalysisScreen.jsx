@@ -2,74 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { mockAnalysis } from "../data/mockAnalysis";
 import { useAnalysisPipeline } from "../hooks/useAnalysisPipeline";
 import { useLang } from "../i18n/LanguageContext";
-
-// ── Fabric spell-check helpers ───────────────────────────────────────────────
-const KNOWN_FABRICS = [
-  "Acrylic",
-  "Canvas",
-  "Cashmere",
-  "Chiffon",
-  "Corduroy",
-  "Cotton",
-  "Crepe",
-  "Denim",
-  "Flannel",
-  "Fleece",
-  "Georgette",
-  "Jersey",
-  "Lace",
-  "Leather",
-  "Linen",
-  "Lycra",
-  "Mohair",
-  "Nylon",
-  "Organza",
-  "Polyester",
-  "Poplin",
-  "Rayon",
-  "Satin",
-  "Silk",
-  "Spandex",
-  "Suede",
-  "Taffeta",
-  "Tulle",
-  "Tweed",
-  "Twill",
-  "Velvet",
-  "Viscose",
-  "Wool",
-];
-
-function _levenshtein(a, b) {
-  const m = a.length,
-    n = b.length;
-  const dp = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
-  );
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] =
-        a[i - 1] === b[j - 1]
-          ? dp[i - 1][j - 1]
-          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-  return dp[m][n];
-}
-
-/** Returns the closest known fabric name, or null if already known / too different. */
-function _closestFabric(input) {
-  const lower = input.toLowerCase();
-  if (KNOWN_FABRICS.some((f) => f.toLowerCase() === lower)) return null;
-  let best = null,
-    bestDist = Infinity;
-  for (const f of KNOWN_FABRICS) {
-    const dist = _levenshtein(lower, f.toLowerCase());
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = f;
-    }
-  }
-  return bestDist <= Math.max(2, Math.floor(input.length * 0.4)) ? best : null;
-}
+import ManualFabricForm from "../components/ManualFabricForm";
 
 export default function AnalysisScreen({
   navigate,
@@ -114,8 +47,6 @@ export default function AnalysisScreen({
   }, [uploadedFile]);
 
   const [phase, setPhase] = useState("scanning");
-  const [manualFabricInput, setManualFabricInput] = useState("");
-  const [fabricSuggestion, setFabricSuggestion] = useState(null);
 
   useEffect(() => {
     if (status === "done" || status === "error") {
@@ -252,161 +183,11 @@ export default function AnalysisScreen({
 
   // ─── MANUAL FABRIC PHASE ─────────────────────────────────────────
   if (phase === "manualFabric") {
-    const buildAndSetFabric = (input) => {
-      const parts = input.split(",").map((p) => p.trim());
-      const composition = parts.map((part) => {
-        const percentMatch = part.match(/(\d+(?:\.\d+)?)\s*%/);
-        const percentage = percentMatch ? parseFloat(percentMatch[1]) : null;
-        const material = percentMatch
-          ? part.replace(percentMatch[0], "").trim()
-          : part.trim();
-        const finalPercentage =
-          percentage ??
-          (parts.length === 1 ? 100 : Math.round(100 / parts.length));
-        const name = material || "Fabric";
-        return {
-          material: { en: name, nb: name, zh: name },
-          percentage: finalPercentage,
-        };
-      });
-      const firstPart = parts[0];
-      const firstPercent = firstPart.match(/(\d+(?:\.\d+)?)\s*%/);
-      const fabricType =
-        (firstPercent
-          ? firstPart.replace(firstPercent[0], "").trim()
-          : firstPart.trim()) || "Custom";
-      setManualFabric({
-        type: { en: fabricType, nb: fabricType, zh: fabricType },
-        color: { en: "Unknown", nb: "Ukjent", zh: "未知" },
-        composition,
-        weight: { en: "Unknown", nb: "Ukjent", zh: "未知" },
-        texture: { en: "Unknown", nb: "Ukjent", zh: "未知" },
-        condition: { en: "Unknown", nb: "Ukjent", zh: "未知" },
-        tags: [],
-      });
-    };
-
-    const handleConfirmFabric = () => {
-      const trimmed = manualFabricInput.trim();
-      if (!trimmed) {
-        setManualFabric(null);
-        return;
-      }
-      // Check each material name against the known-fabrics list before parsing.
-      const parts = trimmed.split(",").map((p) => p.trim());
-      const pairs = parts.reduce((acc, part) => {
-        const percentMatch = part.match(/(\d+(?:\.\d+)?)\s*%/);
-        const materialRaw = percentMatch
-          ? part.replace(percentMatch[0], "").trim()
-          : part.trim();
-        if (!materialRaw) return acc;
-        const suggestion = _closestFabric(materialRaw);
-        if (suggestion) acc.push({ original: materialRaw, suggestion });
-        return acc;
-      }, []);
-      if (pairs.length > 0) {
-        let corrected = trimmed;
-        for (const { original, suggestion } of pairs)
-          corrected = corrected.replace(new RegExp(original, "gi"), suggestion);
-        setFabricSuggestion({ pairs, correctedInput: corrected });
-        return;
-      }
-      buildAndSetFabric(trimmed);
-    };
     return (
-      <div className="h-full flex flex-col bg-primary-900 px-6 pt-16 pb-8">
-        <button
-          onClick={() => {
-            setFabricSuggestion(null);
-            setPhase("failed");
-          }}
-          className="self-start w-9 h-9 bg-primary-700 rounded-full border border-primary-600 flex items-center justify-center text-primary-100 shadow-sm mb-8"
-        >
-          ←
-        </button>
-        <h2 className="text-primary-100 text-2xl font-bold mb-2">
-          {t("analysis.manualFabricTitle")}
-        </h2>
-        <p className="text-primary-100 text-sm mb-8">
-          {t("analysis.manualFabricSubtitle")}
-        </p>
-        <input
-          type="text"
-          value={manualFabricInput}
-          onChange={(e) => {
-            setManualFabricInput(e.target.value);
-            if (fabricSuggestion) setFabricSuggestion(null);
-          }}
-          placeholder={t("analysis.manualFabricPlaceholder")}
-          className="w-full bg-primary-800 border border-primary-600 rounded-2xl px-4 py-3 text-primary-100 placeholder-primary-500 text-sm mb-6 outline-none focus:border-secondary-300"
-        />
-        <div className="space-y-3 mt-auto">
-          {fabricSuggestion ? (
-            <div className="bg-primary-800 border border-primary-600 rounded-2xl px-4 py-3 space-y-3">
-              {fabricSuggestion.pairs.length === 1 ? (
-                <p className="text-primary-200 text-sm leading-relaxed">
-                  {t("analysis.fabricSuggestionSingle", {
-                    name: fabricSuggestion.pairs[0].original,
-                    suggestion: fabricSuggestion.pairs[0].suggestion,
-                  })}
-                </p>
-              ) : (
-                <>
-                  <p className="text-primary-200 text-sm">
-                    {t("analysis.fabricSuggestionMultiple")}
-                  </p>
-                  <ul className="space-y-1">
-                    {fabricSuggestion.pairs.map(({ original, suggestion }) => (
-                      <li key={original} className="text-xs">
-                        <span className="text-primary-100">{original}</span>
-                        <span className="text-primary-500"> → </span>
-                        <span className="text-secondary-300 font-medium">
-                          {suggestion}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const corrected = fabricSuggestion.correctedInput;
-                    setManualFabricInput(corrected);
-                    setFabricSuggestion(null);
-                    buildAndSetFabric(corrected);
-                  }}
-                  className="flex-1 bg-secondary-300 text-white py-2.5 rounded-xl text-sm font-semibold active:scale-[0.98] transition-transform"
-                >
-                  {t("analysis.fabricUseSuggestion")}
-                </button>
-                <button
-                  onClick={() => {
-                    setFabricSuggestion(null);
-                    buildAndSetFabric(manualFabricInput.trim());
-                  }}
-                  className="flex-1 bg-primary-700 text-primary-200 py-2.5 rounded-xl text-sm font-medium border border-primary-600 active:scale-[0.98] transition-transform"
-                >
-                  {t("analysis.fabricKeepOriginal")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={handleConfirmFabric}
-              className="w-full bg-secondary-300 text-white py-4 rounded-2xl font-bold active:scale-[0.98] transition-transform shadow-md shadow-black/20"
-            >
-              {t("analysis.manualFabricConfirm")}
-            </button>
-          )}
-          <button
-            onClick={() => setManualFabric(null)}
-            className="w-full bg-transparent text-primary-100 py-3 rounded-2xl font-medium active:scale-[0.98] transition-transform"
-          >
-            {t("analysis.manualFabricSkip")}
-          </button>
-        </div>
-      </div>
+      <ManualFabricForm
+        setManualFabric={setManualFabric}
+        onCancel={() => setPhase("failed")}
+      />
     );
   }
 

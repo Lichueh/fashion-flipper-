@@ -212,6 +212,7 @@ export function useAnalysisPipeline() {
           _downscaleForSegmentation(imageFile, 800).then((sf) =>
             _runSegmentationInWorker(sf),
           ),
+          //Promise.resolve({ error: true, maskWidth: 100, maskHeight: 100 }),
         ]);
 
         if (fabricResult) {

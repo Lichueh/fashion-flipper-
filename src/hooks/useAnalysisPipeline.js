@@ -34,11 +34,14 @@ const templatesWithPieces = Object.fromEntries(
  *   measurements: Object|null,
  *   feasibleTemplates: Array|null,
  *   fabric: Object,
+ *   fabricFailed: boolean,
+ *   segmentationFailed: boolean,
  *   needsManualInput: boolean,
  *   needsScaleInput: boolean,
  *   error: string|null,
  *   run: (imageFile: File) => Promise<void>,
  *   submitGarmentLength: (cm: number) => Promise<void>,
+ *   setManualFabric: (fabricData: Object) => void,
  *   retry: () => void,
  * }}
  */
@@ -94,6 +97,8 @@ export function useAnalysisPipeline() {
   const [fabric, setFabric] = useState(mockAnalysis.fabric);
   const [needsManualInput, setNeedsManualInput] = useState(false);
   const [needsScaleInput, setNeedsScaleInput] = useState(false);
+  const [fabricFailed, setFabricFailed] = useState(false);
+  const [segmentationFailed, setSegmentationFailed] = useState(false);
   const [error, setError] = useState(null);
 
   // Holds segResult + mask dimensions between the segmenting and measuring stages
@@ -102,6 +107,12 @@ export function useAnalysisPipeline() {
   // Mirrors the fabric state so _measureAndCheck (a plain function, not a hook)
   // can read the latest value without a stale closure.
   const fabricRef = useRef(mockAnalysis.fabric);
+  // Snapshot of the last successful _pendingRef so setManualFabric can replay
+  // measure + feasibility without re-segmenting.
+  const lastSegResultRef = useRef(null);
+  // Set by retry() so the next run() bypasses any sessionStorage cache in
+  // analyzeFabric and forces a fresh API call.
+  const _forceAnalysisRef = useRef(false);
 
   const reset = () => {
     setStatus("idle");
@@ -113,13 +124,18 @@ export function useAnalysisPipeline() {
     fabricRef.current = mockAnalysis.fabric;
     setNeedsManualInput(false);
     setNeedsScaleInput(false);
+    setFabricFailed(false);
+    setSegmentationFailed(false);
     setError(null);
     _pendingRef.current = null;
+    lastSegResultRef.current = null;
   };
 
   // ── Stages 2 + 3: measure then feasibility-check ───────────────────────────
-  // Shared by run() (when lengthGarment provided upfront) and submitGarmentLength().
-  const _measureAndCheck = (lengthGarment) => {
+  // Shared by run() (when lengthGarment provided upfront), submitGarmentLength(),
+  // and setManualFabric(). Pass fabricOverride to use a specific fabric object
+  // instead of fabricRef.current (used by setManualFabric).
+  const _measureAndCheck = (lengthGarment, fabricOverride) => {
     const pending = _pendingRef.current;
     if (!pending) return;
 
@@ -160,7 +176,7 @@ export function useAnalysisPipeline() {
     const feasibility = checkFeasibility(
       measResult,
       templatesWithPieces,
-      fabricRef.current,
+      fabricOverride ?? fabricRef.current,
     );
     setFeasibleTemplates(feasibility);
     setProgress(100);
@@ -185,8 +201,14 @@ export function useAnalysisPipeline() {
         // overhead. SegFormer only needs the outline, not full camera resolution.
         // fabricAnalysis receives the original file for maximum quality.
         // Both chains run fully in parallel.
+        //
+        // retry() sets _forceAnalysisRef so that if a previous fabric call was
+        // cached in sessionStorage, the cache is bypassed and a fresh response
+        // is fetched instead.
+        const force = _forceAnalysisRef.current;
+        _forceAnalysisRef.current = false;
         const [fabricResult, segResult] = await Promise.all([
-          analyzeFabric(imageFile),
+          analyzeFabric(imageFile, { force }),
           _downscaleForSegmentation(imageFile, 800).then((sf) =>
             _runSegmentationInWorker(sf),
           ),
@@ -195,9 +217,16 @@ export function useAnalysisPipeline() {
         if (fabricResult) {
           setFabric(fabricResult);
           fabricRef.current = fabricResult;
+        } else {
+          // fabricResult === null: the fabric API failed or returned no usable data.
+          // fabricRef.current keeps mockAnalysis.fabric so checkFeasibility never
+          // receives undefined. The UI should check fabricFailed to offer a manual
+          // fabric-entry fallback.
+          setFabricFailed(true);
         }
 
         if (segResult.error || segResult.lowConfidence) {
+          if (segResult.error) setSegmentationFailed(true);
           setNeedsManualInput(true);
           setSegmentation(segResult.error ? null : segResult);
           setProgress(100);
@@ -220,7 +249,11 @@ export function useAnalysisPipeline() {
           hasLayers,
           scaleCmPerImagePx: rulerScale?.scaleCmPerImagePx ?? null,
           imageWidth: rulerScale?.imageWidth ?? null,
+          lengthGarment: lengthGarment ?? null,
         };
+        // Keep a permanent snapshot so setManualFabric can replay measure +
+        // feasibility without re-segmenting even after a state reset.
+        lastSegResultRef.current = _pendingRef.current;
 
         // A ruler-derived scale stands on its own — no need for lengthGarment.
         if (lengthGarment > 0 || rulerScale?.scaleCmPerImagePx > 0) {
@@ -248,7 +281,23 @@ export function useAnalysisPipeline() {
     }
   }, []);
 
+  // ── Called when the user provides fabric data manually after a fabric API failure ──
+  const setManualFabric = useCallback((fabricData) => {
+    setFabricFailed(false);
+    fabricRef.current = fabricData;
+    setFabric(fabricData);
+    // Re-run only the measure + feasibility stages with the supplied fabric.
+    // Skips analyzeFabric and segmentation entirely.
+    if (lastSegResultRef.current) {
+      _pendingRef.current = lastSegResultRef.current;
+      _measureAndCheck(lastSegResultRef.current.lengthGarment, fabricData);
+    }
+  }, []);
+
   const retry = useCallback(() => {
+    // Signal the next run() to bypass any sessionStorage cache in analyzeFabric
+    // so a previously-failed (and possibly cached) response isn't reused.
+    _forceAnalysisRef.current = true;
     reset();
   }, []);
 
@@ -259,11 +308,14 @@ export function useAnalysisPipeline() {
     measurements,
     feasibleTemplates,
     fabric,
+    fabricFailed,
+    segmentationFailed,
     needsManualInput,
     needsScaleInput,
     error,
     run,
     submitGarmentLength,
+    setManualFabric,
     retry,
   };
 }

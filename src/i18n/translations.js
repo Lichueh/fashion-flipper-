@@ -90,7 +90,8 @@ const translations = {
       enterCmCta: "Enter the distance in cm",
       confirmCta: "Confirm and analyse",
       noImage: "No photo available",
-      zoomHint: "Pinch to zoom · drag to pan · use the +/− buttons for fine control",
+      zoomHint:
+        "Pinch to zoom · drag to pan · use the +/− buttons for fine control",
     },
     analysis: {
       analyzingFabric: "Analyzing Fabric",
@@ -109,6 +110,23 @@ const translations = {
       grainHorizontal: "Horizontal (Weft)",
       grainBias: "Bias ({deg}°)",
       chooseDirection: "Choose Direction →",
+      failedSegTitle: "We couldn't detect the garment outline",
+      failedFabricTitle: "We couldn't identify the fabric",
+      tryAgain: "Try again",
+      enterFabricManually: "Enter fabric manually",
+      continueAnyway: "Continue anyway",
+      dimensionsWarning:
+        "Garment dimensions couldn't be computed — pattern recommendations may be less accurate.",
+      manualFabricTitle: "Describe the fabric",
+      manualFabricSubtitle:
+        "Enter the fabric type. You can also add multiple with percentages.",
+      manualFabricPlaceholder: "e.g. Cotton or 50% Cotton, 50% Linen",
+      manualFabricConfirm: "Use this fabric",
+      manualFabricSkip: "Skip fabric info",
+      fabricSuggestionSingle: "Did you mean {suggestion} instead of {name}?",
+      fabricSuggestionMultiple: "Some fabric names look unfamiliar:",
+      fabricUseSuggestion: "Use suggestion",
+      fabricKeepOriginal: "Keep as typed",
     },
     templateSelect: {
       title: "Choose Upcycling Template",
@@ -247,8 +265,7 @@ const translations = {
       replaceBody:
         'Applying "{label}" will overwrite all your current measurement entries.',
       emptyTitle: "Profile saved with no measurements",
-      emptyBody:
-        "Add measurements now so patterns can be fitted to your body.",
+      emptyBody: "Add measurements now so patterns can be fitted to your body.",
       later: "Later",
       addNow: "Add now",
     },
@@ -430,8 +447,7 @@ const translations = {
     home: {
       tagline: "Gi gamle klær nytt liv",
       heroBadge: "AI-veiledet gjenbruk",
-      heroTitle:
-        "Ta et bilde og gjør\ndine gamle klær til noe nytt",
+      heroTitle: "Ta et bilde og gjør\ndine gamle klær til noe nytt",
       heroBody:
         "AI identifiserer stoffet og anbefaler det beste gjenbruksforslaget",
       startUpcycling: "Start gjenbruk ✂️",
@@ -461,8 +477,7 @@ const translations = {
       photographyTips: "📸 Fototips",
       tip1: "Fotografer i naturlig lys mot kontrastrik bakgrunn",
       tip2: "Legg plagget flatt slik at stoffet eksponeres helt",
-      tip3:
-        "Forsøk å la plagget fylle rammen, men unngå å beskjære kantene",
+      tip3: "Forsøk å la plagget fylle rammen, men unngå å beskjære kantene",
       selectFirst: "Velg et bilde først for å aktivere måling",
       layersTitle: "🧥 Plaggets lag",
       layersHint:
@@ -474,18 +489,19 @@ const translations = {
       title: "Trykk på to punkter på linjalen",
       hintTapFirst: "Trykk på den første enden av linjalen i bildet.",
       hintTapSecond: "Trykk på det andre punktet på linjalen.",
-      hintEnterCm: "Skriv nå inn den virkelige avstanden mellom de to punktene.",
+      hintEnterCm:
+        "Skriv nå inn den virkelige avstanden mellom de to punktene.",
       knownDistanceLabel: "Avstand mellom de to punktene",
       placePointsCta: "Plasser 2 punkter først",
       enterCmCta: "Skriv inn avstanden i cm",
       confirmCta: "Bekreft og analyser",
       noImage: "Ingen bilde tilgjengelig",
-      zoomHint: "Klyp for å zoome · dra for å panorere · bruk +/− for finjustering",
+      zoomHint:
+        "Klyp for å zoome · dra for å panorere · bruk +/− for finjustering",
     },
     analysis: {
       analyzingFabric: "Analyserer stoff",
-      analyzingBody:
-        "AI identifiserer stoffmateriale, farge og tilstand …",
+      analyzingBody: "AI identifiserer stoffmateriale, farge og tilstand …",
       title: "AI-analyseresultater",
       complete: "✓ Analyse fullført",
       detectedMaterial: "Påvist materiale",
@@ -500,6 +516,23 @@ const translations = {
       grainHorizontal: "Horisontal (innslag)",
       grainBias: "Skrå ({deg}°)",
       chooseDirection: "Velg retning →",
+      failedSegTitle: "Vi klarte ikke å oppdage plaggkonturen",
+      failedFabricTitle: "Vi klarte ikke å identifisere stoffet",
+      tryAgain: "Prøv igjen",
+      enterFabricManually: "Skriv inn stoff manuelt",
+      continueAnyway: "Fortsett likevel",
+      dimensionsWarning:
+        "Plaggmål kunne ikke beregnes — mønsteranbefalinger kan bli mindre nøyaktige.",
+      manualFabricTitle: "Beskriv stoffet",
+      manualFabricSubtitle:
+        "Skriv inn stofftype. Du kan også legge til flere med prosentandeler.",
+      manualFabricPlaceholder: "f.eks. Bomull eller 50% Bomull, 50% Lin",
+      manualFabricConfirm: "Bruk dette stoffet",
+      manualFabricSkip: "Hopp over stoffinfo",
+      fabricSuggestionSingle: "Mente du {suggestion} i stedet for {name}?",
+      fabricSuggestionMultiple: "Noen stoff navn ser ukjente ut:",
+      fabricUseSuggestion: "Bruk forslag",
+      fabricKeepOriginal: "Behold som skrevet",
     },
     templateSelect: {
       title: "Velg gjenbruksmal",
@@ -556,8 +589,7 @@ const translations = {
       next: "Neste →",
       previous: "← Forrige",
       viewDiagram: "Se diagram på freesewing.eu",
-      instructionsCredit:
-        "Veiledning fra FreeSewing.eu — freesewing.org",
+      instructionsCredit: "Veiledning fra FreeSewing.eu — freesewing.org",
     },
     result: {
       title: "Gjenbruksresultater",
@@ -713,8 +745,7 @@ const translations = {
       calibrate: "Kalibrer",
       measureGarment: "Mål plagg",
       cameraRequired: "Kamera-tilgang kreves",
-      cameraDeniedBody:
-        "Tillat kameratilgang for å måle plagget med AR.",
+      cameraDeniedBody: "Tillat kameratilgang for å måle plagget med AR.",
       recalibrate: "↻ Kalibrer på nytt",
       continue: "Fortsett →",
       doneCta: "Ferdig →",
@@ -754,8 +785,7 @@ const translations = {
       title: "Mønsteroppsett",
       subtitle: "Dra · dobbelttrykk roterer · trykk →B/→F for å bytte side",
       printPattern: "🖨 Skriv ut mønster",
-      printTooltip:
-        "Åpner FreeSewing.eu med målene dine forhåndslastet",
+      printTooltip: "Åpner FreeSewing.eu med målene dine forhåndslastet",
       eachPanel: "Hvert felt:",
       grain: "Trådretning:",
       couldNotLoad: "Kunne ikke laste mønsterfilen.",
@@ -842,8 +872,7 @@ const translations = {
       intro: "拍攝或上傳想要改造的衣物 — AI 會分析布料特性並提供建議",
       reselect: "點擊重新選擇",
       tapToTake: "點擊拍照 / 選擇照片",
-      formatHint:
-        "支援 JPG、PNG — 建議在自然光下、對比鮮明的背景拍攝",
+      formatHint: "支援 JPG、PNG — 建議在自然光下、對比鮮明的背景拍攝",
       garmentMeasure: "📏 衣物測量",
       garmentMeasureHint: "選擇如何提供衣物的最長邊。",
       arOptionTitle: "📏 用 AR 測量",
@@ -891,6 +920,21 @@ const translations = {
       grainHorizontal: "橫向(緯紗)",
       grainBias: "斜向({deg}°)",
       chooseDirection: "選擇方向 →",
+      failedSegTitle: "我們無法偵測衣物輪廓",
+      failedFabricTitle: "我們無法識別布料",
+      tryAgain: "重試",
+      enterFabricManually: "手動輸入布料資訊",
+      continueAnyway: "繼續",
+      dimensionsWarning: "無法計算衣物尺寸——版型推薦可能較不精確。",
+      manualFabricTitle: "描述布料",
+      manualFabricSubtitle: "輸入布料類型。也可加入多種布料及比例。",
+      manualFabricPlaceholder: "例如：棉 或 50% 棉, 50% 亞麻",
+      manualFabricConfirm: "使用此布料",
+      manualFabricSkip: "略過布料資訊",
+      fabricSuggestionSingle: "您是否想輸入 {suggestion} 而非 {name}？",
+      fabricSuggestionMultiple: "部分布料名稱無法辨識：",
+      fabricUseSuggestion: "使用建議",
+      fabricKeepOriginal: "保留原輸入",
     },
     templateSelect: {
       title: "選擇改造範本",
@@ -1112,8 +1156,7 @@ const translations = {
       dragOntoGarment: "把裁片拖到你的衣物上",
       live: "即時",
       cameraRequired: "需要相機權限",
-      cameraDeniedBody:
-        "請在瀏覽器設定允許相機權限,才能使用 AR 紙型檢視。",
+      cameraDeniedBody: "請在瀏覽器設定允許相機權限,才能使用 AR 紙型檢視。",
       startCutting: "開始裁剪 →",
     },
     arTutorial: {
@@ -1146,8 +1189,7 @@ const translations = {
       dragRotateHint: "拖曳調整,雙擊旋轉",
       moveSideTitle: "把裁片移到另一面:",
       moveSideHint: "把它拖到另一片版面,或點擊下方名稱旁的 →B / →F。",
-      grainWarning:
-        "標示為 ! 的裁片紗向不同 — 是設計刻意為之。",
+      grainWarning: "標示為 ! 的裁片紗向不同 — 是設計刻意為之。",
       patternPieces: "紙型裁片",
       tryArView: "套到衣物上(AR 檢視)",
       confirmLayout: "確認排版 →",

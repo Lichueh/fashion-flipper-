@@ -467,33 +467,6 @@ export default defineConfig(({ mode }) => {
                 );
               }
 
-              function withTimeout(fn, ms) {
-                return Promise.race([
-                  fn().catch((err) => {
-                    console.error("[segment] error:", err.message);
-                    return null;
-                  }),
-                  new Promise((r) =>
-                    setTimeout(() => {
-                      console.warn("[segment] timeout after", ms, "ms");
-                      r(null);
-                    }, ms),
-                  ),
-                ]);
-              }
-
-              let pngBytes = await withTimeout(
-                () => callFal("fal-ai/birefnet"),
-                TIMEOUT_MS,
-              );
-              if (!pngBytes) {
-                console.warn("[segment] BiRefNet failed — trying rembg");
-                pngBytes = await withTimeout(
-                  () => callFal("fal-ai/imageutils/rembg"),
-                  TIMEOUT_MS,
-                );
-              }
-
               if (!pngBytes) {
                 res.statusCode = 500;
                 res.setHeader("Content-Type", "application/json");

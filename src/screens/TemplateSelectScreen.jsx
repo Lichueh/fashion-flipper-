@@ -121,20 +121,19 @@ export default function TemplateSelectScreen({
   }, [profileFeasibility]);
 
   const [previews, setPreviews] = useState(() => {
+    const result = {};
     try {
-      const result = {};
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key?.startsWith("preview_v1_")) {
+        if (key?.startsWith(CACHE_PREFIX)) {
           const value = localStorage.getItem(key);
-          const templateId = key.slice(28); // skip "preview_v1_{16charHash}_"
+          // templateId is always the last _-separated segment
+          const templateId = key.split("_").at(-1);
           if (value && templateId) result[templateId] = value;
         }
       }
-      return result;
-    } catch {
-      return {};
-    }
+    } catch {}
+    return result;
   });
   const [showAllGenders, setShowAllGenders] = useState(false);
 
@@ -571,7 +570,7 @@ export default function TemplateSelectScreen({
               : rec?.failReason === "piece_fit"
                 ? t("templateSelect.reasonPieceFit")
                 : rec?.failReason === "fabric"
-                  ? (tl(rec.fabricNote) || t("templateSelect.reasonFabric"))
+                  ? tl(rec.fabricNote) || t("templateSelect.reasonFabric")
                   : rec?.failReason
                     ? t("templateSelect.reasonGeneric")
                     : t("templateSelect.reasonArea")
@@ -831,11 +830,11 @@ export default function TemplateSelectScreen({
                   <span className="text-base">📐</span>
                   <span>
                     {modalSelectedPresetId
-                      ? (tl(
+                      ? tl(
                           measurementPresets.find(
                             (p) => p.id === modalSelectedPresetId,
                           )?.label,
-                        ) || t("common.sizePreset"))
+                        ) || t("common.sizePreset")
                       : t("common.startFromSize")}
                   </span>
                   <span className="text-primary-400 text-xs">▾</span>

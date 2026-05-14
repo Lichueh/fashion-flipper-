@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { analyzeFabric } from "../services/fabricAnalysis";
+import { useState, useRef, useEffect } from "react";
+import { prescheduleAnalysis } from "../hooks/useAnalysisPipeline";
 import { useLang } from "../i18n/LanguageContext";
 
 export default function UploadScreen({ navigate }) {
@@ -10,12 +10,27 @@ export default function UploadScreen({ navigate }) {
   const [hasLayers, setHasLayers] = useState(true);
   const fileRef = useRef();
 
+  // Warmup: wakes fal.ai BiRefNet worker while user chooses photo
+  useEffect(() => {
+    const f = new FormData();
+    f.append(
+      "image",
+      new Blob([new Uint8Array(100)], { type: "image/jpeg" }),
+      "warmup.jpg",
+    );
+    fetch("/api/segment", { method: "POST", body: f }).catch(() => {});
+  }, []);
+
   const handleFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    // Kick off fabric analysis + segmentation immediately so results may be
+    // ready (or nearly ready) by the time the user taps Analyze.
+    // prescheduleAnalysis is idempotent for the same file and replaces any
+    // previous in-flight requests when the user swaps to a different photo.
+    prescheduleAnalysis(file);
     setUploadedFile(file);
     setPreview(URL.createObjectURL(file));
-    analyzeFabric(file);
   };
 
   return (

@@ -386,6 +386,16 @@ export default defineConfig(({ mode }) => {
                 imageFile.type,
               );
 
+              // Warmup ping — tiny dummy blob sent by UploadScreen on mount
+              // to keep the fal.ai worker alive. Return immediately without
+              // calling any external API.
+              if (imageFile.size < 1000) {
+                res.statusCode = 200;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ warmup: true }));
+                return;
+              }
+
               const arrayBuffer = await imageFile.arrayBuffer();
               const base64 = Buffer.from(arrayBuffer).toString("base64");
               const mimeType = imageFile.type || "image/jpeg";

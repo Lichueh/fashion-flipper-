@@ -87,6 +87,36 @@ async function _runSegmentationInWorker(imageFile) {
 // module is imported — i.e. when the app first loads, not when Analyze is tapped.
 _getSegWorker();
 
+// ── Pre-schedule state ────────────────────────────────────────────────────────
+// Holds in-flight promises started by prescheduleAnalysis() (called from
+// UploadScreen as soon as the user picks a photo). run() reuses these so the
+// API calls finish in the background while the user is still on the upload
+// screen rather than after they tap Analyze.
+let _preschedKey = null;
+let _preschedFabricP = null;
+let _preschedSegP = null;
+
+function _fileKey(file) {
+  return `${file.name}|${file.size}|${file.lastModified}`;
+}
+
+/**
+ * Start fabric analysis + segmentation immediately when the user selects a
+ * photo, before they tap Analyze. If a different file was pre-scheduled
+ * previously its results are silently discarded.
+ *
+ * @param {File} imageFile
+ */
+export function prescheduleAnalysis(imageFile) {
+  const key = _fileKey(imageFile);
+  if (_preschedKey === key) return; // already running for this file
+  _preschedKey = key;
+  _preschedFabricP = analyzeFabric(imageFile);
+  _preschedSegP = _downscaleForSegmentation(imageFile, 800).then((sf) =>
+    _runSegmentationInWorker(sf),
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export function useAnalysisPipeline() {
   const [status, setStatus] = useState("idle");
@@ -207,13 +237,30 @@ export function useAnalysisPipeline() {
         // is fetched instead.
         const force = _forceAnalysisRef.current;
         _forceAnalysisRef.current = false;
-        const [fabricResult, segResult] = await Promise.all([
-          analyzeFabric(imageFile, { force }),
-          _downscaleForSegmentation(imageFile, 800).then((sf) =>
-            _runSegmentationInWorker(sf),
-          ),
-          //Promise.resolve({ error: true, maskWidth: 100, maskHeight: 100 }),
-        ]);
+
+        // Reuse pre-scheduled promises if available for this file (started in
+        // UploadScreen while the user was choosing / reviewing the photo).
+        // On force-retry always fetch fabric fresh so stale cached data is bypassed.
+        const key = _fileKey(imageFile);
+        const usingPresched = _preschedKey === key;
+        const fabricP =
+          !force && usingPresched && _preschedFabricP
+            ? _preschedFabricP
+            : analyzeFabric(imageFile, { force });
+        const segP =
+          usingPresched && _preschedSegP
+            ? _preschedSegP
+            : _downscaleForSegmentation(imageFile, 800).then((sf) =>
+                _runSegmentationInWorker(sf),
+              );
+        // Consume the preschedule so retries don't accidentally reuse stale promises.
+        if (usingPresched) {
+          _preschedKey = null;
+          _preschedFabricP = null;
+          _preschedSegP = null;
+        }
+
+        const [fabricResult, segResult] = await Promise.all([fabricP, segP]);
 
         if (fabricResult) {
           setFabric(fabricResult);

@@ -2,34 +2,30 @@
 // Vercel serverless function — calls fal.ai BiRefNet (primary) or rembg (fallback)
 // and returns a flat binary alpha mask compatible with computeMeasurements().
 
-// Temporarily add at the TOP of your api/segment.js handler:
-if (req.method === 'GET') {
-  res.status(200).json({
-    hasFalKey: !!process.env.FAL_API_KEY,
-    keyPrefix: process.env.FAL_API_KEY?.slice(0, 8) + '...',
-  });
-  return;
-}
-
 import { fal } from "@fal-ai/client";
 
 export const config = {
-  maxDuration: 30,
   api: { bodyParser: false }, // required to read raw multipart stream
 };
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 25000;
 
-// Configure fal client with server-side key
 fal.config({ credentials: process.env.FAL_API_KEY });
 
 export default async function handler(req, res) {
+  // Temporary debug endpoint — remove after confirming key is set
+  if (req.method === "GET") {
+    return res.status(200).json({
+      hasFalKey: !!process.env.FAL_API_KEY,
+      keyPrefix: process.env.FAL_API_KEY?.slice(0, 8) + "...",
+    });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: true, message: "Method not allowed" });
   }
 
   // Read raw body stream, then parse as FormData via the Web Fetch API (Node 18+).
-  // This avoids adding a multipart-parsing dependency such as busboy.
   let imageFile;
   try {
     const chunks = [];
@@ -93,11 +89,9 @@ async function _callFal(modelId, imageUrl) {
     input: { image_url: imageUrl },
   });
 
-  // Both BiRefNet and rembg return { image: { url: "..." } }
   const outputImageUrl = output?.image?.url ?? output?.output?.image?.url;
   if (!outputImageUrl) throw new Error(`No output image URL from ${modelId}`);
 
-  // Fetch the RGBA PNG and extract the alpha channel
   const imgRes = await fetch(outputImageUrl);
   if (!imgRes.ok)
     throw new Error(`Failed to fetch output image: ${imgRes.status}`);
@@ -106,13 +100,9 @@ async function _callFal(modelId, imageUrl) {
   return await _extractAlphaMask(new Uint8Array(arrayBuffer));
 }
 
-// ── PNG alpha extraction (pure Node, no canvas) ──────────────────────────────
-// Parses just enough of a PNG to find IHDR (dimensions) and IDAT (pixel data),
-// applies scanline filter reconstruction per the PNG spec, then extracts alpha.
-// BiRefNet/rembg return non-interlaced RGBA PNG.
+// ── PNG alpha extraction (pure Node, no canvas) ───────────────────────────────
 
 async function _extractAlphaMask(pngBytes) {
-  // Validate PNG signature
   const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10];
   for (let i = 0; i < 8; i++) {
     if (pngBytes[i] !== PNG_SIG[i]) throw new Error("Not a valid PNG");
@@ -124,11 +114,10 @@ async function _extractAlphaMask(pngBytes) {
     pngBytes.byteLength,
   );
 
-  // Read IHDR — always at byte 8, chunk data starts at byte 16
   const width = view.getUint32(16);
   const height = view.getUint32(20);
   const bitDepth = pngBytes[24];
-  const colorType = pngBytes[25]; // 6 = RGBA
+  const colorType = pngBytes[25];
   const interlace = pngBytes[28];
 
   if (bitDepth !== 8) throw new Error(`Unsupported PNG bit depth: ${bitDepth}`);
@@ -136,7 +125,6 @@ async function _extractAlphaMask(pngBytes) {
     throw new Error(`Expected RGBA PNG (colorType 6), got ${colorType}`);
   if (interlace !== 0) throw new Error("Interlaced PNG not supported");
 
-  // Collect all IDAT chunks
   const idatChunks = [];
   let offset = 8;
   while (offset + 12 <= pngBytes.byteLength) {
@@ -156,7 +144,6 @@ async function _extractAlphaMask(pngBytes) {
 
   if (idatChunks.length === 0) throw new Error("No IDAT chunks found in PNG");
 
-  // Decompress with DecompressionStream (Node 18+)
   const compressed = _concatUint8Arrays(idatChunks);
   const ds = new DecompressionStream("deflate");
   const writer = ds.writable.getWriter();
@@ -172,41 +159,39 @@ async function _extractAlphaMask(pngBytes) {
   }
   const raw = _concatUint8Arrays(chunks);
 
-  // Apply PNG filter reconstruction then extract alpha channel.
-  // Each scanline: 1 filter byte + width*4 pixel bytes.
-  const bpp = 4; // bytes per pixel for RGBA-8
+  const bpp = 4;
   const scanlineLen = width * bpp;
-  const recon = new Uint8Array(height * scanlineLen); // reconstructed pixel data
+  const recon = new Uint8Array(height * scanlineLen);
 
   for (let row = 0; row < height; row++) {
     const rawBase = row * (1 + scanlineLen);
     const filter = raw[rawBase];
     const reconBase = row * scanlineLen;
-    const prevBase = reconBase - scanlineLen; // row above (may be negative for row 0)
+    const prevBase = reconBase - scanlineLen;
 
     for (let i = 0; i < scanlineLen; i++) {
       const x = raw[rawBase + 1 + i];
-      const a = i >= bpp ? recon[reconBase + i - bpp] : 0; // left pixel
-      const b = row > 0 ? recon[prevBase + i] : 0; // above pixel
-      const c = row > 0 && i >= bpp ? recon[prevBase + i - bpp] : 0; // above-left
+      const a = i >= bpp ? recon[reconBase + i - bpp] : 0;
+      const b = row > 0 ? recon[prevBase + i] : 0;
+      const c = row > 0 && i >= bpp ? recon[prevBase + i - bpp] : 0;
 
       let val;
       switch (filter) {
         case 0:
           val = x;
-          break; // None
+          break;
         case 1:
           val = (x + a) & 0xff;
-          break; // Sub
+          break;
         case 2:
           val = (x + b) & 0xff;
-          break; // Up
+          break;
         case 3:
           val = (x + Math.floor((a + b) / 2)) & 0xff;
-          break; // Average
+          break;
         case 4:
           val = (x + _paeth(a, b, c)) & 0xff;
-          break; // Paeth
+          break;
         default:
           throw new Error(`Unknown PNG filter type: ${filter}`);
       }
@@ -214,7 +199,6 @@ async function _extractAlphaMask(pngBytes) {
     }
   }
 
-  // Extract alpha (byte index 3 of each RGBA pixel)
   const alphaMask = new Uint8Array(width * height);
   let totalPixelArea = 0;
   for (let i = 0; i < width * height; i++) {
@@ -232,7 +216,6 @@ async function _extractAlphaMask(pngBytes) {
   };
 }
 
-// PNG Paeth predictor (spec §9.4)
 function _paeth(a, b, c) {
   const p = a + b - c;
   const pa = Math.abs(p - a);
@@ -253,8 +236,6 @@ function _concatUint8Arrays(arrays) {
   }
   return out;
 }
-
-// ── Timeout wrapper ───────────────────────────────────────────────────────────
 
 function _runWithTimeout(fn, ms) {
   return Promise.race([

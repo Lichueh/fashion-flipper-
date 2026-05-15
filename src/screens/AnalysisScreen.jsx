@@ -50,7 +50,8 @@ export default function AnalysisScreen({
 
   useEffect(() => {
     if (status === "done" || status === "error") {
-      setPhase(fabricFailed || segmentationFailed ? "failed" : "result");
+      const failed = status === "error" || fabricFailed || segmentationFailed;
+      setPhase(failed ? "failed" : "result");
     }
   }, [status, fabricFailed, segmentationFailed]);
 

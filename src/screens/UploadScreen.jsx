@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { prescheduleAnalysis } from "../hooks/useAnalysisPipeline";
 import { useLang } from "../i18n/LanguageContext";
 
@@ -9,17 +9,6 @@ export default function UploadScreen({ navigate }) {
   const [manualCm, setManualCm] = useState("");
   const [hasLayers, setHasLayers] = useState(true);
   const fileRef = useRef();
-
-  // Warmup: wakes fal.ai BiRefNet worker while user chooses photo
-  useEffect(() => {
-    const f = new FormData();
-    f.append(
-      "image",
-      new Blob([new Uint8Array(100)], { type: "image/jpeg" }),
-      "warmup.jpg",
-    );
-    fetch("/api/segment", { method: "POST", body: f }).catch(() => {});
-  }, []);
 
   const handleFile = (e) => {
     const file = e.target.files[0];

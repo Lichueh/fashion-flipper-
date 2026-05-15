@@ -51,6 +51,7 @@ const templatesWithPieces = Object.fromEntries(
 let _segWorker = null;
 const _segPending = new Map(); // id → { resolve, reject }
 let _segIdSeq = 0;
+const _segInFlight = new Map(); // key → in-flight promise (deduplication)
 
 function _getSegWorker() {
   if (_segWorker) return _segWorker;
@@ -83,6 +84,21 @@ async function _runSegmentationInWorker(imageFile) {
   });
 }
 
+// Deduplicates concurrent segmentation calls for the same file.
+// If a request is already in-flight (e.g. from prescheduleAnalysis or a
+// previous run() call that lost its preschedule ref via HMR), returns the
+// existing promise instead of posting a second worker message.
+function _scheduleSegmentation(imageFile) {
+  const key = _fileKey(imageFile);
+  if (_segInFlight.has(key)) return _segInFlight.get(key);
+  const p = _downscaleForSegmentation(imageFile, 800).then((sf) =>
+    _runSegmentationInWorker(sf),
+  );
+  _segInFlight.set(key, p);
+  p.finally(() => _segInFlight.delete(key));
+  return p;
+}
+
 // Eagerly create the worker (and trigger model download) as soon as this
 // module is imported — i.e. when the app first loads, not when Analyze is tapped.
 _getSegWorker();
@@ -112,9 +128,7 @@ export function prescheduleAnalysis(imageFile) {
   if (_preschedKey === key) return; // already running for this file
   _preschedKey = key;
   _preschedFabricP = analyzeFabric(imageFile);
-  _preschedSegP = _downscaleForSegmentation(imageFile, 800).then((sf) =>
-    _runSegmentationInWorker(sf),
-  );
+  _preschedSegP = _scheduleSegmentation(imageFile);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -250,9 +264,7 @@ export function useAnalysisPipeline() {
         const segP =
           usingPresched && _preschedSegP
             ? _preschedSegP
-            : _downscaleForSegmentation(imageFile, 800).then((sf) =>
-                _runSegmentationInWorker(sf),
-              );
+            : _scheduleSegmentation(imageFile);
         // Consume the preschedule so retries don't accidentally reuse stale promises.
         if (usingPresched) {
           _preschedKey = null;
@@ -312,6 +324,7 @@ export function useAnalysisPipeline() {
           setProgress(50);
         }
       } catch (err) {
+        setSegmentationFailed(true);
         setError(err?.message ?? String(err));
         setStatus("error");
       }

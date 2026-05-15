@@ -549,6 +549,15 @@ export default function PatternLayoutScreen({
   const lastTapRef = useRef({ id: null, time: 0 });
   // tracks current pointer page coords during a drag for cross-panel detection
   const dragPointerPageRef = useRef({ x: 0, y: 0 });
+  // ref mirror of dragging state so pointermove handlers always see current
+  // drag data without waiting for a React re-render
+  const draggingRef = useRef(null);
+  // tracks the last clamped position written to the DOM during a drag so we
+  // can commit it to React state on pointerup without recomputing
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  // ref to the wrapper div of the piece being dragged so we can mutate its
+  // style directly without triggering React re-renders
+  const dragPieceElRef = useRef(null);
 
   // For FreeSewing templates, seed positions from the pre-extracted JSON on mount.
   useEffect(() => {
@@ -663,6 +672,8 @@ export default function PatternLayoutScreen({
   }
 
   function handlePointerDown(e, panelRef, panelKey) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+
     const { px, py } = getPointerPos(e, panelRef);
     const piece = findPieceAt(px, py, panelKey);
     if (!piece) return;
@@ -689,57 +700,73 @@ export default function PatternLayoutScreen({
     }
     lastTapRef.current = { id: piece.id, time: now };
 
+    const rect = panelRef.current.getBoundingClientRect();
     dragPointerPageRef.current = { x: e.clientX, y: e.clientY };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDragging({
+    const dragData = {
       id: piece.id,
       panelRef,
       panelKey,
-      startPointerX: px,
-      startPointerY: py,
+      offsetX: pos.x - (e.clientX - rect.left),
+      offsetY: pos.y - (e.clientY - rect.top),
       startPieceX: pos.x,
       startPieceY: pos.y,
-    });
+    };
+    draggingRef.current = dragData;
+    dragPieceElRef.current = panelRef.current.querySelector(
+      `[data-piece-id="${piece.id}"]`,
+    );
+    setDragging(dragData);
   }
 
   function handlePointerMove(e) {
-    if (!dragging) return;
+    const d = draggingRef.current;
+    if (!d) return;
+    e.preventDefault();
     dragPointerPageRef.current = { x: e.clientX, y: e.clientY };
-    const { px, py } = getPointerPos(e, dragging.panelRef);
-    const dx = px - dragging.startPointerX;
-    const dy = py - dragging.startPointerY;
-    const piece = activePieces.find((p) => p.id === dragging.id);
+
+    const rect = d.panelRef.current.getBoundingClientRect();
+    const piece = activePieces.find((p) => p.id === d.id);
     const pos = positions[piece.id];
     const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
-    const newX = Math.max(0, Math.min(PANEL_W - ew, dragging.startPieceX + dx));
+
+    const newX = Math.max(
+      0,
+      Math.min(PANEL_W - ew, e.clientX - rect.left + d.offsetX),
+    );
     const newY = Math.max(
       0,
-      Math.min(panelPxH - eh, dragging.startPieceY + dy),
+      Math.min(panelPxH - eh, e.clientY - rect.top + d.offsetY),
     );
-    setPositions((prev) => ({
-      ...prev,
-      [dragging.id]: { ...prev[dragging.id], x: newX, y: newY },
-    }));
+
+    // Mutate the DOM directly — zero React re-renders during the drag
+    if (dragPieceElRef.current) {
+      dragPieceElRef.current.style.left = newX + "px";
+      dragPieceElRef.current.style.top = newY + "px";
+    }
+    dragOffsetRef.current = { x: newX, y: newY };
+
     // Highlight the other panel when the pointer hovers over it
-    const otherRef = dragging.panelKey === "front" ? backRef : frontRef;
-    const otherKey = dragging.panelKey === "front" ? "back" : "front";
+    const otherRef = d.panelKey === "front" ? backRef : frontRef;
+    const otherKey = d.panelKey === "front" ? "back" : "front";
     if (otherRef.current) {
-      const rect = otherRef.current.getBoundingClientRect();
+      const otherRect = otherRef.current.getBoundingClientRect();
       const over =
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom;
+        e.clientX >= otherRect.left &&
+        e.clientX <= otherRect.right &&
+        e.clientY >= otherRect.top &&
+        e.clientY <= otherRect.bottom;
       setDragOverPanel(over ? otherKey : null);
     }
   }
 
   function handlePointerUp(e) {
-    if (dragging) {
+    const d = draggingRef.current;
+    if (d) {
       if (showAiBadge) setShowAiBadge(false);
       // Check if the pointer was released over the other panel
-      const otherRef = dragging.panelKey === "front" ? backRef : frontRef;
-      const otherKey = dragging.panelKey === "front" ? "back" : "front";
+      const otherRef = d.panelKey === "front" ? backRef : frontRef;
+      const otherKey = d.panelKey === "front" ? "back" : "front";
+      let droppedOnOther = false;
       if (otherRef.current) {
         const otherRect = otherRef.current.getBoundingClientRect();
         const cx = e.clientX ?? dragPointerPageRef.current.x;
@@ -750,8 +777,9 @@ export default function PatternLayoutScreen({
           cy >= otherRect.top &&
           cy <= otherRect.bottom
         ) {
+          droppedOnOther = true;
           // Move piece to the other panel, clamped to its bounds
-          const piece = activePieces.find((p) => p.id === dragging.id);
+          const piece = activePieces.find((p) => p.id === d.id);
           const pos = positions[piece.id];
           const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
           const dropX = Math.max(
@@ -764,8 +792,8 @@ export default function PatternLayoutScreen({
           );
           setPositions((prev) => ({
             ...prev,
-            [dragging.id]: {
-              ...prev[dragging.id],
+            [d.id]: {
+              ...prev[d.id],
               x: dropX,
               y: dropY,
               panel: otherKey,
@@ -773,8 +801,18 @@ export default function PatternLayoutScreen({
           }));
         }
       }
+      if (!droppedOnOther) {
+        // Commit the final DOM position into React state (single write)
+        const { x, y } = dragOffsetRef.current;
+        setPositions((prev) => ({
+          ...prev,
+          [d.id]: { ...prev[d.id], x, y },
+        }));
+      }
     }
     setDragOverPanel(null);
+    dragPieceElRef.current = null;
+    draggingRef.current = null;
     setDragging(null);
   }
 
@@ -835,102 +873,113 @@ export default function PatternLayoutScreen({
     );
     return (
       <div
-        ref={ref}
-        className={`border rounded-xl overflow-hidden transition-colors ${
-          dragOverPanel === panelKey
-            ? "border-secondary-400 ring-2 ring-secondary-400/50"
-            : "border-primary-600"
-        }`}
         style={{
-          position: "relative",
+          borderRadius: "0.75rem",
+          overflow: "hidden",
           width: PANEL_W,
           height: panelPxH,
-          touchAction: "none",
           flexShrink: 0,
         }}
-        onPointerDown={(e) => handlePointerDown(e, ref, panelKey)}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
       >
-        <PanelBackground
-          label={panelLabel}
-          panelW={PANEL_W}
-          panelH={panelPxH}
-          imageUrl={imageUrl}
-          opacity={imgOpacity}
-          bboxFraction={bboxFraction}
-        />
+        <div
+          ref={ref}
+          className={`border rounded-xl transition-colors ${
+            dragOverPanel === panelKey
+              ? "border-secondary-400 ring-2 ring-secondary-400/50"
+              : "border-primary-600"
+          }`}
+          style={{
+            position: "relative",
+            width: PANEL_W,
+            height: panelPxH,
+            flexShrink: 0,
+          }}
+          onPointerDown={(e) => handlePointerDown(e, ref, panelKey)}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
+          <PanelBackground
+            label={panelLabel}
+            panelW={PANEL_W}
+            panelH={panelPxH}
+            imageUrl={imageUrl}
+            opacity={imgOpacity}
+            bboxFraction={bboxFraction}
+          />
 
-        {pieces.map((piece) => {
-          const pos = positions[piece.id];
-          const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
-          const misaligned = isMisaligned(
-            (piece.grainAngleDeg + pos.rotation) % 360,
-            grainAngleDeg,
-          );
-          return (
-            <div
-              key={piece.id}
-              style={{
-                position: "absolute",
-                left: pos.x,
-                top: pos.y,
-                width: ew,
-                height: eh,
-                cursor: dragging?.id === piece.id ? "grabbing" : "grab",
-                userSelect: "none",
-                zIndex: dragging?.id === piece.id ? 10 : 5,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+          {pieces.map((piece) => {
+            const pos = positions[piece.id];
+            const { ew, eh } = effectiveSize(piece, scale, pos.rotation);
+            const misaligned = isMisaligned(
+              (piece.grainAngleDeg + pos.rotation) % 360,
+              grainAngleDeg,
+            );
+            return (
               <div
+                key={piece.id}
+                data-piece-id={piece.id}
                 style={{
-                  transform: `rotate(${pos.rotation}deg)`,
-                  transformOrigin: "center center",
+                  position: "absolute",
+                  left: pos.x,
+                  top: pos.y,
+                  width: ew,
+                  height: eh,
+                  cursor: dragging?.id === piece.id ? "grabbing" : "grab",
+                  userSelect: "none",
+                  zIndex: dragging?.id === piece.id ? 10 : 5,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  willChange: dragging?.id === piece.id ? "transform" : "auto",
+                  touchAction: "none",
                 }}
               >
-                <PieceShape piece={piece} scale={scale} tl={tl} />
+                <div
+                  style={{
+                    transform: `rotate(${pos.rotation}deg)`,
+                    transformOrigin: "center center",
+                  }}
+                >
+                  <PieceShape piece={piece} scale={scale} tl={tl} />
+                </div>
+                {misaligned && (
+                  <div
+                    className="absolute bg-secondary-500 text-white flex items-center justify-center font-bold"
+                    style={{
+                      top: -4,
+                      right: -4,
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      fontSize: 7,
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    !
+                  </div>
+                )}
+                {pos.rotation !== 0 && (
+                  <div
+                    className="absolute bg-primary-600 text-primary-50 flex items-center justify-center"
+                    style={{
+                      bottom: -4,
+                      left: -4,
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      fontSize: 6,
+                      fontWeight: 700,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {pos.rotation}°
+                  </div>
+                )}
               </div>
-              {misaligned && (
-                <div
-                  className="absolute bg-secondary-500 text-white flex items-center justify-center font-bold"
-                  style={{
-                    top: -4,
-                    right: -4,
-                    width: 12,
-                    height: 12,
-                    borderRadius: "50%",
-                    fontSize: 7,
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                    pointerEvents: "none",
-                  }}
-                >
-                  !
-                </div>
-              )}
-              {pos.rotation !== 0 && (
-                <div
-                  className="absolute bg-primary-600 text-primary-50 flex items-center justify-center"
-                  style={{
-                    bottom: -4,
-                    left: -4,
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    fontSize: 6,
-                    fontWeight: 700,
-                    pointerEvents: "none",
-                  }}
-                >
-                  {pos.rotation}°
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     );
   }

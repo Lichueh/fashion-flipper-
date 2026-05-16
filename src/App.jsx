@@ -15,10 +15,38 @@ import ArTutorialScreen from "./screens/ArTutorialScreen";
 import RulerCalibrationScreen from "./screens/RulerCalibrationScreen";
 import ProfilesScreen from "./screens/ProfilesScreen";
 import ProfileEditorScreen from "./screens/ProfileEditorScreen";
+import SkillLevelScreen from "./screens/SkillLevelScreen";
+import CoachmarkTour from "./components/CoachmarkTour";
 import useProfiles from "./hooks/useProfiles";
+
+const WALKTHROUGH_KEY = "ff_walkthrough_seen_v1";
+
+// 3-stop coachmark tour for first-time users. Targets are real DOM elements
+// marked with data-tour="…" inside HomeScreen + BottomNav. Mounted once at
+// the App level (HomeScreen would be rendered twice by PhoneFrame's
+// desktop/mobile dual branches; the tour's portal-to-body would surface both
+// copies and we'd see two overlays).
+const TOUR_STEPS = [
+  { target: '[data-tour="tour-start"]', radius: 999 },
+  { target: '[data-tour="tour-learn"]', radius: 14, placement: "above" },
+  { target: '[data-tour="tour-profile"]', radius: 14, placement: "above" },
+];
 
 export default function App() {
   const [screen, setScreen] = useState("home");
+  const [walkthroughSeen, setWalkthroughSeen] = useState(() => {
+    try {
+      return localStorage.getItem(WALKTHROUGH_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  function markWalkthroughSeen() {
+    try {
+      localStorage.setItem(WALKTHROUGH_KEY, "1");
+    } catch {}
+    setWalkthroughSeen(true);
+  }
   const [uploadedImage, setUploadedImage] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState("bag");
@@ -189,7 +217,36 @@ export default function App() {
         navigate={navigate}
       />
     ),
+    skillLevel: (
+      <SkillLevelScreen
+        activeProfile={activeProfile}
+        addProfile={addProfile}
+        updateProfile={updateProfile}
+        setActiveProfile={setActiveProfile}
+        navigate={navigate}
+      />
+    ),
   };
 
-  return <PhoneFrame>{screens[screen] ?? screens.home}</PhoneFrame>;
+  // First-launch skillLevel gate. If the active profile has no skillLevel yet
+  // (or there is no profile at all), force the picker before anything else.
+  // After skillLevel is set, the home screen renders the 3-stop coachmark tour
+  // over its own UI on first visit (gated by `walkthroughSeen`).
+  const needsSkillLevel = !activeProfile || !activeProfile.skillLevel;
+  const effectiveScreen =
+    needsSkillLevel && screen !== "skillLevel" ? "skillLevel" : screen;
+
+  // The coachmark tour runs on the home screen for first-time users. Mounted
+  // here at the top level (not inside HomeScreen) so PhoneFrame's dual-branch
+  // rendering doesn't produce two overlays.
+  const showTour = effectiveScreen === "home" && !walkthroughSeen;
+
+  return (
+    <>
+      <PhoneFrame>{screens[effectiveScreen] ?? screens.home}</PhoneFrame>
+      {showTour && (
+        <CoachmarkTour steps={TOUR_STEPS} onDone={markWalkthroughSeen} />
+      )}
+    </>
+  );
 }

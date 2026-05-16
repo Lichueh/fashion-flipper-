@@ -44,6 +44,127 @@ home → upload → analysis → templateSelect → stepGuide → result
 
 ## 變更紀錄
 
+## 2026-05-16 21:30
+- 修改檔案：`src/components/PhoneFrame.jsx`
+- 修改內容：修 tour 進行中手機版語言切換器被擋的問題。
+- 兩段試錯：
+  1. 第一輪只把 LanguageSwitcher 的 zIndex 從 60 改到 200 — **沒效**，因為它在 PhoneFrame 手機分支 `fixed inset-0` 容器內，父層 `position: fixed` 會建立自己的 stacking context，子層 z-index 都被鎖在父層上下文裡，到 body 視角還是被父層的 z-auto cap 住。
+  2. 第二輪把 LanguageSwitcher 預設 position 從 `absolute` 改成 `fixed` — **還是沒效**，position: fixed 雖然會建立自己的 stacking context、anchor 到 viewport，但只要它仍是 fixed 父層的 DOM 子孫，stacking 仍然鎖在父層 context 裡。
+  3. 第三輪（這次）：把手機版 LanguageSwitcher 從 `fixed inset-0` 容器**抽出來當兄弟**，包在一個沒有 position 的 `<div className="sm:hidden">` 裡。這樣它的 z-200 stacking context 直接屬於 body，蓋得過 tour overlay 的 z-100。
+- 教訓：`position: fixed` 永遠建立 stacking context，且 cap 所有後代的 z；要讓元素跳出某個 fixed/transformed 祖先的 stacking 籠子，**必須移到 DOM 之外**（變成兄弟或更上層），單調 z-index 沒用。
+- Smoke test：`npm run build` 3.64s 成功。
+
+## 2026-05-16 21:15
+- 修改檔案：`src/App.jsx`、`src/screens/HomeScreen.jsx`
+- 修改內容：把 `<CoachmarkTour>` 從 HomeScreen 拉到 App.jsx 頂層 mount。
+- 動機：上一版用 `createPortal` 把 overlay 渲到 `document.body`，繞過了 PhoneFrame 用 `display:none` 隱掉的副本 → HomeScreen 被 mount 兩次（PhoneFrame 桌機/手機分支各 render 一次），兩份 CoachmarkTour 都 portal 到 body，**兩個 overlay 同時可見**，各自有獨立 `idx` state。
+- 修法：CoachmarkTour 改在 App.jsx 頂層 mount（不在 PhoneFrame 內），這樣只 mount 一次。HomeScreen 不再接 `showTour` / `onTourDone` props，`TOUR_STEPS` 常數也搬到 App.jsx。targets 仍然是 HomeScreen + BottomNav 上的 `data-tour="…"` 元素，CoachmarkTour 的 `findVisible(selector)` 會跳過被 display:none 隱藏的副本。
+- Smoke test：`npm run build` 4.90s 成功。
+
+## 2026-05-16 21:05
+- 修改檔案：`src/components/CoachmarkTour.jsx`、`src/components/PhoneFrame.jsx`、`src/index.css`
+- 修改內容：把 coachmark tour 改成穩定能在桌機/手機/iOS in-app 瀏覽器運作。
+  - **核心 bug**：PhoneFrame 為了 hidden sm:flex / sm:hidden 切換而**同時 render 兩個分支**，兩邊都吐 `{children}` → HomeScreen 被 mount 兩次 → DOM 裡有兩份 `[data-tour="..."]` 元素。其中一份被 Tailwind class 隱藏（display:none），其 `getBoundingClientRect()` 是 `0×0`。`document.querySelector` 永遠回傳 DOM 順序第一個，桌機運氣好抓到可見的，手機卻抓到被隱藏的零尺寸副本 → spot 在 (0,0)、tipTop 被 clamp 到頂端、tooltip 整個跑到畫面最上方。
+  - **修法 1**：抽出 `findVisible(selector)` 通通改用它（包括 frame 與 target 的查詢），抓「DOM 裡第一個 rect 非零」的元素，跳過被隱藏的副本。
+  - **修法 2**：CoachmarkTour 改用 `react-dom` 的 `createPortal` 把整個 overlay 渲染到 `document.body`，跳過所有祖先元素，避免任何 transform/filter/contain 之類 CSS 改寫 `position: fixed` 的 containing block。
+  - **修法 3**：mobile (< sm 斷點) 用 `window.innerWidth/innerHeight` 當 frame 而不是讀 data-tour-frame 元素的 rect — 解決 iOS WKWebView 對 fixed 元素的 `getBoundingClientRect` 高度可能塌縮的問題。
+  - PhoneFrame 兩個分支都加上 `data-tour-frame` 標記，CoachmarkTour 桌機路徑找 frame 用。
+  - `index.css` 加 `html, body { height: 100% }` — 給 iOS in-app 瀏覽器明確的高度錨點，讓 `position: fixed` 跟 viewport 對齊更穩。
+- 動機：使用者回報手機版（WeChat in-app + Chrome iOS）tooltip 永遠卡在畫面最上方，亮區也對不上 Learn / Profile icon。電腦版正常。臨時加紅色 debug overlay 把 `rect`、`bound`、`tipH`、`tipTop` 印在畫面上才看出 `rect=0,0 0×0` 的關鍵線索。
+
+## 2026-05-16 20:10
+- 新增檔案：`src/components/CoachmarkTour.jsx`
+- 修改檔案：`src/screens/HomeScreen.jsx`、`src/components/BottomNav.jsx`、`src/App.jsx`、`src/i18n/translations.js`
+- 刪除檔案：`src/screens/WalkthroughScreen.jsx`（前一版 19:58 加的整頁 walkthrough 廢棄）
+- 修改內容：把 walkthrough 從「整頁介紹」改成「直接罩在 HomeScreen 上的 coachmark 聚光燈 tooltip tour」，3 站介紹首頁三大入口。
+  - **CoachmarkTour**：通用 overlay。吃 `steps: [{ target, radius?, placement? }]`，每一站用 `document.querySelector(target)` 抓真實 DOM 元素，`getBoundingClientRect` 換成相對於 overlay parent 的座標，畫一個 padding 8px 的「亮區」上面套白色 ring，外圍用 `box-shadow: 0 0 0 9999px rgba(0,0,0,0.55)` 做暗背景。座標切換做 220ms transition。tooltip 是白卡片：標題 + 描述 + dot indicators + Back / Next / Got it。placement 自動：目標在上半部 tooltip 放下方，下半部放上方（也可顯式指定 `"above"/"below"`）。Skip 在右上角。Overlay `pointer-events: auto` + 亮區 `pointer-events: none`，使用者只能用 tooltip 的按鈕推進，無法直接點到被高亮的元素。
+  - **HomeScreen**：
+    - root div 加 `relative` 給 overlay 用 `absolute inset-0`。
+    - hero「開始改造」按鈕加 `data-tour="tour-start"`。
+    - 接 `showTour` + `onTourDone` props，true 時 mount `<CoachmarkTour>`。
+    - 三站定義 `TOUR_STEPS`：start（rounded-full pill 用 `radius: 999`）、learn（圖示按鈕用 `radius: 14`、`placement: "above"`）、profile（同 learn）。
+  - **BottomNav**：在 NAV_ITEMS map 裡，當 `id === "learn"` 加 `data-tour="tour-learn"`；獨立的 Profile 按鈕加 `data-tour="tour-profile"`。
+  - **App.jsx**：拿掉 walkthrough 為獨立 screen 的設計（不再有 screen map 的 `walkthrough` entry、不再 import WalkthroughScreen）。HomeScreen 接收 `showTour={!walkthroughSeen}` + `onTourDone={markWalkthroughSeen}`。SkillLevel gate 維持不變，順序回到 skillLevel → home（home 上自帶 tour）。
+  - **i18n**：保留 `walkthrough` namespace，三語各重寫 `step1/2/3.{title,body}` 對齊三個入口的實際功能；`getStarted` 改成 `done`。
+- 動機：上一版整頁 walkthrough 太抽象，這版直接指著真實 UI 講「這顆按鈕做什麼」更具體；3 站對應使用者實際會用到的入口（開始改造 / 縫紉教程 / 個人檔案），看完馬上知道從哪開始。
+- 設計選擇：用 `data-tour` 屬性而不是 ref drilling，CoachmarkTour 不用知道 HomeScreen / BottomNav 內部結構，加新站點只要在目標元素貼 attribute + 在 `TOUR_STEPS` 加一行。
+- Smoke test：`npm run build` 5.96s 成功、`npm test` 54/54 過。Vite HMR 自動推送，瀏覽器清 `localStorage.removeItem("ff_walkthrough_seen_v1")` 重整可重看。
+
+## 2026-05-16 19:45
+- 動作：把 origin/main（GitHub 上的新設計）合進本地未提交的 skillLevel / scrunchie 工作。
+- 合進來的 origin 端：fast-forward 16 commits（`2c673ff..6434b4b`），主要是
+  - 切到 fal.ai 的 segmentation 後端（api/segment.js、services/segmentation.js、worker）
+  - 新元件 `ManualFabricForm.jsx`（fabric API fail 時讓使用者手動填）
+  - 新元件 `PatternPanel.jsx`、`PatternLayoutScreen` 大重構（桌機/行動端拖曳順手 + 整頁滾動）
+  - `useAnalysisPipeline` 加 background pre-scheduling / warmup、`setManualFabric`、`segmentationFailed`、`retry()` force-bypass cache
+  - 對應 i18n / Vercel config / vitest config / 54 條測試
+- 衝突解掉的兩個檔（`git stash pop` 同名修改）：失敗框架整套採 origin。
+  - `src/hooks/useAnalysisPipeline.js`：用 origin 的 `fabricFailed` + `segmentationFailed` + `setManualFabric` + `retry()`（force bypass cache + 重跑整個 pipeline）+ `lastSegResultRef`。本地原本加的 `retryFabricAnalysis()`（in-place 只重打 fabric API）、`fabricRetrying`、`_imageFileRef` 全部移除。
+  - `src/screens/AnalysisScreen.jsx`：用 origin 的 failed phase（Try again / Enter fabric manually / Continue anyway 三條路）+ results 頁的 `needsManualInput` dimensions warning banner。本地原本加的 results 頁 fabric-failed banner 和對應 destructure 都拿掉。
+  - `src/i18n/translations.js`：移除本地 `analysis.fabricFailedTitle/fabricFailedBody/retryAnalysis/retrying` 三語 key（origin 走 `failedFabricTitle` / `enterFabricManually` / `continueAnyway` / `tryAgain`）。
+- 自動合併但檢查過沒被吃掉的：
+  - `src/screens/TemplateSelectScreen.jsx`：origin 的 `CACHE_PREFIX` / `key.split("_").at(-1)` 重構與 local 的 skillLevel filter / `levelByDifficulty` 卡片配色全部都在
+  - `src/i18n/translations.js`：origin 與 local 各加各的 key，互不重疊
+- 未動到的 local 改動：App.jsx 的 skillLevel gate、HomeScreen 依等級推薦、ProfileEditorScreen 的 SKILL_LEVELS 選擇器、useProfiles.addProfile 的 extra 參數、ArOverlays 的 GeometricGuideOverlay、scrunchie 全套（templates / fabricRequirements / patternAreas / arTutorials / 文字 fallback / svg）。
+- 備份：`backup-before-merge-2026-05-16` branch 指向合併前的 commit `2c673ff`；舊 stash `pre-merge-stash 2026-05-16` 還在 stash list（合併已收尾，可以 `git stash drop stash@{0}`）。
+- 驗證：`npm install` → `npm run build` 7.39s 成功（scrunchie chunk 4.91kB）、`npm test` 54/54 過。
+
+## 2026-05-12 12:21
+- 新增檔案:public/scrunchie-pattern.svg、src/patterns/scrunchie.js
+- 修改檔案:src/data/templates.js、src/data/fabricRequirements.js、src/data/patternAreasBySize.js、src/data/arTutorials.js、src/components/ArOverlays.jsx、src/screens/ArTutorialScreen.jsx
+- 修改內容:加入 beginner 等級的「牛仔褲方巾髮圈」版型 + AR 教學。
+  - **新 template `scrunchie`**:difficulty 1、emoji 🎀、forGender "any"、patternSource "ar-tutorial"(沿用 noSewTote 走法,TemplateSelect 對這個值會跳過 PatternLayout 直接 navigate("arTutorial"))。materials 列舊牛仔褲、髮圈鬆緊帶、蕾絲花邊、剪刀、縫紉機/針線。previewPromptOverride 描述「方形小坐墊狀、四邊蕾絲、中央藏鬆緊帶」,引導 Gemini img2img 保留使用者原牛仔布的色調與紋理。新欄位 `patternReferenceSvg: "/scrunchie-pattern.svg"` 指向使用者提供的幾何圖(外框 25cm 方形 + 內框 1cm fold line + 雙圈 sew/cut 圓)。
+  - **Feasibility config**:fabricRequirements.scrunchie 設 minWeightClass 1 / maxWeightClass 4 / allowKnit true(髮圈布料很寬容,denim 是設計意圖但棉麻針織都行)。patternAreasBySize.scrunchie 固定 1250 cm²(兩塊 25×25 = 1250 cm² 對折剪)所有 size 同值。
+  - **新 overlay primitive `GeometricGuideOverlay`**(ArOverlays.jsx 尾端):general-purpose 元件,吃一個 shapes array,每個 shape 可指定 kind (square/circle)、sizeCm、color (white/blue/red/yellow/orange/green)、style (solid/dashed)、strokeCm、offsetCm、label。整組以畫面中央為錨點,dragOffset 平移所有 shape 一起;maxRadius 算出最大形狀邊界當 drag-grab 區。比為每個步驟寫一個專屬 component 維護成本低很多。
+  - **7 步 AR tutorial**(arTutorials.js 加 scrunchie entry):
+    1. materials — `numbered-callouts` 4 個位置(denim / elastic / lace / scissors)
+    2. cut-square — `geometric-guide` 一個白色虛線 25cm 方框
+    3. sew-circle — 加一個藍色實心 8cm 圓圈(縫線)
+    4. cut-hole — 再疊一個紅色虛線 7cm 圓圈(剪線,留 0.5cm 縫份)
+    5. insert-elastic — 換成橘色實心 8.5cm 環表示鬆緊帶位置(取代藍紅圓)
+    6. fold-edges — 外框 25cm + 內框 23cm 黃色實線(1cm 折邊+蕾絲縫合線)
+    7. celebrate — `numbered-callouts` 一個「🎉 完成!」chip
+  - **ArTutorialScreen dispatcher**:import GeometricGuideOverlay,加 `step.overlayType === "geometric-guide"` 分支。
+  - **文字 fallback** (src/patterns/scrunchie.js):同 7 步,當相機權限被拒或在桌機沒鏡頭時 StepGuideScreen 動態 import 顯示純文字版本。Title / description / tip 三語(en/nb/zh)齊全。
+  - 因為 templates 內所有 string 都已是 `{en,nb,zh}` 物件、AR tutorial 也用 `{en,nb,zh}`,這次不必再動 translations.js 的 namespace key。
+- 動機:給 beginner 等級多一個容易上手、用廢牛仔褲就能做的小品項,順便讓 AR tutorial 框架支援更多形狀(原本只有 cut-line-pair / fringe-marks / knot-pairs / numbered-callouts,新增的 geometric-guide 之後做拉鍊袋、口袋之類也能直接複用)。
+- 動機(資料):使用者提供的 SVG(外 765px × 765px ≈ 25cm 方框、內 23cm fold 框、半徑 141.7px ≈ 4.6cm 縫圈、半徑 170px ≈ 5.6cm 剪圈)直接對應 step 2 / 3 / 4 / 6 的幾何配置,參數一比一抄進 arTutorials.js。
+- Smoke test:`npm run build` 成功(9.66s,617 modules)。
+
+## 2026-05-12 12:11
+- 修改檔案:src/hooks/useAnalysisPipeline.js、src/screens/AnalysisScreen.jsx、src/i18n/translations.js
+- 修改內容:布料分析失敗時加 Retry UI(對應 5/12 0:45 那筆的 TODO)。
+  - **問題回顧**:`analyzeFabric()` 失敗(rate limit / content filter / network)會 silently return null,pipeline 沿用 `mockAnalysis.fabric` 的預設值(Cotton 85% / Polyester 15% / Deep Blue),使用者完全不知道自己看到的是 mock,還會以為 AI 真的判定他的衣服是這樣 — 而且下游 TemplateSelect 的 `fabric` 雖然 truthy 但配的是錯的布料,影響 feasibility 與 preview 生成的 prompt。今天剛好撞到這個情況,使用者誤以為「圖跑不出來」,實際是分析失敗+下游邏輯沒提示。
+  - **useAnalysisPipeline 改動**:新增 `fabricFailed`(boolean)+ `fabricRetrying`(boolean)兩個 state、`_imageFileRef`(stash 原始 file)。`run()` 在 `analyzeFabric` 回 null 時 `setFabricFailed(true)`,成功時 `false`。新增 `retryFabricAnalysis()` callback,只重跑布料這一段(segmentation / measurements 不用重跑),成功時更新 fabric + ref + 清 failed flag;若已過 feasibility 階段,用新 fabric 重新 `checkFeasibility(measurements, templatesWithPieces, result)` 更新 `feasibleTemplates`(下游 TemplateSelect 的 fabric 警告/排序才會跟著對)。`analyzeFabric(file, { force: true })` 跳過 sessionStorage cache 強制重打 API。reset() 也清新增的 flag。
+  - **AnalysisScreen UI**:`fabricFailed === true` 時在內容上方掛一個 amber 邊框的警告卡:⚠ icon + 「布料分析失敗」標題 + 一句「下面是預設值,點重試取得真實分析」+ amber-500 的 Retry 按鈕。重試中按鈕 disabled 並顯示 spinner(`border-2 border-white border-t-transparent rounded-full animate-spin`),i18n 切到「重試中…」。
+  - **i18n**:三語新增 `analysis.fabricFailedTitle` / `fabricFailedBody` / `retryAnalysis` / `retrying`。
+- 動機:不再讓使用者誤以為 mock 預設值是 AI 真的分析結果,撞到 quota / content filter 時給一個明確的修復路徑。
+- Smoke test:`npm run build` 成功(41.13s,615 modules)。
+
+## 2026-05-12 11:55
+- 修改檔案:src/screens/TemplateSelectScreen.jsx、src/screens/HomeScreen.jsx、src/i18n/translations.js
+- 修改內容:依使用者 skillLevel 過濾推薦的圖紙。
+  - **TemplateSelectScreen 推薦清單**:新增 `showAllLevels` state 與 `profileDifficulty`(beginner→1 / intermediate→2 / advanced→3)。`visibleItems` useMemo 在原本的 gender filter 之後再加一層 skillLevel filter:`!showAllLevels && profileDifficulty != null` 時 `items.filter((t) => t.difficulty === profileDifficulty)`(精確匹配,beginner 只看 1 級、intermediate 只看 2 級等;沒寫成 `<=` 是因為使用者明確說「推薦這個等級的」)。MAX_VISIBLE_PATTERNS = 3 維持不變,filter 完才 slice。
+  - **切換鈕**:在 gender filter pill 下方再加一條同款 skillLevel filter pill,顯示「Showing {level} patterns / 顯示{level}版型」+ 「Show all levels」鈕,點擊切換 showAllLevels。
+  - **空狀態**:filter 後 visibleItems.length === 0 時(例如使用者是 advanced 但這件衣物布料只夠做 beginner 版型),顯示「目前沒有適合這件衣服的 {level} 版型」+ 一鍵切到「顯示所有等級」的 CTA,避免畫面只剩標題沒內容。
+  - **HomeScreen 預覽 grid**:同樣依 activeProfile.skillLevel 算 profileDifficulty,filter `Object.values(templates)`。沒有 toggle(這只是 home 上的快速瀏覽,不是流程的核心)。標題從固定的「Available Templates」改成「Recommended for {level} / 為{level}推薦 / Anbefalt for {level}」,沒 skillLevel 時退回原標題。
+  - **i18n**:三語新增 `templateSelect.showingForLevel` / `showingAllLevels` / `showAllLevels` / `noLevelMatches`(空狀態文案),`home.recommendedForLevel`。
+- 動機:延續 11:25 的 skillLevel 改動,把「記下來」變成「真的有用」。使用者一進 App 選 beginner 之後,TemplateSelect 與 HomeScreen 都只看到 beginner 圖紙;需要看別等級時一鍵切換。
+- Smoke test:`npm run build` 成功(10.98s)。
+
+## 2026-05-12 11:25
+- 新增檔案:src/data/skillLevels.js、src/screens/SkillLevelScreen.jsx
+- 修改檔案:src/App.jsx、src/hooks/useProfiles.js、src/screens/ProfileEditorScreen.jsx、src/data/templates.js、src/screens/TemplateSelectScreen.jsx、src/screens/HomeScreen.jsx、src/i18n/translations.js
+- 修改內容:三件一組的「技能等級個人化」改動。
+  - **首次進 App 強制選等級**:App.jsx 加 gate — `!activeProfile || !activeProfile.skillLevel` 就強制把 effectiveScreen 切到 `skillLevel` 並渲染新的 SkillLevelScreen,無視當前 state.screen。SkillLevelScreen 沒返回鍵,只有確認後 `updateProfile(... { skillLevel })` 或 `addProfile(t("skillLevel.defaultProfileName"), { skillLevel })` 再 setActiveProfile,然後 navigate("home")。useProfiles.addProfile 從 `(name)` 擴成 `(name, extra = {})` 把 extra 合進 profile object,保持向下相容。
+  - **可改性**:ProfileEditorScreen 在 gender 區塊下方加 skillLevel 三按鈕區塊(沿用 gender 的設計 pattern),state 預設 beginner;handleSave 把 skillLevel 一併寫進 updateProfile/addProfile changes。isNew 時 addProfile 改用 `addProfile(name, { skillLevel })`,避免新建 profile 仍缺 skillLevel 又被 gate 攔。
+  - **17 個圖紙視覺分級**:新增 src/data/skillLevels.js 集中色票對照(`SKILL_LEVELS` array + `levelByDifficulty(d)` / `levelById(id)` helper):1=green-50/100/300/500/800、2=orange-*、3=blue-*。templates.js 砍掉 17 個 `accentColor` 欄位(原本顏色雜亂:lime/amber/sky/pink/indigo/purple/teal/rose/yellow...);7 個 difficulty=2 的 difficultyLabel 統一為 `Intermediate / Mellomnivå / 中級`(原本 2 個是 "Beginner+",5 個是 "Middels / 中階",現在全部一致)。
+  - **TemplateSelectScreen 卡片重做**:卡片整體背景 `bg-primary-100` → `level.cardBg`、預設 border `border-primary-200` → `level.border`、縮圖底色 `template.accentColor` → `level.thumbBg`,三處上色一致。狀態 border(Top Recommendation `border-secondary-300` / Not Feasible `border-red-200` / Needs Interfacing `border-amber-300`)仍蓋過等級色。版型從原本「64×64 縮圖 + 標題下方再一堆全寬區塊」改為「圖片 w-1/2 aspect-square 在左,標題/%/時間/難度/match bar/fabric usage/描述/CTA 全部塞進右側 flex-col 欄位」。文字尺寸下調(text-lg → text-base / text-sm → text-xs / 10–11px chips)避免在半寬欄位爆版,描述 `line-clamp-3`,標題 `truncate + min-w-0`,CTA 用 `mt-auto` 沉到底。badges + fail reason 仍維持卡片頂部全寬。
+  - **HomeScreen 預覽 grid**:底部「Available Templates」grid 卡片也套等級色,`bg-primary-50 + border-primary-200` → `level.cardBg + border-2 + level.border`,難度+時間文字改用 `level.text` 帶顏色凸顯。
+  - **i18n**:三語新增 `skillLevel.*` namespace(title / subtitle / beginner / intermediate / advanced + 三段 desc / continue / defaultProfileName)+ `profileEditor.skillLevel` 標籤。
+- 動機:後續功能要依使用者等級分流(這次不實作),先把資料欄位、入口 gate、視覺分級三層都立起來。
+- Smoke test:`npm run build` 成功(615 modules transformed,13.59s,只有 既有的 chunk-size warning)。
+
 ## 2026-05-12 00:45
 - 修改檔案:vite.config.js、api/analyze.js、src/services/fabricAnalysis.js
 - 修改內容:修「多分析幾張就會看到 mock Deep Blue」的退化問題。Root cause:之前 00:15 的兩段式設計(Stage-1 vision + Stage-2 gpt-4o-mini 翻譯)每次分析吃 2 個 GitHub Models quota,免費額度大約撞到第 3、4 張就會在某一階段(常是 Stage-1 因為 4o 配額較緊)拿 429。Server 回非 200 → `analyzeFabric` catch 後 return null → `useAnalysisPipeline.run()` 內 `if (fabricResult) setFabric(...)` 不觸發 → fabric state 留在 reset 後的 `mockAnalysis.fabric` 預設值,UI 就顯示 Cotton 85% / Polyester 15% / Deep Blue。

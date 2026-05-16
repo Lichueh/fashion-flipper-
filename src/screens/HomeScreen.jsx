@@ -2,13 +2,31 @@ import BottomNav from "../components/BottomNav";
 import { templates } from "../data/templates";
 import { communityPosts } from "../data/communityPosts";
 import { useLang } from "../i18n/LanguageContext";
+import { levelByDifficulty } from "../data/skillLevels";
 
 const communityPreviews = communityPosts.slice(0, 4);
 
 export default function HomeScreen({ navigate, activeProfile }) {
   const { t, tl } = useLang();
+  // Recommend only templates matching the user's skill level. If skillLevel is
+  // missing (shouldn't happen because of the App.jsx gate, but defensive), fall
+  // back to showing everything.
+  const profileDifficulty =
+    activeProfile?.skillLevel === "beginner"
+      ? 1
+      : activeProfile?.skillLevel === "intermediate"
+        ? 2
+        : activeProfile?.skillLevel === "advanced"
+          ? 3
+          : null;
+  const recommendedTemplates =
+    profileDifficulty == null
+      ? Object.values(templates)
+      : Object.values(templates).filter(
+          (tpl) => tpl.difficulty === profileDifficulty,
+        );
   return (
-    <div className="h-full flex flex-col bg-primary-800">
+    <div className="relative h-full flex flex-col bg-primary-800">
       <div className="flex-1 overflow-y-auto pb-1 scrollbar-hide">
         {/* Header */}
         <div className="px-5 pt-8 pb-5">
@@ -49,6 +67,7 @@ export default function HomeScreen({ navigate, activeProfile }) {
             {t("home.heroBody")}
           </p>
           <button
+            data-tour="tour-start"
             onClick={() => navigate("upload")}
             className="bg-secondary-300 text-white font-bold text-sm px-5 py-2.5 rounded-full active:scale-95 transition-transform shadow-sm"
           >
@@ -113,26 +132,36 @@ export default function HomeScreen({ navigate, activeProfile }) {
         {/* Templates */}
         <div className="mx-5 mb-6">
           <h3 className="font-semibold text-secondary-100 text-sm mb-3">
-            {t("home.availableTemplates")}
+            {profileDifficulty != null
+              ? t("home.recommendedForLevel", {
+                  level: t(`skillLevel.${activeProfile.skillLevel}`),
+                })
+              : t("home.availableTemplates")}
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            {Object.values(templates).map((tpl) => (
-              <div
-                key={tpl.id}
-                onClick={() =>
-                  navigate("patternLayout", { template: tpl.id, from: "home" })
-                }
-                className="bg-primary-50 border border-primary-200 rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform"
-              >
-                <span className="text-4xl">{tpl.emoji}</span>
-                <p className="font-semibold text-secondary-800 mt-2 text-sm">
-                  {tl(tpl.name)}
-                </p>
-                <p className="text-[11px] text-secondary-700 mt-0.5">
-                  {tl(tpl.difficultyLabel)} · ⏱ {tl(tpl.time)}
-                </p>
-              </div>
-            ))}
+            {recommendedTemplates.map((tpl) => {
+              const level = levelByDifficulty(tpl.difficulty);
+              return (
+                <div
+                  key={tpl.id}
+                  onClick={() =>
+                    navigate("patternLayout", {
+                      template: tpl.id,
+                      from: "home",
+                    })
+                  }
+                  className={`${level.cardBg} border-2 ${level.border} rounded-2xl p-4 cursor-pointer active:scale-95 transition-transform`}
+                >
+                  <span className="text-4xl">{tpl.emoji}</span>
+                  <p className="font-semibold text-secondary-800 mt-2 text-sm">
+                    {tl(tpl.name)}
+                  </p>
+                  <p className={`text-[11px] mt-0.5 font-medium ${level.text}`}>
+                    {tl(tpl.difficultyLabel)} · ⏱ {tl(tpl.time)}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

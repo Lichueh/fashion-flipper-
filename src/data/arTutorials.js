@@ -356,4 +356,221 @@ export const arTutorials = {
       },
     ],
   },
+
+  scrunchie: {
+    requiresCalibration: false,
+    fallbackPxPerCm: 5.6,
+    doneTarget: "result",
+    steps: [
+      {
+        id: "materials",
+        title: {
+          en: "Gather your materials",
+          nb: "Samle materialene",
+          zh: "備齊材料",
+        },
+        instruction: {
+          en: "Lay your fabric, hair elastic, lace, and scissors in the camera view.",
+          nb: "Legg stoffet, hårstrikken, blonden og saksen i kameravisningen.",
+          zh: "把布料、髮圈、蕾絲、剪刀放在鏡頭範圍內。",
+        },
+        tip: {
+          en: "Tap each item when it's in frame to mark it ready.",
+          nb: "Trykk på hvert element når det er i bildet for å markere det som klart.",
+          zh: "東西進入畫面時點一下勾選為已備齊。",
+        },
+        durationMin: 1,
+        overlayType: "numbered-callouts",
+        overlay: {
+          connectArrows: false,
+          points: [
+            {
+              xNorm: 0.22,
+              yNorm: 0.28,
+              label: { en: "Fabric", nb: "Stoff", zh: "布料" },
+            },
+            {
+              xNorm: 0.78,
+              yNorm: 0.28,
+              label: { en: "Elastic", nb: "Strikk", zh: "鬆緊帶" },
+            },
+            {
+              xNorm: 0.22,
+              yNorm: 0.66,
+              label: { en: "Lace", nb: "Blonde", zh: "蕾絲" },
+            },
+            {
+              xNorm: 0.78,
+              yNorm: 0.66,
+              label: { en: "Scissors", nb: "Saks", zh: "剪刀" },
+            },
+          ],
+        },
+      },
+      {
+        id: "cut-square",
+        title: {
+          en: "Cut two 25 cm squares",
+          nb: "Klipp to 25 cm-firkanter",
+          zh: "剪兩塊 25 公分方布",
+        },
+        instruction: {
+          en: "Double the fabric and cut a 25×25 cm square through both layers along the dashed outline.",
+          nb: "Brett stoffet dobbelt og klipp en 25×25 cm firkant gjennom begge lag langs den stiplede kanten.",
+          zh: "把布料對折成兩層,沿虛線剪出 25×25 公分方塊(兩層一起剪)。",
+        },
+        tip: {
+          en: "Drag the projection so the dashed square is fully inside your fabric before cutting.",
+          nb: "Dra projeksjonen så den stiplede firkanten ligger helt inne på stoffet før du klipper.",
+          zh: "下剪前先把投影方框拖到布料完整覆蓋的範圍內。",
+        },
+        durationMin: 5,
+        overlayType: "geometric-guide",
+        overlay: {
+          shapes: [
+            { kind: "square", sizeCm: 25, color: "white", style: "dashed" },
+          ],
+        },
+      },
+      {
+        id: "sew-circle",
+        title: {
+          en: "Sew the inner circle",
+          nb: "Sy den indre sirkelen",
+          zh: "縫中央圓圈",
+        },
+        instruction: {
+          en: "Stack the two squares right-sides-together and sew once around the blue circle (≈8 cm diameter).",
+          nb: "Legg de to firkantene rett mot rett og sy én gang rundt den blå sirkelen (≈8 cm i diameter).",
+          zh: "兩塊布正面對正面疊好,沿藍色圓圈(直徑約 8 公分)縫一圈。",
+        },
+        tip: {
+          en: "Backstitch at start and end so the seam doesn't unravel when you cut the centre out.",
+          nb: "Bakstingsting i start og slutt så sømmen ikke løsner når du klipper ut midten.",
+          zh: "起針與收針都來回車一段,等等剪中央時縫線才不會脫開。",
+        },
+        durationMin: 8,
+        overlayType: "geometric-guide",
+        overlay: {
+          shapes: [
+            { kind: "square", sizeCm: 25, color: "white", style: "dashed" },
+            { kind: "circle", sizeCm: 8, color: "blue", style: "solid" },
+          ],
+        },
+      },
+      {
+        id: "cut-hole",
+        title: {
+          en: "Cut the centre hole and turn through",
+          nb: "Klipp midthullet og vreng",
+          zh: "剪內孔並翻面",
+        },
+        instruction: {
+          en: "Cut along the red dashed circle inside the stitch line (leave ~0.5 cm of seam allowance). Pull the whole square through the hole to turn it right-side-out.",
+          nb: "Klipp langs den røde stiplede sirkelen innenfor sømmen (la det stå ca. 0,5 cm sømmonn). Dra hele firkanten gjennom hullet så den vrenges på retten.",
+          zh: "沿紅色虛線圓(縫線內側、保留約 0.5 公分縫份)剪一圈,再把整塊布從圓孔翻到正面。",
+        },
+        tip: {
+          en: "Cut only the top layer first, then the bottom — easier than poking scissors through both at once.",
+          nb: "Klipp først bare det øverste laget, så det nederste — lettere enn å stikke saksen gjennom begge samtidig.",
+          zh: "先剪上層,再剪下層,比一次剪穿兩層好控制。",
+        },
+        durationMin: 4,
+        overlayType: "geometric-guide",
+        overlay: {
+          shapes: [
+            { kind: "square", sizeCm: 25, color: "white", style: "dashed" },
+            { kind: "circle", sizeCm: 8, color: "blue", style: "solid" },
+            { kind: "circle", sizeCm: 7, color: "red", style: "dashed" },
+          ],
+        },
+      },
+      {
+        id: "insert-elastic",
+        title: {
+          en: "Insert the elastic",
+          nb: "Sett inn strikken",
+          zh: "放入鬆緊帶",
+        },
+        instruction: {
+          en: "Slide the elastic hair band into the fabric and work it around the central hole so it sits like a ring inside the double layer.",
+          nb: "Skyv hårstrikken inn i stoffet og arbeid den rundt midthullet så den sitter som en ring inne i dobbeltlaget.",
+          zh: "把髮圈鬆緊帶塞進兩層布之間,繞著中央圓孔讓它像戒指一樣藏在裡面。",
+        },
+        tip: {
+          en: "The orange ring shows roughly where the elastic should land — it's hidden inside the fabric once you're done.",
+          nb: "Den oransje ringen viser omtrent hvor strikken skal ligge — den er skjult inne i stoffet når du er ferdig.",
+          zh: "橘色環大約是鬆緊帶該在的位置,完成後它會藏在兩層布料中間。",
+        },
+        durationMin: 3,
+        overlayType: "geometric-guide",
+        overlay: {
+          shapes: [
+            { kind: "square", sizeCm: 25, color: "white", style: "dashed" },
+            { kind: "circle", sizeCm: 8.5, color: "orange", style: "solid" },
+          ],
+        },
+      },
+      {
+        id: "fold-edges",
+        title: {
+          en: "Fold the edges and sew on the lace",
+          nb: "Brett kantene og sy fast blonden",
+          zh: "折邊並車上蕾絲",
+        },
+        instruction: {
+          en: "Fold each side 1 cm inward, tuck the lace into the fold, and sew once around all four sides along the yellow line.",
+          nb: "Brett hver side 1 cm innover, legg blonden inn i bretten, og sy én gang rundt alle fire sidene langs den gule linjen.",
+          zh: "四邊向內折 1 公分,把蕾絲夾進折縫裡,沿黃線縫一圈四邊。",
+        },
+        tip: {
+          en: "Make sure your final stitch fully encloses the elastic — once sealed, you can't open it again.",
+          nb: "Pass på at den siste sømmen lukker strikken helt — etter forsegling kan du ikke åpne den igjen.",
+          zh: "最後這條縫線要把鬆緊帶整圈封住,封好之後就回不去了。",
+        },
+        durationMin: 10,
+        overlayType: "geometric-guide",
+        overlay: {
+          shapes: [
+            { kind: "square", sizeCm: 25, color: "white", style: "dashed" },
+            { kind: "square", sizeCm: 23, color: "yellow", style: "solid" },
+          ],
+        },
+      },
+      {
+        id: "celebrate",
+        title: {
+          en: "Done — wear it!",
+          nb: "Ferdig — bruk den!",
+          zh: "完成 — 戴上去!",
+        },
+        instruction: {
+          en: "Slip the finished scrunchie onto your wrist or use it to tie up your hair.",
+          nb: "Tre den ferdige strikken over håndleddet eller bruk den til å sette opp håret.",
+          zh: "把做好的髮圈套在手腕或拿來綁頭髮。",
+        },
+        tip: {
+          en: "Snap a photo to share — front and back both!",
+          nb: "Ta et bilde å dele — både forsiden og baksiden!",
+          zh: "拍張正反兩面的照片分享給社群!",
+        },
+        durationMin: 1,
+        overlayType: "numbered-callouts",
+        overlay: {
+          connectArrows: false,
+          points: [
+            {
+              xNorm: 0.5,
+              yNorm: 0.5,
+              label: {
+                en: "🎉 Finished!",
+                nb: "🎉 Ferdig!",
+                zh: "🎉 完成!",
+              },
+            },
+          ],
+        },
+      },
+    ],
+  },
 };

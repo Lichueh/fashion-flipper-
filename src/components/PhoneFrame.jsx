@@ -1,15 +1,21 @@
 import { useLang, SUPPORTED_LANGS } from "../i18n/LanguageContext";
 
-function LanguageSwitcher({ position = "absolute" }) {
+function LanguageSwitcher({ position = "fixed" }) {
   const { lang, setLang, t } = useLang();
+  const positioned = position !== "static";
   return (
     <div
       className="flex items-center gap-1 bg-white rounded-full border border-stone-400 shadow-md px-1.5 py-1"
       style={{
         position,
-        top: position === "absolute" ? 8 : undefined,
-        right: position === "absolute" ? 8 : undefined,
-        zIndex: 60,
+        top: positioned ? 8 : undefined,
+        right: positioned ? 8 : undefined,
+        // position:fixed creates its own stacking context anchored to the
+        // viewport (not the PhoneFrame mobile container), so this z-index
+        // actually beats the coachmark tour overlay (z-100) globally.
+        // Without `fixed` the switcher would be capped inside the mobile
+        // wrapper's stacking context and stay underneath the tour.
+        zIndex: 200,
       }}
       aria-label={t("languageSwitcher.label")}
     >
@@ -38,7 +44,7 @@ export default function PhoneFrame({ children }) {
     <>
       {/* Desktop: phone mockup */}
       <div className="hidden sm:flex min-h-screen bg-neutral-300 items-center justify-center relative">
-        <div className="absolute top-4 right-4 z-50">
+        <div className="absolute top-4 right-4" style={{ zIndex: 200 }}>
           <LanguageSwitcher position="static" />
         </div>
         <div
@@ -75,16 +81,30 @@ export default function PhoneFrame({ children }) {
               </div>
             </div>
             {/* App content */}
-            <div className="absolute inset-0 overflow-hidden" style={{ paddingTop: 30 }}>
+            <div
+              data-tour-frame
+              className="absolute inset-0 overflow-hidden"
+              style={{ paddingTop: 30 }}
+            >
               {children}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile: full screen */}
-      <div className="sm:hidden fixed inset-0 bg-[#f5f4f0] overflow-hidden">
+      {/* Mobile: language switcher rendered as a sibling (not a child) of
+          the fixed content container. A `position: fixed` parent creates a
+          stacking context that traps its descendants' z-index, so the
+          switcher must sit outside it to land above the tour overlay. */}
+      <div className="sm:hidden">
         <LanguageSwitcher />
+      </div>
+
+      {/* Mobile: full screen content container */}
+      <div
+        data-tour-frame
+        className="sm:hidden fixed inset-0 bg-[#f5f4f0] overflow-hidden"
+      >
         {children}
       </div>
     </>

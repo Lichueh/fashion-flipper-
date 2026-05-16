@@ -236,6 +236,7 @@ export default function AnalysisScreen({
             </p>
           </div>
         )}
+
         {/* Fabric type card */}
         <div className="bg-primary-100 rounded-3xl p-4 border border-primary-200 fade-in">
           <div className="flex gap-4 items-center">

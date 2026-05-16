@@ -19,6 +19,7 @@ import {
 } from "../utils/measurementValidation";
 import { interpolatePatternArea } from "../services/feasibility";
 import { useLang } from "../i18n/LanguageContext";
+import { levelByDifficulty } from "../data/skillLevels";
 
 export default function TemplateSelectScreen({
   navigate,
@@ -136,6 +137,7 @@ export default function TemplateSelectScreen({
     return result;
   });
   const [showAllGenders, setShowAllGenders] = useState(false);
+  const [showAllLevels, setShowAllLevels] = useState(false);
 
   // Long-press to zoom preview image
   const [zoomImage, setZoomImage] = useState(null);
@@ -171,19 +173,49 @@ export default function TemplateSelectScreen({
     return ep?.gender ?? null; // "female" | "male" | "nonbinary" | null
   }, [sessionProfileOverride, activeProfile]);
 
-  // Apply gender filter on top of the sorted items, then cap to the top 3
-  // so the list never shows more than three patterns at once.
+  // Skill level filter: only recommend templates that match the user's level.
+  // beginner → difficulty 1, intermediate → 2, advanced → 3. Can be overridden
+  // by the "Show all levels" toggle below.
+  const profileSkillLevel = useMemo(() => {
+    const ep = sessionProfileOverride ?? activeProfile ?? null;
+    return ep?.skillLevel ?? null;
+  }, [sessionProfileOverride, activeProfile]);
+  const profileDifficulty =
+    profileSkillLevel === "beginner"
+      ? 1
+      : profileSkillLevel === "intermediate"
+        ? 2
+        : profileSkillLevel === "advanced"
+          ? 3
+          : null;
+
+  // Apply gender + skillLevel filters on top of the sorted items, then cap to
+  // the top 3 so the list never shows more than three patterns at once.
   const MAX_VISIBLE_PATTERNS = 3;
   const visibleItems = useMemo(() => {
-    // No filtering when toggled off, no profile, or profile is non-binary
-    const filtered =
-      showAllGenders || !profileGender || profileGender === "nonbinary"
-        ? items
-        : items.filter(
-            (t) => t.forGender === "any" || t.forGender === profileGender,
-          );
+    let filtered = items;
+    // Gender filter: no filtering when toggled off, no profile, or non-binary
+    if (
+      !showAllGenders &&
+      profileGender &&
+      profileGender !== "nonbinary"
+    ) {
+      filtered = filtered.filter(
+        (t) => t.forGender === "any" || t.forGender === profileGender,
+      );
+    }
+    // Skill level filter: only templates matching the user's exact level
+    if (!showAllLevels && profileDifficulty != null) {
+      filtered = filtered.filter((t) => t.difficulty === profileDifficulty);
+    }
     return filtered.slice(0, MAX_VISIBLE_PATTERNS);
-  }, [items, showAllGenders, profileGender]);
+  }, [
+    items,
+    showAllGenders,
+    profileGender,
+    showAllLevels,
+    profileDifficulty,
+  ]);
 
   // ── Measurements modal state ────────────────────────────────────────────
   // modalTemplate: the template object the user tapped; null = modal closed
@@ -218,13 +250,10 @@ export default function TemplateSelectScreen({
     const missing = missingKeys(template, ep);
 
     if (ep && missing.length === 0) {
-      // All good — navigate immediately
-      navigate(
-        template.patternSource === "ar-tutorial"
-          ? "arTutorial"
-          : "patternLayout",
-        { template: template.id },
-      );
+      // All good — navigate to patternLayout. Both regular and ar-tutorial
+      // templates go through PatternLayoutScreen first; the latter renders a
+      // pattern-reference view with a button to launch the AR tutorial.
+      navigate("patternLayout", { template: template.id });
       return;
     }
 
@@ -339,12 +368,7 @@ export default function TemplateSelectScreen({
       });
     }
 
-    navigate(
-      modalTemplate.patternSource === "ar-tutorial"
-        ? "arTutorial"
-        : "patternLayout",
-      { template: modalTemplate.id },
-    );
+    navigate("patternLayout", { template: modalTemplate.id });
     setModalTemplate(null);
   }
 
@@ -558,12 +582,56 @@ export default function TemplateSelectScreen({
           </div>
         )}
 
+        {/* Skill level filter toggle */}
+        {profileDifficulty != null && (
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs text-primary-300">
+              {showAllLevels
+                ? t("templateSelect.showingAllLevels")
+                : t("templateSelect.showingForLevel", {
+                    level: t(`skillLevel.${profileSkillLevel}`),
+                  })}
+            </span>
+            <button
+              onClick={() => setShowAllLevels((v) => !v)}
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
+                showAllLevels
+                  ? "bg-primary-600 border-primary-500 text-primary-100"
+                  : "bg-secondary-200 border-secondary-300 text-secondary-900"
+              }`}
+            >
+              {showAllLevels
+                ? t("templateSelect.showingAllLevels")
+                : t("templateSelect.showAllLevels")}
+            </button>
+          </div>
+        )}
+
+        {visibleItems.length === 0 && (
+          <div className="bg-primary-100 rounded-3xl px-5 py-6 text-center">
+            <p className="text-primary-700 text-sm">
+              {t("templateSelect.noLevelMatches", {
+                level: profileSkillLevel
+                  ? t(`skillLevel.${profileSkillLevel}`)
+                  : "",
+              })}
+            </p>
+            <button
+              onClick={() => setShowAllLevels(true)}
+              className="mt-3 inline-block bg-secondary-300 text-secondary-900 font-semibold text-xs px-4 py-2 rounded-full active:scale-95 transition-transform"
+            >
+              {t("templateSelect.showAllLevels")}
+            </button>
+          </div>
+        )}
+
         {visibleItems.map((template, idx) => {
           const rec = recById[template.id];
           const isFeasible = rec?.feasible ?? true;
           const needsInterfacing = rec?.needsInterfacing ?? false;
           const isCleanTop = idx === 0 && isFeasible && !needsInterfacing;
           const matchScore = scoreById[template.id] ?? template.matchScore;
+          const level = levelByDifficulty(template.difficulty);
           const failReason = !isFeasible
             ? rec?.failReason === "area"
               ? t("templateSelect.reasonArea")
@@ -575,192 +643,160 @@ export default function TemplateSelectScreen({
                     ? t("templateSelect.reasonGeneric")
                     : t("templateSelect.reasonArea")
             : null;
+          // Status borders (top pick / infeasible / needs interfacing) win
+          // over the level-tinted default border.
+          const borderClass = isCleanTop
+            ? "border-secondary-300"
+            : !isFeasible
+              ? "border-red-200"
+              : needsInterfacing
+                ? "border-amber-300"
+                : level.border;
+          const zoomSrc =
+            previews[template.id] ?? template.resultImage ?? null;
           return (
             <div
               key={template.id}
               onClick={() => handleCardTap(template)}
-              className={`bg-primary-100 rounded-3xl overflow-hidden border-2 cursor-pointer active:scale-[0.98] transition-transform ${
-                isCleanTop
-                  ? "border-secondary-300"
-                  : !isFeasible
-                    ? "border-red-200 opacity-60"
-                    : needsInterfacing
-                      ? "border-amber-300"
-                      : "border-primary-200"
-              }`}
+              className={`${level.cardBg} rounded-3xl overflow-hidden border-2 cursor-pointer active:scale-[0.98] transition-transform ${borderClass} ${!isFeasible ? "opacity-60" : ""}`}
             >
-              {/* Card header */}
-              <div
-                className={`px-5 pt-5 pb-4 ${isCleanTop ? "bg-primary-50" : ""}`}
-              >
-                {isCleanTop && (
-                  <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
-                    {t("templateSelect.topRecommendation")}
-                  </span>
-                )}
-                {needsInterfacing && (
-                  <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
-                    {t("templateSelect.needsInterfacing")}
-                  </span>
-                )}
-                {!isFeasible && (
-                  <span className="inline-block bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-1 rounded-full mb-3">
-                    {t("templateSelect.notFeasible")}
-                  </span>
-                )}
-                {failReason && (
-                  <p className="text-red-600 text-[11px] leading-4 mb-3">
-                    {failReason}
-                  </p>
-                )}
-                <div className="flex items-center gap-4">
-                  {(() => {
-                    const zoomSrc =
-                      previews[template.id] ?? template.resultImage ?? null;
-                    return (
-                      <div
-                        className={`relative w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden select-none touch-none ${template.accentColor}`}
-                        onPointerDown={(e) =>
-                          zoomSrc && handleThumbnailPointerDown(zoomSrc, e)
-                        }
-                        onPointerUp={handleThumbnailPointerEnd}
-                        onPointerLeave={handleThumbnailPointerEnd}
-                        onPointerCancel={handleThumbnailPointerEnd}
-                        onClick={handleThumbnailClick}
-                      >
-                        {previews[template.id] ? (
-                          <img
-                            src={previews[template.id]}
-                            alt={tl(template.name)}
-                            className="w-full h-full object-cover pointer-events-none"
-                          />
-                        ) : template.resultImage ? (
-                          <img
-                            src={template.resultImage}
-                            alt={tl(template.name)}
-                            className="w-full h-full object-cover pointer-events-none"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-primary-200 animate-pulse rounded-2xl" />
-                        )}
-                        {zoomSrc && (
-                          <div className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full bg-black/55 flex items-center justify-center pointer-events-none">
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="w-2.5 h-2.5 text-white"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                            >
-                              <circle cx="11" cy="11" r="7" />
-                              <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-primary-900 text-lg">
-                        {tl(template.name)}
-                      </h3>
-                      <span
-                        className={`text-sm font-bold ${matchScore >= 85 ? "text-primary-800" : "text-secondary-600"}`}
-                      >
-                        {matchScore}%
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-primary-500">
-                      <span>⏱ {tl(template.time)}</span>
-                      <span>
-                        {"★".repeat(template.difficulty)}
-                        {"☆".repeat(
-                          template.maxDifficulty - template.difficulty,
-                        )}{" "}
-                        {tl(template.difficultyLabel)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Match bar */}
-              <div className="px-5">
-                <div className="h-1.5 bg-primary-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${
-                      !isFeasible
-                        ? "bg-red-400"
-                        : needsInterfacing
-                          ? "bg-amber-400"
-                          : "bg-primary-500"
-                    }`}
-                    style={{ width: `${matchScore}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Fabric usage */}
-              {rec?.usedAreaPct != null && (
-                <div className="px-5 pt-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] text-primary-500">
-                      {t("templateSelect.fabricUsed")}
+              {/* Badges + fail reason — full width across top */}
+              {(isCleanTop ||
+                needsInterfacing ||
+                !isFeasible ||
+                failReason) && (
+                <div className="px-4 pt-4">
+                  {isCleanTop && (
+                    <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                      {t("templateSelect.topRecommendation")}
                     </span>
-                    <span
-                      className={`text-[11px] font-semibold ${
-                        !isFeasible
-                          ? "text-red-500"
-                          : rec.usedAreaPct > 90
-                            ? "text-amber-600"
-                            : "text-primary-700"
-                      }`}
-                    >
-                      {Math.min(Math.round(rec.usedAreaPct), 100)}%
+                  )}
+                  {needsInterfacing && (
+                    <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                      {t("templateSelect.needsInterfacing")}
                     </span>
-                  </div>
-                  <div className="h-1 bg-primary-200 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${
-                        !isFeasible
-                          ? "bg-red-300"
-                          : rec.usedAreaPct > 90
-                            ? "bg-amber-400"
-                            : "bg-primary-400"
-                      }`}
-                      style={{
-                        width: `${Math.min(Math.round(rec.usedAreaPct), 100)}%`,
-                      }}
-                    />
-                  </div>
+                  )}
+                  {!isFeasible && (
+                    <span className="inline-block bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                      {t("templateSelect.notFeasible")}
+                    </span>
+                  )}
+                  {failReason && (
+                    <p className="text-red-600 text-[11px] leading-4 mt-2">
+                      {failReason}
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* Description & meta */}
-              <div className="px-5 pt-3 pb-4">
-                <p className="text-primary-700 text-sm leading-5 mb-3">
-                  {tl(template.description)}
-                </p>
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-3 text-xs text-primary-500">
-                    <span>
-                      {t("templateSelect.stepsCount", {
-                        count: template.steps?.length ?? "?",
-                      })}
-                    </span>
-                    <span>·</span>
-                    <span>
-                      {t("templateSelect.materialsCount", {
-                        count: template.materials.length,
-                      })}
+              {/* Image-left (~50%) + content-right */}
+              <div className="flex gap-3 px-4 pt-3 pb-4 items-stretch">
+                <div
+                  className={`relative w-1/2 aspect-square rounded-2xl flex-shrink-0 overflow-hidden select-none touch-none ${level.thumbBg}`}
+                  onPointerDown={(e) =>
+                    zoomSrc && handleThumbnailPointerDown(zoomSrc, e)
+                  }
+                  onPointerUp={handleThumbnailPointerEnd}
+                  onPointerLeave={handleThumbnailPointerEnd}
+                  onPointerCancel={handleThumbnailPointerEnd}
+                  onClick={handleThumbnailClick}
+                >
+                  {previews[template.id] ? (
+                    <img
+                      src={previews[template.id]}
+                      alt={tl(template.name)}
+                      className="w-full h-full object-cover pointer-events-none"
+                    />
+                  ) : template.resultImage ? (
+                    <img
+                      src={template.resultImage}
+                      alt={tl(template.name)}
+                      className="w-full h-full object-cover pointer-events-none"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-primary-200 animate-pulse rounded-2xl" />
+                  )}
+                  {zoomSrc && (
+                    <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/55 flex items-center justify-center pointer-events-none">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-3 h-3 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      >
+                        <circle cx="11" cy="11" r="7" />
+                        <line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 flex flex-col min-w-0">
+                  <div className="flex items-baseline gap-1.5">
+                    <h3 className="font-bold text-primary-900 text-base leading-tight flex-1 min-w-0 break-words">
+                      {tl(template.name)}
+                    </h3>
+                    <span
+                      className={`text-xs font-bold flex-shrink-0 ${matchScore >= 85 ? "text-primary-800" : "text-secondary-600"}`}
+                    >
+                      {matchScore}%
                     </span>
                   </div>
-                  <span className="text-primary-700 text-sm font-semibold">
-                    {t("templateSelect.startMaking")}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-primary-500 mt-1">
+                    <span>⏱ {tl(template.time)}</span>
+                    <span>
+                      {"★".repeat(template.difficulty)}
+                      {"☆".repeat(
+                        template.maxDifficulty - template.difficulty,
+                      )}{" "}
+                      {tl(template.difficultyLabel)}
+                    </span>
+                  </div>
+
+                  {/* Fabric usage — only progress bar shown on the card */}
+                  {rec?.usedAreaPct != null && (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-[10px] text-primary-500">
+                          {t("templateSelect.fabricUsed")}
+                        </span>
+                        <span
+                          className={`text-[10px] font-semibold ${
+                            !isFeasible
+                              ? "text-red-500"
+                              : rec.usedAreaPct > 90
+                                ? "text-amber-600"
+                                : "text-primary-700"
+                          }`}
+                        >
+                          {Math.min(Math.round(rec.usedAreaPct), 100)}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-primary-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${
+                            !isFeasible
+                              ? "bg-red-300"
+                              : rec.usedAreaPct > 90
+                                ? "bg-amber-400"
+                                : "bg-primary-500"
+                          }`}
+                          style={{
+                            width: `${Math.min(Math.round(rec.usedAreaPct), 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end mt-auto pt-2">
+                    <span className="text-primary-700 text-[11px] font-semibold flex-shrink-0">
+                      {t("templateSelect.startMaking")} →
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

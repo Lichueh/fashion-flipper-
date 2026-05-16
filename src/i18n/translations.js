@@ -52,6 +52,7 @@ const translations = {
       communityPicks: "Community Picks",
       seeAll: "See all →",
       availableTemplates: "Available Templates",
+      recommendedForLevel: "Recommended for {level}",
     },
     upload: {
       title: "Upload Your Old Clothes",
@@ -156,6 +157,11 @@ const translations = {
       showingAll: "Showing all patterns",
       showingFiltered: "Showing {gender} patterns",
       showAll: "Show all patterns",
+      showingForLevel: "Showing {level} patterns",
+      showingAllLevels: "Showing all levels",
+      showAllLevels: "Show all levels",
+      noLevelMatches:
+        "No {level} patterns match this garment right now. Try showing all levels.",
       genderFemale: "female",
       genderMale: "male",
       topRecommendation: "✨ AI Top Recommendation",
@@ -260,6 +266,7 @@ const translations = {
       female: "Female",
       male: "Male",
       nonbinary: "Non-binary",
+      skillLevel: "Sewing level",
       startFromPreset: "Start from preset",
       presetNone: "None — start blank",
       womenSizes: "Women's sizes",
@@ -277,6 +284,40 @@ const translations = {
       emptyBody: "Add measurements now so patterns can be fitted to your body.",
       later: "Later",
       addNow: "Add now",
+    },
+    walkthrough: {
+      skip: "Skip",
+      back: "Back",
+      next: "Next",
+      done: "Got it",
+      step1: {
+        title: "Start a remake",
+        body: "Tap here to photograph an old garment. We read the fabric and your measurements, then suggest patterns you can sew from it.",
+      },
+      step2: {
+        title: "Sewing tutorials",
+        body: "Step-by-step lessons from threading a needle to finishing a hem — each step pairs with an AR alignment overlay.",
+      },
+      step3: {
+        title: "Your profile",
+        body: "Edit measurements, skill level and saved profiles here. Recommendations adjust automatically to your sizes.",
+      },
+    },
+    skillLevel: {
+      title: "What's your sewing level?",
+      subtitle:
+        "We'll tailor suggestions to your level. You can change this anytime in your profile.",
+      beginner: "Beginner",
+      intermediate: "Intermediate",
+      advanced: "Advanced",
+      beginnerDesc:
+        "New to sewing, or only tried simple no-sew / hand-stitched projects.",
+      intermediateDesc:
+        "Comfortable with basic patterns, straight seams and a sewing machine.",
+      advancedDesc:
+        "Confident with complex patterns, garment fitting and finishing details.",
+      continue: "Continue",
+      defaultProfileName: "Me",
     },
     measurementGroups: {
       "Upper Body": "Upper Body",
@@ -380,6 +421,20 @@ const translations = {
       noTutorial: 'No AR tutorial defined for "{template}".',
       approxBadge: "⚠ Approx",
     },
+    patternReference: {
+      title: "Pattern Reference",
+      svgHint:
+        "Dimensions and shape of the pieces you'll cut. The AR tutorial walks you through each step on top of your real fabric.",
+      svgHintWithSize:
+        "Real size: {w} × {h} cm. The AR tutorial walks you through each step on top of your real fabric.",
+      materials: "Materials",
+      startArTutorial: "Start AR tutorial",
+      print: "Print",
+      printTitle: "Pattern",
+      printNow: "Print",
+      printScaleNote:
+        "Important: in the print dialog set scale to 100% / Actual size. Any auto-fit or shrink-to-page option will distort the dimensions.",
+    },
     patternLayout: {
       title: "Pattern Layout",
       subtitle: "Drag · double-tap rotates · tap →B/→F to flip side",
@@ -466,6 +521,7 @@ const translations = {
       communityPicks: "Utvalgt fra fellesskapet",
       seeAll: "Se alle →",
       availableTemplates: "Tilgjengelige maler",
+      recommendedForLevel: "Anbefalt for {level}",
     },
     upload: {
       title: "Last opp dine gamle klær",
@@ -571,6 +627,11 @@ const translations = {
       showingAll: "Viser alle mønstre",
       showingFiltered: "Viser {gender}-mønstre",
       showAll: "Vis alle mønstre",
+      showingForLevel: "Viser mønstre for {level}",
+      showingAllLevels: "Viser alle nivåer",
+      showAllLevels: "Vis alle nivåer",
+      noLevelMatches:
+        "Ingen {level}-mønstre passer dette plagget akkurat nå. Prøv å vise alle nivåer.",
       genderFemale: "dame",
       genderMale: "herre",
       topRecommendation: "✨ AI-toppanbefaling",
@@ -676,6 +737,7 @@ const translations = {
       female: "Kvinne",
       male: "Mann",
       nonbinary: "Ikke-binær",
+      skillLevel: "Sy-nivå",
       startFromPreset: "Start fra forhåndsvalg",
       presetNone: "Ingen — start blankt",
       womenSizes: "Damestørrelser",
@@ -694,6 +756,40 @@ const translations = {
         "Legg til mål nå slik at mønstre kan tilpasses til kroppen din.",
       later: "Senere",
       addNow: "Legg til nå",
+    },
+    walkthrough: {
+      skip: "Hopp over",
+      back: "Tilbake",
+      next: "Neste",
+      done: "Skjønner",
+      step1: {
+        title: "Start en gjenbruk",
+        body: "Trykk her for å ta bilde av et gammelt plagg. Vi leser stoffet og målene dine og foreslår mønstre du kan sy av det.",
+      },
+      step2: {
+        title: "Sy-veiledninger",
+        body: "Steg-for-steg fra å træ en nål til å falde en kant – hvert steg har et AR-overlegg som viser hvor du legger nål og saks.",
+      },
+      step3: {
+        title: "Profilen din",
+        body: "Rediger mål, sy-nivå og lagrede profiler her. Forslagene tilpasses automatisk dine størrelser.",
+      },
+    },
+    skillLevel: {
+      title: "Hvilket sy-nivå er du på?",
+      subtitle:
+        "Vi tilpasser forslag til ditt nivå. Du kan endre dette når som helst i profilen din.",
+      beginner: "Nybegynner",
+      intermediate: "Mellomnivå",
+      advanced: "Avansert",
+      beginnerDesc:
+        "Ny i søm, eller har bare prøvd enkle sy-frie / håndsydde prosjekter.",
+      intermediateDesc:
+        "Komfortabel med enkle mønstre, rette sømmer og symaskin.",
+      advancedDesc:
+        "Trygg på komplekse mønstre, plagg-tilpasning og finish-detaljer.",
+      continue: "Fortsett",
+      defaultProfileName: "Meg",
     },
     measurementGroups: {
       "Upper Body": "Overkropp",
@@ -799,6 +895,20 @@ const translations = {
       noTutorial: "Ingen AR-veiledning definert for «{template}».",
       approxBadge: "⚠ Omtrent",
     },
+    patternReference: {
+      title: "Mønsterreferanse",
+      svgHint:
+        "Mål og form på delene du skal klippe. AR-veiledningen leder deg gjennom hvert steg oppå selve stoffet.",
+      svgHintWithSize:
+        "Faktisk størrelse: {w} × {h} cm. AR-veiledningen leder deg gjennom hvert steg oppå stoffet.",
+      materials: "Materialer",
+      startArTutorial: "Start AR-veiledning",
+      print: "Skriv ut",
+      printTitle: "Mønster",
+      printNow: "Skriv ut",
+      printScaleNote:
+        "Viktig: i utskriftsdialogen må skalering settes til 100 % / Faktisk størrelse. Auto-tilpass eller krymp-til-side vil forvrenge målene.",
+    },
     patternLayout: {
       title: "Mønsteroppsett",
       subtitle: "Dra · dobbelttrykk roterer · trykk →B/→F for å bytte side",
@@ -884,6 +994,7 @@ const translations = {
       communityPicks: "社群精選",
       seeAll: "查看全部 →",
       availableTemplates: "可用範本",
+      recommendedForLevel: "為{level}推薦",
     },
     upload: {
       title: "上傳你的舊衣物",
@@ -980,6 +1091,10 @@ const translations = {
       showingAll: "顯示所有版型",
       showingFiltered: "顯示{gender}版型",
       showAll: "顯示所有版型",
+      showingForLevel: "顯示{level}版型",
+      showingAllLevels: "顯示所有等級",
+      showAllLevels: "顯示所有等級",
+      noLevelMatches: "目前沒有適合這件衣服的{level}版型。試試顯示所有等級。",
       genderFemale: "女性",
       genderMale: "男性",
       topRecommendation: "✨ AI 最佳推薦",
@@ -1083,6 +1198,7 @@ const translations = {
       female: "女",
       male: "男",
       nonbinary: "非二元",
+      skillLevel: "縫紉程度",
       startFromPreset: "從預設開始",
       presetNone: "無 — 從空白開始",
       womenSizes: "女性尺寸",
@@ -1099,6 +1215,36 @@ const translations = {
       emptyBody: "現在新增尺寸,版型才能依你的身體調整。",
       later: "稍後再說",
       addNow: "現在新增",
+    },
+    walkthrough: {
+      skip: "略過",
+      back: "上一步",
+      next: "下一步",
+      done: "了解了",
+      step1: {
+        title: "開始改造",
+        body: "點這裡上傳舊衣物的照片，AI 會分析布料和尺寸，推薦你能用這件衣服做的款式。",
+      },
+      step2: {
+        title: "縫紉教程",
+        body: "從穿針、起針到收尾都有逐步教學，每一步搭配 AR 對位指引，看著手機就能跟上。",
+      },
+      step3: {
+        title: "你的檔案",
+        body: "在這裡管理身高三圍、縫紉等級和多個檔案。AI 推薦會依你選的尺寸自動調整。",
+      },
+    },
+    skillLevel: {
+      title: "你的縫紉程度是？",
+      subtitle: "我們會依你的等級調整建議。隨時可以到個人檔案修改。",
+      beginner: "初學者",
+      intermediate: "中級",
+      advanced: "高級",
+      beginnerDesc: "剛開始接觸縫紉,或只試過免縫、手縫的簡單作品。",
+      intermediateDesc: "熟悉基本版型、直線車縫,會用縫紉機。",
+      advancedDesc: "能處理複雜版型、衣物合身與收邊細節。",
+      continue: "繼續",
+      defaultProfileName: "我",
     },
     measurementGroups: {
       "Upper Body": "上半身",
@@ -1199,6 +1345,18 @@ const translations = {
       backToTemplates: "← 返回範本",
       noTutorial: "「{template}」尚未定義 AR 教學。",
       approxBadge: "⚠ 估算",
+    },
+    patternReference: {
+      title: "版型參考",
+      svgHint: "要剪的版片形狀與尺寸。AR 教學會在實際布料上一步一步帶你做。",
+      svgHintWithSize: "實際尺寸:{w} × {h} 公分。AR 教學會在布料上一步步帶你做。",
+      materials: "材料",
+      startArTutorial: "開始 AR 教學",
+      print: "列印",
+      printTitle: "版型紙",
+      printNow: "列印",
+      printScaleNote:
+        "重要:列印對話框請把縮放設為「100%」或「實際大小」,任何自動縮放都會讓尺寸跑掉。",
     },
     patternLayout: {
       title: "紙型排版",

@@ -7,6 +7,7 @@ import {
   FringeMarksOverlay,
   KnotPairsOverlay,
   NumberedCalloutOverlay,
+  GeometricGuideOverlay,
 } from "../components/ArOverlays";
 import { useLang } from "../i18n/LanguageContext";
 
@@ -379,6 +380,15 @@ export default function ArTutorialScreen({
               }
               completedPairs={completedPairs}
               onTogglePair={togglePair}
+            />
+          )}
+          {step.overlayType === "geometric-guide" && (
+            <GeometricGuideOverlay
+              dimensions={dimensions}
+              pxPerCm={pxPerCm}
+              overlay={step.overlay}
+              dragOffset={overlayOffsets[step.id]}
+              onDrag={(o) => setStepOffset(step.id, o)}
             />
           )}
         </div>

@@ -28,12 +28,13 @@ export default function useProfiles() {
     }
   }, [store]);
 
-  const addProfile = useCallback((name) => {
+  const addProfile = useCallback((name, extra = {}) => {
     const profile = {
       id: String(Date.now()),
       name,
       createdAt: new Date().toISOString(),
       measurements: {},
+      ...extra,
     };
     setStore((prev) => ({ ...prev, profiles: [...prev.profiles, profile] }));
     return profile;

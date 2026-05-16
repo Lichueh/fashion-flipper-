@@ -24,7 +24,6 @@ export const templates = {
     },
     visualDescription:
       "A T-shirt converted into a tote bag with knotted fringe at the bottom and the sleeves cut off, hanging from a hook",
-    accentColor: "bg-lime-50",
     forGender: "any",
     patternSource: "ar-tutorial",
     patternPieces: [],
@@ -47,6 +46,72 @@ export const templates = {
       "Soft cotton jersey texture, handmade upcycled aesthetic, natural drape with visible folds.",
       "Even soft studio lighting, centered ecommerce product photo, sharp fabric detail.",
       "No person, no model, no mannequin, no body parts, no hands.",
+    ].join(" "),
+  },
+  scrunchie: {
+    id: "scrunchie",
+    name: {
+      en: "Kerchief Scrunchie",
+      nb: "Tørkle-hårstrikk",
+      zh: "方巾髮圈",
+    },
+    style: {
+      en: "Lace-trimmed kerchief scrunchie",
+      nb: "Hårstrikk med blondekant",
+      zh: "蕾絲滾邊方巾髮圈",
+    },
+    emoji: "🎀",
+    difficulty: 1,
+    maxDifficulty: 3,
+    difficultyLabel: { en: "Beginner", nb: "Nybegynner", zh: "初學者" },
+    time: { en: "About 45 min", nb: "Ca. 45 min", zh: "約 45 分鐘" },
+    matchScore: 92,
+    description: {
+      en: "Cut two 25 cm fabric squares from an old garment, sew them around a hidden elastic, and trim the edge with lace — a wearable scrunchie that doubles as a head scarf.",
+      nb: "Klipp to 25 cm stoffirkanter fra et gammelt plagg, sy dem rundt en skjult strikk, og kant kanten med blonde — en strikk som også fungerer som hodetørkle.",
+      zh: "從舊衣物剪兩塊 25 公分方布,圍著一條藏起來的鬆緊帶縫合,邊緣車上蕾絲 — 可戴在頭上也能當髮飾。",
+    },
+    visualDescription:
+      "A small square fabric scrunchie with lace trim along the edges and an elastic band hidden in the middle, lying flat on a pale background",
+    forGender: "any",
+    patternSource: "ar-tutorial",
+    patternPieces: [],
+    patternReferenceSvg: "/scrunchie-pattern.svg",
+    // Real-world print size for the reference SVG so the print button can
+    // render it at 1:1 instead of letting the browser scale to page.
+    patternPrintSize: { widthCm: 25, heightCm: 25 },
+    resultImage: "/images/results/scrunchie-result.jpg",
+    materials: [
+      {
+        en: "Old fabric scrap (about 30×30 cm)",
+        nb: "Stoffrest (ca. 30×30 cm)",
+        zh: "舊布料(約 30×30 公分)",
+      },
+      {
+        en: "Elastic hair band",
+        nb: "Strikkhårbånd",
+        zh: "髮圈鬆緊帶",
+      },
+      {
+        en: "Lace trim (~1 m)",
+        nb: "Blondekant (ca. 1 m)",
+        zh: "蕾絲花邊(約 1 公尺)",
+      },
+      { en: "Sharp scissors", nb: "Skarp saks", zh: "鋒利的剪刀" },
+      {
+        en: "Sewing machine or needle + thread",
+        nb: "Symaskin eller nål + tråd",
+        zh: "縫紉機或針+線",
+      },
+    ],
+    steps: [],
+    previewPromptOverride: [
+      "Transform the fabric in this image into a finished kerchief-style scrunchie hair-tie, photographed flat on a clean off-white studio background.",
+      "A small square fabric cushion (~10 cm across) with lace edging on all four sides and a hidden elastic loop in the middle that lets it cinch into a scrunchie.",
+      "Soft white lace trim peeking out evenly from all four edges of the square.",
+      "Preserve the original fabric color, pattern, and any visible weave / texture from the source image exactly — same hue, same pattern, same texture.",
+      "Soft natural lighting, overhead flat-lay product photo, sharp fabric detail.",
+      "No person, no model, no hand, no head, no body parts.",
     ].join(" "),
   },
   bag: {
@@ -74,7 +139,6 @@ export const templates = {
     },
     visualDescription:
       "A structured rectangular tote bag with a strap that is clipped on, standing upright",
-    accentColor: "bg-amber-50",
     forGender: "any",
     patternSource: "custom",
     patternPieces: [],
@@ -112,9 +176,9 @@ export const templates = {
     difficulty: 2,
     maxDifficulty: 3,
     difficultyLabel: {
-      en: "Beginner+",
-      nb: "Nybegynner+",
-      zh: "初學者+",
+      en: "Intermediate",
+      nb: "Mellomnivå",
+      zh: "中級",
     },
     time: {
       en: "About 2–3 hrs",
@@ -129,7 +193,6 @@ export const templates = {
     },
     visualDescription:
       "A soft bucket hat with a rounded crown and downward-sloping brim, sitting on a flat surface",
-    accentColor: "bg-sky-50",
     forGender: "any",
     patternSource: "custom",
     patternPieces: [],
@@ -168,9 +231,9 @@ export const templates = {
     difficulty: 2,
     maxDifficulty: 3,
     difficultyLabel: {
-      en: "Beginner+",
-      nb: "Nybegynner+",
-      zh: "初學者+",
+      en: "Intermediate",
+      nb: "Mellomnivå",
+      zh: "中級",
     },
     time: {
       en: "About 2–3 hrs",
@@ -185,7 +248,6 @@ export const templates = {
     },
     visualDescription:
       "A simple sleeveless tank top with a round neckline and straight hem",
-    accentColor: "bg-green-50",
     forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
@@ -235,7 +297,6 @@ export const templates = {
     },
     visualDescription:
       "A fitted, sleeveless womenswear bodice block with darts and seams, laid flat on a surface",
-    accentColor: "bg-pink-50",
     forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
@@ -265,8 +326,8 @@ export const templates = {
     maxDifficulty: 3,
     difficultyLabel: {
       en: "Intermediate",
-      nb: "Middels",
-      zh: "中階",
+      nb: "Mellomnivå",
+      zh: "中級",
     },
     time: {
       en: "About 3–4 hrs",
@@ -280,7 +341,6 @@ export const templates = {
       zh: "經典兩片袖大衣 — 量身剪裁外套的理想原型",
     },
     visualDescription: "A classic suit coat with three buttons in front",
-    accentColor: "bg-amber-50",
     forGender: "male",
     patternSource: "freesewing",
     patternPieces: [],
@@ -322,7 +382,6 @@ export const templates = {
     },
     visualDescription:
       "A fitted menswear T-shirt with 3/4 sleeves and a round neckline",
-    accentColor: "bg-blue-50",
     forGender: "male",
     patternSource: "freesewing",
     patternPieces: [],
@@ -367,7 +426,6 @@ export const templates = {
       zh: "前後口袋、門襟與腰帶環的修身卡其褲",
     },
     visualDescription: "A pair of slim chinos",
-    accentColor: "bg-indigo-50",
     forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
@@ -390,8 +448,8 @@ export const templates = {
     maxDifficulty: 3,
     difficultyLabel: {
       en: "Intermediate",
-      nb: "Middels",
-      zh: "中階",
+      nb: "Mellomnivå",
+      zh: "中級",
     },
     time: {
       en: "About 2–3 hrs",
@@ -406,7 +464,6 @@ export const templates = {
     },
     visualDescription:
       "A draped, sleeve-less top with a cowl neckline and asymmetric hem",
-    accentColor: "bg-purple-50",
     forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
@@ -436,8 +493,8 @@ export const templates = {
     maxDifficulty: 3,
     difficultyLabel: {
       en: "Intermediate",
-      nb: "Middels",
-      zh: "中階",
+      nb: "Mellomnivå",
+      zh: "中級",
     },
     time: {
       en: "About 2–3 hrs",
@@ -452,7 +509,6 @@ export const templates = {
     },
     visualDescription:
       "A structured, boxy handbag with zipper closure, shoulder strap with buckles, and inner reinforcement",
-    accentColor: "bg-orange-50",
     forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
@@ -491,8 +547,8 @@ export const templates = {
     maxDifficulty: 3,
     difficultyLabel: {
       en: "Intermediate",
-      nb: "Middels",
-      zh: "中階",
+      nb: "Mellomnivå",
+      zh: "中級",
     },
     time: {
       en: "About 2–3 hrs",
@@ -507,7 +563,6 @@ export const templates = {
     },
     visualDescription:
       "A fitted knee-length pencil skirt with back vent and invisible zipper",
-    accentColor: "bg-teal-50",
     forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
@@ -552,7 +607,6 @@ export const templates = {
     },
     visualDescription:
       "A tailored button-up mens shirt with collar, yoke, cuffs, and sleeve plackets",
-    accentColor: "bg-sky-50",
     forGender: "male",
     patternSource: "freesewing",
     patternPieces: [],
@@ -595,7 +649,6 @@ export const templates = {
     },
     visualDescription:
       "A tailored button-up womens shirt with full bust adjustment, collar, yoke, and cuffs",
-    accentColor: "bg-rose-50",
     forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
@@ -638,7 +691,6 @@ export const templates = {
     },
     visualDescription:
       "A simple sleeve-less slip dress with lace details underneath bust",
-    accentColor: "bg-green-50",
     forGender: "female",
     patternSource: "freesewing",
     patternPieces: [],
@@ -679,7 +731,6 @@ export const templates = {
       zh: "經典圓領、接袖 T 恤 — 適合平針布",
     },
     visualDescription: "Classic crew-neck T-shirt with set-in sleeves",
-    accentColor: "bg-yellow-50",
     forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
@@ -717,8 +768,8 @@ export const templates = {
     maxDifficulty: 3,
     difficultyLabel: {
       en: "Intermediate",
-      nb: "Middels",
-      zh: "中階",
+      nb: "Mellomnivå",
+      zh: "中級",
     },
     time: {
       en: "About 2–3 hrs",
@@ -733,7 +784,6 @@ export const templates = {
     },
     visualDescription:
       "Comfortable wrap pants inspired by Thai fashion, with tie waistband",
-    accentColor: "bg-lime-50",
     forGender: "any",
     patternSource: "freesewing",
     patternPieces: [],
@@ -778,7 +828,6 @@ export const templates = {
     },
     visualDescription:
       "A tailored waistcoat (vest) with front facings, lining, and welt pockets",
-    accentColor: "bg-amber-50",
     forGender: "male",
     patternSource: "freesewing",
     patternPieces: [],

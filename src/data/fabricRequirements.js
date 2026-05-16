@@ -40,6 +40,22 @@ export const FABRIC_REQUIREMENTS = {
     reason: null,
   },
 
+  scrunchie: {
+    // Small accessory — very forgiving. Any medium-weight woven works
+    // (cotton, linen, twill, plaid, denim). Knits also accepted since the
+    // elastic does the cinching, not the fabric.
+    minWeightClass: 1,
+    maxWeightClass: 4,
+    allowKnit: true,
+    requiresStretch: false,
+    allowBias: true,
+    minConditionRank: 2,
+    canInterfaceFix: false,
+    rejectFibers: [],
+    preferredFibers: [],
+    reason: null,
+  },
+
   bag: {
     minWeightClass: 2,
     maxWeightClass: null,

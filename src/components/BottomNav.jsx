@@ -127,6 +127,7 @@ export default function BottomNav({ current, navigate, activeProfile }) {
         return (
           <button
             key={id}
+            data-tour={id === "learn" ? "tour-learn" : undefined}
             onClick={() => navigate(id)}
             className="flex-1 flex flex-col items-center pt-2 pb-2.5 gap-0.5"
           >
@@ -142,6 +143,7 @@ export default function BottomNav({ current, navigate, activeProfile }) {
 
       {/* Profile button */}
       <button
+        data-tour="tour-profile"
         onClick={() => navigate("profiles")}
         className="flex-1 flex flex-col items-center pt-2 pb-2.5 gap-0.5"
       >

@@ -13,10 +13,6 @@ const PX_PER_DEG = 6;
 // ISO/IEC 7810 ID-1 long edge — credit card, 健保卡, 身分證 all match.
 const REFERENCE_OBJECT_CM = 8.56;
 
-function jitter(amount) {
-  return (Math.random() - 0.5) * 2 * amount;
-}
-
 function lineGeom(p1, p2) {
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
@@ -132,11 +128,10 @@ export default function ArMeasureScreen({ navigate }) {
       if (isCalibrating) {
         setMeasurementCm(REFERENCE_OBJECT_CM);
       } else {
-        const cm = Math.max(
-          20,
-          Math.min(180, px / activePxPerCm + jitter(0.7)),
-        );
-        setMeasurementCm(cm);
+        // Real measurement — no jitter, no [20, 180] clamp. Both were
+        // prototype-era fakery that silently distorted the value the user
+        // sees in the live overlay vs. what gets stored.
+        setMeasurementCm(px / activePxPerCm);
       }
       setAnchorOrient({ ...orientationRef.current });
       if (typeof navigator.vibrate === "function") navigator.vibrate(15);

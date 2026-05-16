@@ -74,6 +74,153 @@ function _layoutToPositions(
   return posMap;
 }
 
+// Pattern-reference screen for ar-tutorial templates (scrunchie etc.). Shows
+// the template's reference SVG full-width plus the materials list, with a
+// single CTA to launch the AR camera tutorial. No drag-arrange UI.
+function ArTutorialReferenceView({ template, navigate, t, tl, from }) {
+  const backScreen = from === "home" ? "home" : "templateSelect";
+
+  // Open the reference SVG in a new window at 1:1 cm size and trigger print.
+  // We fetch the SVG text so we can rewrite width/height into real cm — if we
+  // just <img>ed it the browser would scale it to fit the page and cut/sew
+  // dimensions on paper would be wrong.
+  async function handlePrint() {
+    const size = template.patternPrintSize;
+    if (!template.patternReferenceSvg || !size) return;
+    try {
+      const res = await fetch(template.patternReferenceSvg);
+      const svgText = await res.text();
+      const svgSized = svgText.replace(
+        /<svg([^>]*)>/i,
+        `<svg$1 width="${size.widthCm}cm" height="${size.heightCm}cm" preserveAspectRatio="xMidYMid meet">`,
+      );
+      const w = window.open("", "_blank", "width=900,height=1000");
+      if (!w) return;
+      w.document.open();
+      w.document.write(`<!doctype html><html><head>
+<meta charset="utf-8" />
+<title>${tl(template.name)} — ${t("patternReference.printTitle")}</title>
+<style>
+  @page { size: A4; margin: 1cm; }
+  body { margin: 0; padding: 16px 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1c1917; }
+  h1 { margin: 0 0 4px 0; font-size: 14pt; }
+  .meta { color: #57534e; font-size: 10pt; margin: 0 0 14px 0; }
+  .warn { color: #b45309; font-size: 9pt; margin: 0 0 14px 0; }
+  svg { display: block; }
+  @media print { body { padding: 0; } .noprint { display: none; } }
+  .actions { margin: 16px 0 0 0; }
+  button { font: inherit; padding: 8px 14px; border-radius: 999px; border: 1px solid #d6d3d1; background: #fff; cursor: pointer; }
+  button.primary { background: #1c1917; color: #fff; border-color: #1c1917; }
+</style>
+</head><body>
+<h1>${tl(template.name)}</h1>
+<p class="meta">${size.widthCm} × ${size.heightCm} cm</p>
+<p class="warn">${t("patternReference.printScaleNote")}</p>
+${svgSized}
+<div class="actions noprint">
+  <button class="primary" onclick="window.print()">${t("patternReference.printNow")}</button>
+</div>
+<script>window.addEventListener('load', () => setTimeout(() => window.print(), 350));</script>
+</body></html>`);
+      w.document.close();
+    } catch (e) {
+      console.error("[patternPrint] failed:", e);
+    }
+  }
+
+  return (
+    <div className="h-full flex flex-col bg-primary-800">
+      {/* Header */}
+      <div className="flex items-center px-5 pt-8 pb-3 flex-shrink-0">
+        <button
+          onClick={() => navigate(backScreen)}
+          className="w-9 h-9 bg-primary-700 rounded-full border border-primary-600 flex items-center justify-center text-primary-100 shadow-sm mr-3"
+          aria-label={t("common.back")}
+        >
+          ←
+        </button>
+        <div className="flex-1 min-w-0">
+          <h2 className="font-semibold text-primary-100 truncate">
+            {tl(template.name)}
+          </h2>
+          <p className="text-primary-300 text-[11px] truncate">
+            {tl(template.style)}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
+        {/* Pattern reference SVG */}
+        {template.patternReferenceSvg && (
+          <div className="bg-primary-100 rounded-3xl p-5 border border-primary-200">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-semibold text-primary-500 uppercase tracking-wider">
+                {t("patternReference.title")}
+              </p>
+              {template.patternPrintSize && (
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="text-[11px] font-semibold text-secondary-700 bg-secondary-100 border border-secondary-200 px-2.5 py-1 rounded-full active:scale-95 transition-transform"
+                >
+                  🖨 {t("patternReference.print")}
+                </button>
+              )}
+            </div>
+            <div className="flex justify-center">
+              <img
+                src={template.patternReferenceSvg}
+                alt={tl(template.name)}
+                className="w-full max-w-xs"
+              />
+            </div>
+            <p className="text-primary-700 text-[11px] leading-4 mt-3 text-center">
+              {template.patternPrintSize
+                ? t("patternReference.svgHintWithSize", {
+                    w: template.patternPrintSize.widthCm,
+                    h: template.patternPrintSize.heightCm,
+                  })
+                : t("patternReference.svgHint")}
+            </p>
+          </div>
+        )}
+
+        {/* Materials */}
+        {template.materials?.length > 0 && (
+          <div className="bg-primary-100 rounded-3xl p-4 border border-primary-200">
+            <p className="text-[11px] font-semibold text-primary-500 uppercase tracking-wider mb-2">
+              {t("patternReference.materials")}
+            </p>
+            <ul className="space-y-1.5">
+              {template.materials.map((m, i) => (
+                <li
+                  key={i}
+                  className="text-primary-900 text-sm flex items-start gap-2"
+                >
+                  <span className="text-secondary-400 mt-0.5">•</span>
+                  <span>{tl(m)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* CTA */}
+      <div className="px-5 pb-6 pt-2 flex-shrink-0">
+        <button
+          onClick={() =>
+            navigate("arTutorial", { template: template.id, from: backScreen })
+          }
+          className="w-full bg-secondary-300 text-secondary-900 font-bold text-base py-3.5 rounded-2xl shadow-sm active:scale-[0.98] transition-transform"
+        >
+          {t("patternReference.startArTutorial")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function PatternLayoutScreen({
   navigate,
   template: templateId,
@@ -89,6 +236,16 @@ export default function PatternLayoutScreen({
 }) {
   const { t, tl } = useLang();
   const template = templates[templateId];
+
+  // ar-tutorial templates (e.g. the scrunchie) don't drag-arrange pieces —
+  // they just need to show the reference SVG before launching the camera
+  // tutorial. Short-circuit the whole drag UI in that case.
+  if (template?.patternSource === "ar-tutorial") {
+    return (
+      <ArTutorialReferenceView template={template} navigate={navigate} t={t} tl={tl} from={from} />
+    );
+  }
+
   const grainAngleDeg =
     measurements?.garmentLayout?.grainAngleDeg ?? DEFAULT_GRAIN_ANGLE;
 

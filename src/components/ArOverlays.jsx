@@ -892,3 +892,173 @@ export function KnotPairsOverlay({
     </>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GeometricGuideOverlay — general-purpose primitive that draws a list of
+// shapes (square / circle) centered on the canvas. Used by the scrunchie
+// tutorial where each step's guide is a combination of squares (cut / fold
+// boundaries) and concentric circles (sew / cut lines).
+//
+// overlay schema:
+//   {
+//     shapes: [
+//       {
+//         kind: "square" | "circle",
+//         sizeCm: number,           // square edge OR circle diameter
+//         color: "white" | "blue" | "red" | "yellow" | "orange",
+//         style: "solid" | "dashed",
+//         strokeCm?: number,        // line thickness; default 0.15 cm
+//         offsetCm?: { dx, dy },    // offset from canvas center; default 0,0
+//         label?: { en, nb, zh },   // optional chip rendered beside the shape
+//       },
+//       ...
+//     ],
+//   }
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COLOR_MAP = {
+  white: "rgba(255,255,255,0.95)",
+  blue: "#3B82F6",
+  red: "#E60012",
+  yellow: ACCENT,
+  orange: "#F97316",
+  green: "#10B981",
+};
+
+export function GeometricGuideOverlay({
+  dimensions,
+  pxPerCm,
+  overlay,
+  dragOffset,
+  onDrag,
+}) {
+  const { tl } = useLang();
+  const shapes = overlay?.shapes ?? [];
+
+  const cx = dimensions.w / 2 + (dragOffset?.dx ?? 0);
+  const cy = dimensions.h / 2 + (dragOffset?.dy ?? 0);
+
+  // Bounding box for drag-grab area: take the largest shape's bounds.
+  const maxRadius = shapes.reduce((acc, s) => {
+    const halfPx = ((s.sizeCm ?? 0) * pxPerCm) / 2;
+    return Math.max(acc, halfPx);
+  }, 0);
+  const grabPadding = 16;
+
+  function handlePointerDown(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const startCx = e.clientX;
+    const startCy = e.clientY;
+    const startDx = dragOffset?.dx ?? 0;
+    const startDy = dragOffset?.dy ?? 0;
+    function onMove(ev) {
+      onDrag?.({
+        dx: startDx + (ev.clientX - startCx),
+        dy: startDy + (ev.clientY - startCy),
+      });
+    }
+    function onUp() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
+
+  return (
+    <>
+      {/* Single SVG covering the full canvas; each shape is centered. */}
+      <svg
+        width={dimensions.w}
+        height={dimensions.h}
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          pointerEvents: "none",
+        }}
+      >
+        {shapes.map((s, i) => {
+          const sizePx = (s.sizeCm ?? 0) * pxPerCm;
+          const strokeWidth = Math.max(2, (s.strokeCm ?? 0.15) * pxPerCm);
+          const stroke = COLOR_MAP[s.color] ?? COLOR_MAP.white;
+          const dash =
+            s.style === "dashed" ? `${strokeWidth * 3} ${strokeWidth * 2}` : "";
+          const ox = (s.offsetCm?.dx ?? 0) * pxPerCm;
+          const oy = (s.offsetCm?.dy ?? 0) * pxPerCm;
+
+          if (s.kind === "circle") {
+            return (
+              <circle
+                key={i}
+                cx={cx + ox}
+                cy={cy + oy}
+                r={sizePx / 2}
+                fill="none"
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                strokeDasharray={dash}
+                strokeLinecap="round"
+              />
+            );
+          }
+          // default: square
+          return (
+            <rect
+              key={i}
+              x={cx + ox - sizePx / 2}
+              y={cy + oy - sizePx / 2}
+              width={sizePx}
+              height={sizePx}
+              fill="none"
+              stroke={stroke}
+              strokeWidth={strokeWidth}
+              strokeDasharray={dash}
+              strokeLinejoin="round"
+            />
+          );
+        })}
+      </svg>
+
+      {/* Optional labels rendered as chips beside each shape */}
+      {shapes.map((s, i) => {
+        if (!s.label) return null;
+        const halfPx = ((s.sizeCm ?? 0) * pxPerCm) / 2;
+        const ox = (s.offsetCm?.dx ?? 0) * pxPerCm;
+        const oy = (s.offsetCm?.dy ?? 0) * pxPerCm;
+        return (
+          <div
+            key={`label-${i}`}
+            style={{
+              position: "absolute",
+              left: cx + ox + halfPx + 8,
+              top: cy + oy - 12,
+              ...chipStyle(),
+              pointerEvents: "none",
+            }}
+          >
+            {tl(s.label)}
+          </div>
+        );
+      })}
+
+      {/* Drag-grab area — covers the largest shape's bounding box */}
+      <div
+        onPointerDown={handlePointerDown}
+        style={{
+          position: "absolute",
+          left: cx - maxRadius - grabPadding,
+          top: cy - maxRadius - grabPadding,
+          width: 2 * (maxRadius + grabPadding),
+          height: 2 * (maxRadius + grabPadding),
+          cursor: "grab",
+          touchAction: "none",
+          background: "transparent",
+        }}
+      />
+    </>
+  );
+}

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_1" data-name="图层 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766.35 766.35">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke-dasharray: 6.02 6.02;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #231815;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4 {
+        fill: none;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2, .cls-3 {
+        stroke-dasharray: 6;
+      }
+
+      .cls-3, .cls-4 {
+        stroke: #e60012;
+      }
+
+      .cls-4 {
+        stroke-dasharray: 6 6;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="383.18" cy="383.18" r="141.73"/>
+  <circle class="cls-4" cx="383.18" cy="383.18" r="170.08"/>
+  <rect class="cls-3" x="29.85" y="26.31" width="708.66" height="708.66"/>
+  <rect class="cls-2" x=".5" y=".5" width="765.35" height="765.35"/>
+</svg>

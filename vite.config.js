@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 
 const GITHUB_API_URL = "https://models.inference.ai.azure.com/chat/completions";
 
@@ -38,6 +39,11 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      // HTTPS with a self-signed cert. Required for getUserMedia() (camera/AR)
+      // to work on iOS Safari / Chrome / WeChat over a LAN IP — those
+      // browsers silently reject mediaDevices over plain HTTP and never
+      // prompt for permission. Auto-disabled in production builds.
+      basicSsl(),
       {
         name: "api-dev-proxy",
         configureServer(server) {
@@ -518,6 +524,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: true,
+      https: true,
       allowedHosts: [".trycloudflare.com", ".ngrok.io", ".ngrok-free.app"],
     },
   };

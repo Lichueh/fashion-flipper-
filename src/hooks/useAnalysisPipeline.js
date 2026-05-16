@@ -277,11 +277,12 @@ export function useAnalysisPipeline() {
         if (fabricResult) {
           setFabric(fabricResult);
           fabricRef.current = fabricResult;
+          setFabricFailed(false);
         } else {
           // fabricResult === null: the fabric API failed or returned no usable data.
           // fabricRef.current keeps mockAnalysis.fabric so checkFeasibility never
-          // receives undefined. The UI should check fabricFailed to offer a manual
-          // fabric-entry fallback.
+          // receives undefined. The UI checks fabricFailed to offer Retry or the
+          // ManualFabricForm fallback.
           setFabricFailed(true);
         }
 

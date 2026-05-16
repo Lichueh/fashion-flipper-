@@ -12,6 +12,7 @@ import {
   unitLabel,
 } from "../utils/measurementValidation";
 import { useLang } from "../i18n/LanguageContext";
+import { SKILL_LEVELS } from "../data/skillLevels";
 
 const ALL_KEYS = Object.values(MEASUREMENT_GROUPS).flat();
 
@@ -35,6 +36,9 @@ export default function ProfileEditorScreen({
 
   const [name, setName] = useState(profile?.name ?? "");
   const [gender, setGender] = useState(profile?.gender ?? null);
+  const [skillLevel, setSkillLevel] = useState(
+    profile?.skillLevel ?? "beginner",
+  );
   const [fields, setFields] = useState(initialFields);
   const [errors, setErrors] = useState({});
   const [collapsed, setCollapsed] = useState({});
@@ -110,18 +114,24 @@ export default function ProfileEditorScreen({
 
     if (isNew) {
       if (createdProfileIdRef.current === null) {
-        const newProfile = addProfile(name.trim());
+        const newProfile = addProfile(name.trim(), { skillLevel });
         createdProfileIdRef.current = newProfile.id;
-        updateProfile(newProfile.id, { gender, measurements });
+        updateProfile(newProfile.id, { gender, skillLevel, measurements });
       } else {
         updateProfile(createdProfileIdRef.current, {
           name: name.trim(),
           gender,
+          skillLevel,
           measurements,
         });
       }
     } else {
-      updateProfile(profile.id, { name: name.trim(), gender, measurements });
+      updateProfile(profile.id, {
+        name: name.trim(),
+        gender,
+        skillLevel,
+        measurements,
+      });
     }
 
     if (Object.keys(measurements).length === 0) {
@@ -201,6 +211,31 @@ export default function ProfileEditorScreen({
                 {label}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Skill level */}
+        <div className="bg-primary-100 rounded-3xl px-4 py-4">
+          <label className="block text-[11px] font-semibold text-primary-500 uppercase tracking-wider mb-3">
+            {t("profileEditor.skillLevel")}
+          </label>
+          <div className="flex gap-2">
+            {SKILL_LEVELS.map((level) => {
+              const isActive = skillLevel === level.id;
+              return (
+                <button
+                  key={level.id}
+                  onClick={() => setSkillLevel(level.id)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border-2 transition-colors ${
+                    isActive
+                      ? `${level.cardBg} ${level.text} ${level.borderActive}`
+                      : "bg-primary-50 text-primary-600 border-primary-200"
+                  }`}
+                >
+                  {t(`skillLevel.${level.id}`)}
+                </button>
+              );
+            })}
           </div>
         </div>
 

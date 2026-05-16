@@ -132,6 +132,15 @@ export default {
     cisMaleAdult42: 600,
     cisMaleAdult48: 600,
   },
+  // Two 25×25 cm squares = 1250 cm² total. A typical jean leg has plenty.
+  scrunchie: {
+    cisFemaleAdult32: 1250,
+    cisFemaleAdult38: 1250,
+    cisFemaleAdult44: 1250,
+    cisMaleAdult36: 1250,
+    cisMaleAdult42: 1250,
+    cisMaleAdult48: 1250,
+  },
   bag: {
     cisFemaleAdult32: 875,
     cisFemaleAdult38: 875,

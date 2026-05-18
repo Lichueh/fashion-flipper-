@@ -13,40 +13,37 @@ export default function UploadScreen({ navigate }) {
   const handleFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    // Kick off fabric analysis + segmentation immediately so results may be
-    // ready (or nearly ready) by the time the user taps Analyze.
-    // prescheduleAnalysis is idempotent for the same file and replaces any
-    // previous in-flight requests when the user swaps to a different photo.
     prescheduleAnalysis(file);
     setUploadedFile(file);
     setPreview(URL.createObjectURL(file));
   };
 
+  const canStart = preview && manualCm > 0;
+
   return (
     <div className="h-full flex flex-col bg-primary-800">
       {/* Header */}
-      <div className="flex items-center px-5 pt-8 pb-4">
+      <div className="flex items-center px-5 pt-7 pb-3 shrink-0">
         <button
           onClick={() => navigate("home")}
-          className="w-9 h-9 bg-primary-700 rounded-full border border-primary-600 flex items-center justify-center text-primary-100 shadow-sm mr-3"
+          className="w-10 h-10 bg-primary-700 rounded-full border border-primary-600 flex items-center justify-center text-primary-100 shadow-sm mr-3"
+          aria-label="Back"
         >
           ←
         </button>
-        <h2 className="font-semibold text-primary-100">{t("upload.title")}</h2>
+        <h2 className="font-semibold text-primary-100 text-base">
+          {t("upload.title")}
+        </h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-6">
-        <p className="text-primary-100 text-sm mb-5 leading-5">
-          {t("upload.intro")}
-        </p>
-
+      <div className="flex-1 overflow-y-auto px-5 pb-4">
         {/* Upload zone */}
         <div
           onClick={() => fileRef.current?.click()}
-          className={`relative rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all mb-5 overflow-hidden ${
+          className={`relative rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all mb-4 overflow-hidden ${
             preview
-              ? "border-secondary-300 h-72"
-              : "border-primary-100 bg-primary-100 h-52 active:scale-[0.98]"
+              ? "border-secondary-300 h-52"
+              : "border-primary-100 bg-primary-100 h-44 active:scale-[0.98]"
           }`}
         >
           {preview ? (
@@ -56,7 +53,7 @@ export default function UploadScreen({ navigate }) {
                 alt="preview"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 flex items-end justify-center pb-4 bg-gradient-to-t from-black/40 to-transparent">
+              <div className="absolute inset-0 flex items-end justify-center pb-3 bg-gradient-to-t from-black/40 to-transparent">
                 <span className="bg-primary-900/60 backdrop-blur-sm text-primary-100 text-xs font-medium px-4 py-1.5 rounded-full">
                   {t("upload.reselect")}
                 </span>
@@ -67,13 +64,13 @@ export default function UploadScreen({ navigate }) {
             </>
           ) : (
             <div className="flex flex-col items-center gap-2 px-6 text-center">
-              <div className="w-16 h-16 bg-secondary-200 rounded-2xl flex items-center justify-center text-4xl mb-1">
+              <div className="w-14 h-14 bg-secondary-200 rounded-2xl flex items-center justify-center text-3xl">
                 📷
               </div>
               <p className="text-primary-800 font-medium text-sm">
-                {t("upload.tapToTake")}
+                {t("upload.intro")}
               </p>
-              <p className="text-primary-700 text-xs">
+              <p className="text-primary-700 text-xs leading-4 max-w-[240px]">
                 {t("upload.formatHint")}
               </p>
             </div>
@@ -88,122 +85,18 @@ export default function UploadScreen({ navigate }) {
           onChange={handleFile}
         />
 
-        {/* Measurement card */}
-        <div className="bg-primary-100 rounded-2xl p-4 mb-5">
-          <p className="text-primary-900 font-semibold text-sm mb-1">
-            {t("upload.garmentMeasure")}
-          </p>
-          <p className="text-primary-700 text-xs leading-4 mb-3">
-            {t("upload.garmentMeasureHint")}
-          </p>
-
-          {/* AR option */}
-          <button
-            onClick={() =>
-              preview &&
-              navigate("arMeasure", {
-                image: preview,
-                imageFile: uploadedFile,
-              })
-            }
-            disabled={!preview}
-            className={`w-full flex items-center justify-between gap-2 rounded-xl px-4 py-3 mb-2 transition-all ${
-              preview
-                ? "bg-secondary-300 text-white active:scale-[0.98] shadow-sm"
-                : "bg-primary-200 text-primary-700 cursor-not-allowed"
-            }`}
-          >
-            <div className="text-left">
-              <p className="font-bold text-sm leading-tight">
-                {t("upload.arOptionTitle")}
-              </p>
-              <p className="text-[10px] leading-tight opacity-80">
-                {t("upload.arOptionHint")}
-              </p>
-            </div>
-            <span className="text-base font-bold">→</span>
-          </button>
-
-          {/* Ruler option */}
-          <button
-            onClick={() =>
-              preview &&
-              navigate("rulerCalibrate", {
-                image: preview,
-                imageFile: uploadedFile,
-                hasLayers,
-              })
-            }
-            disabled={!preview}
-            className={`w-full flex items-center justify-between gap-2 rounded-xl px-4 py-3 mb-2 transition-all ${
-              preview
-                ? "bg-primary-800 text-primary-100 active:scale-[0.98] shadow-sm"
-                : "bg-primary-200 text-primary-700 cursor-not-allowed"
-            }`}
-          >
-            <div className="text-left">
-              <p className="font-bold text-sm leading-tight">
-                {t("upload.rulerOptionTitle")}
-              </p>
-              <p className="text-[10px] leading-tight opacity-80">
-                {t("upload.rulerOptionHint")}
-              </p>
-            </div>
-            <span className="text-base font-bold">→</span>
-          </button>
-
-          {/* Divider */}
-          <div className="flex items-center gap-2 my-2">
-            <div className="flex-1 h-px bg-primary-300" />
-            <span className="text-[10px] text-primary-700 font-medium uppercase tracking-wider">
-              {t("common.orSeparator")}
-            </span>
-            <div className="flex-1 h-px bg-primary-300" />
+        {/* Layers */}
+        <div className="bg-primary-100 rounded-2xl p-4 mb-4 w-full">
+          <div className="mb-3">
+            <p className="text-primary-900 font-semibold text-sm mb-1">
+              {t("upload.layersTitle")}
+            </p>
+            <p className="text-primary-800 text-[11px] leading-4">
+              {t("upload.layersHint")}
+            </p>
           </div>
 
-          {/* Manual option */}
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              inputMode="decimal"
-              placeholder={t("upload.manualPlaceholder")}
-              value={manualCm}
-              onChange={(e) => setManualCm(e.target.value)}
-              className="flex-1 bg-white border border-primary-300 rounded-xl px-3 py-2 text-sm text-primary-900 outline-none focus:border-secondary-300"
-            />
-            <span className="text-primary-800 font-semibold text-sm">cm</span>
-            <button
-              onClick={() =>
-                preview &&
-                manualCm > 0 &&
-                navigate("analysis", {
-                  image: preview,
-                  imageFile: uploadedFile,
-                  lengthGarment: parseFloat(manualCm),
-                  calibPxPerCm: null,
-                })
-              }
-              disabled={!preview || !(manualCm > 0)}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                preview && manualCm > 0
-                  ? "bg-primary-800 text-primary-100 active:scale-[0.98]"
-                  : "bg-primary-200 text-primary-700 cursor-not-allowed"
-              }`}
-            >
-              →
-            </button>
-          </div>
-        </div>
-
-        {/* Layers toggle */}
-        <div className="bg-primary-100 rounded-2xl p-4 mb-5">
-          <p className="text-primary-900 font-semibold text-sm mb-1">
-            {t("upload.layersTitle")}
-          </p>
-          <p className="text-primary-700 text-xs mb-3 leading-4">
-            {t("upload.layersHint")}
-          </p>
-          <div className="flex gap-3">
+          <div className="flex gap-2 w-full">
             {[
               { label: t("upload.layersYes"), value: true },
               { label: t("upload.layersNo"), value: false },
@@ -211,7 +104,7 @@ export default function UploadScreen({ navigate }) {
               <button
                 key={String(value)}
                 onClick={() => setHasLayers(value)}
-                className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                className={`flex-1 min-h-[30px] px-3 rounded-xl text-xs font-semibold border transition-all ${
                   hasLayers === value
                     ? "bg-secondary-300 text-white border-secondary-300"
                     : "bg-white text-primary-800 border-primary-300"
@@ -223,36 +116,94 @@ export default function UploadScreen({ navigate }) {
           </div>
         </div>
 
-        {/* Tips card */}
-        <div className="bg-primary-100 rounded-2xl p-4 mb-6">
-          <p className="text-primary-900 font-semibold text-sm mb-2">
-            {t("upload.photographyTips")}
+        {/* Measurement */}
+        <div className="bg-primary-100 rounded-2xl p-4 mb-4">
+          <p className="text-primary-900 font-semibold text-sm mb-1">
+            {t("upload.garmentMeasure")}
           </p>
-          <ul className="space-y-1.5">
-            {[t("upload.tip1"), t("upload.tip2"), t("upload.tip3")].map(
-              (tip) => (
-                <li
-                  key={tip}
-                  className="flex items-start gap-2 text-primary-700 text-xs"
-                >
-                  <span className="mt-0.5 flex-shrink-0">•</span>
-                  <span className="leading-4">{tip}</span>
-                </li>
-              ),
-            )}
-          </ul>
+          <p className="text-primary-800 text-xs leading-4 mb-3">
+            {t("upload.garmentMeasureHint")}
+          </p>
+
+          {/* Manual input first */}
+          <div className="mb-3">
+            <label className="block text-primary-900 text-xs font-medium mb-2">
+              {t("upload.manualOptionTitle") || "Input garment height"}
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder={t("upload.manualPlaceholder")}
+                value={manualCm}
+                onChange={(e) => setManualCm(e.target.value)}
+                className="flex-1 min-h-[44px] bg-white border border-primary-300 rounded-xl px-3 text-sm text-primary-900 outline-none focus:border-secondary-300"
+              />
+              <span className="text-primary-800 font-semibold text-sm">cm</span>
+            </div>
+          </div>
+
+          {/* AR + ruler side by side */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() =>
+                preview &&
+                navigate("arMeasure", {
+                  image: preview,
+                  imageFile: uploadedFile,
+                })
+              }
+              disabled={!preview}
+              className={`min-h-[52px] rounded-xl px-3 py-3 text-left transition-all ${
+                preview
+                  ? "bg-secondary-300 text-white active:scale-[0.98] shadow-sm"
+                  : "bg-primary-200 text-primary-700 cursor-not-allowed"
+              }`}
+            >
+              <p className="font-bold text-xs leading-tight">
+                {t("upload.arOptionTitle")}
+              </p>
+              <p className="text-[10px] leading-tight opacity-80 mt-1">
+                {t("upload.arOptionHint")}
+              </p>
+            </button>
+
+            <button
+              onClick={() =>
+                preview &&
+                navigate("rulerCalibrate", {
+                  image: preview,
+                  imageFile: uploadedFile,
+                  hasLayers,
+                })
+              }
+              disabled={!preview}
+              className={`min-h-[52px] rounded-xl px-3 py-3 text-left transition-all ${
+                preview
+                  ? "bg-primary-800 text-primary-100 active:scale-[0.98] shadow-sm"
+                  : "bg-primary-200 text-primary-700 cursor-not-allowed"
+              }`}
+            >
+              <p className="font-bold text-xs leading-tight">
+                {t("upload.rulerOptionTitle")}
+              </p>
+              <p className="text-[10px] leading-tight opacity-80 mt-1">
+                {t("upload.rulerOptionHint")}
+              </p>
+            </button>
+          </div>
         </div>
 
         {!preview && (
-          <p className="text-center text-primary-300 text-xs mt-4">
+          <p className="text-center text-primary-300 text-xs mb-3">
             {t("upload.selectFirst")}
           </p>
         )}
+
         {/* CTA */}
         <button
           onClick={() =>
-            preview &&
-            manualCm > 0 &&
+            canStart &&
             navigate("analysis", {
               image: preview,
               imageFile: uploadedFile,
@@ -260,17 +211,18 @@ export default function UploadScreen({ navigate }) {
               hasLayers,
             })
           }
-          className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
-            preview && manualCm > 0
+          disabled={!canStart}
+          className={`w-full min-h-[52px] py-3 rounded-2xl font-bold text-base transition-all ${
+            canStart
               ? "bg-secondary-300 text-white active:scale-[0.98] shadow-md shadow-black/20"
               : "bg-primary-700 text-accent-100 cursor-not-allowed"
           }`}
         >
-          {preview && manualCm > 0
-            ? "🔍 Start AI Analysis"
+          {canStart
+            ? t("upload.startAnalysis")
             : preview
-              ? "Enter garment measurement"
-              : "Please select a photo first"}
+              ? t("upload.enterHeightFirst")
+              : t("upload.selectPhotoFirst")}
         </button>
       </div>
     </div>

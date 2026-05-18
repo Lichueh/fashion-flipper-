@@ -155,6 +155,7 @@ export default function TemplateSelectScreen({
   });
   const [showAllGenders, setShowAllGenders] = useState(false);
   const [showAllLevels, setShowAllLevels] = useState(false);
+  const [flippedCards, setFlippedCards] = useState({}); // [IMAGE-LAYOUT-C] per-card toggle state
 
   // Long-press to zoom preview image
   const [zoomImage, setZoomImage] = useState(null);
@@ -453,6 +454,8 @@ export default function TemplateSelectScreen({
     ]),
   );
 
+  const LINE_DRAWINGS = (id) => `/images/line_drawings/line_${id}.png`;
+
   return (
     <div className="relative h-full flex flex-col bg-primary-800">
       {/* Header */}
@@ -677,7 +680,21 @@ export default function TemplateSelectScreen({
               : needsInterfacing
                 ? "border-amber-300"
                 : level.border;
-          const zoomSrc = previews[template.id] ?? template.resultImage ?? null;
+          // FreeSewing patterns: line drawing by default.
+          // Top-3 cards that have an AI preview show it first — tap thumbnail to toggle.
+          const isFreeSewing = template.patternSource === "freesewing";
+          const lineSrc = isFreeSewing ? LINE_DRAWINGS(template.id) : null;
+          const aiSrc = previews[template.id] ?? null;
+          // flippedCards[id] true  → showing line drawing (user tapped away from AI)
+          // flippedCards[id] false / absent → showing AI preview (when available)
+          const showingLine =
+            isFreeSewing && (!!flippedCards[template.id] || !aiSrc);
+          const activeSrc = isFreeSewing
+            ? showingLine
+              ? lineSrc
+              : aiSrc
+            : (aiSrc ?? template.resultImage ?? null);
+          const zoomSrc = activeSrc;
           return (
             <div
               key={template.id}
@@ -690,7 +707,8 @@ export default function TemplateSelectScreen({
                 !isFeasible ||
                 failReason ||
                 (isFeasible && feasibilityBand)) && (
-                <div className="px-4 pt-4">
+                <div className="px-4 pt-4 flex items-start justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {isCleanTop && (
                     <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
                       {t("templateSelect.topRecommendation")}
@@ -703,12 +721,12 @@ export default function TemplateSelectScreen({
                   )}
                   {isFeasible && feasibilityBand === "likely" && (
                     <span className="inline-block bg-green-100 text-green-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                      ✓ Likely enough
+                      {t("templateSelect.feasibilityLikely")}
                     </span>
                   )}
                   {isFeasible && feasibilityBand === "maybe" && (
                     <span className="inline-block bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                      ~ Maybe enough
+                      {t("templateSelect.feasibilityMaybe")}
                     </span>
                   )}
                   {!isFeasible && (
@@ -722,6 +740,14 @@ export default function TemplateSelectScreen({
                     </p>
                   )}
                 </div>
+                  <div className="flex flex-col items-end flex-shrink-0">
+                    <span
+                      className={`text-[14px] font-bold ${matchScore >= 85 ? "text-primary-700" : "text-secondary-600"}`}
+                    >
+                      {matchScore}% match
+                    </span>
+                  </div>
+                </div>
               )}
 
               {/* Image-left (~50%) + content-right */}
@@ -734,17 +760,26 @@ export default function TemplateSelectScreen({
                   onPointerUp={handleThumbnailPointerEnd}
                   onPointerLeave={handleThumbnailPointerEnd}
                   onPointerCancel={handleThumbnailPointerEnd}
-                  onClick={handleThumbnailClick}
+                  onClick={(e) => {
+                    if (isFreeSewing && aiSrc) {
+                      // Tap toggles AI preview ↔ line drawing
+                      e.stopPropagation();
+                      if (longPressed.current) {
+                        longPressed.current = false;
+                      } else {
+                        setFlippedCards((prev) => ({
+                          ...prev,
+                          [template.id]: !prev[template.id],
+                        }));
+                      }
+                    } else {
+                      handleThumbnailClick(e);
+                    }
+                  }}
                 >
-                  {previews[template.id] ? (
+                  {activeSrc ? (
                     <img
-                      src={previews[template.id]}
-                      alt={tl(template.name)}
-                      className="w-full h-full object-cover pointer-events-none"
-                    />
-                  ) : template.resultImage ? (
-                    <img
-                      src={template.resultImage}
+                      src={activeSrc}
                       alt={tl(template.name)}
                       className="w-full h-full object-cover pointer-events-none"
                       loading="lazy"
@@ -758,8 +793,16 @@ export default function TemplateSelectScreen({
                       </span>
                     </div>
                   )}
+                  {/* Label when AI and line drawing are both available */}
+                  {isFreeSewing && aiSrc && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[8px] text-center leading-none py-1 pointer-events-none">
+                      {showingLine
+                        ? "sketch · tap for AI"
+                        : "AI · tap for sketch"}
+                    </div>
+                  )}
                   {zoomSrc && (
-                    <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/55 flex items-center justify-center pointer-events-none">
+                    <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/55 flex items-center justify-center pointer-events-none">
                       <svg
                         viewBox="0 0 24 24"
                         className="w-3 h-3 text-white"
@@ -776,19 +819,9 @@ export default function TemplateSelectScreen({
                 </div>
 
                 <div className="flex-1 flex flex-col min-w-0">
-                  <div className="flex items-baseline gap-1.5">
-                    <h3 className="font-bold text-primary-900 text-base leading-tight flex-1 min-w-0 break-words">
-                      {tl(template.name)}
-                    </h3>
-                    <div className="flex flex-col items-end flex-shrink-0">
-                      <span
-                        className={`text-xs font-bold ${matchScore >= 85 ? "text-primary-800" : "text-secondary-600"}`}
-                      >
-                        {matchScore}%
-                      </span>
-                      <span className="text-[9px] text-primary-400">match</span>
-                    </div>
-                  </div>
+                  <h3 className="font-bold text-primary-900 text-base leading-tight break-words">
+                    {tl(template.name)}
+                  </h3>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-primary-500 mt-1">
                     <span>⏱ {tl(template.time)}</span>
                     <span>
@@ -838,7 +871,7 @@ export default function TemplateSelectScreen({
 
                   <div className="flex items-center justify-end mt-auto pt-2">
                     <span className="text-primary-700 text-[11px] font-semibold flex-shrink-0">
-                      {t("templateSelect.startMaking")} →
+                      {t("templateSelect.startMaking")}
                     </span>
                   </div>
                 </div>

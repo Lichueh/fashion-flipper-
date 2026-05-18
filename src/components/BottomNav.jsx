@@ -4,7 +4,7 @@ const NAV_ITEMS = [
   { id: "home", labelKey: "nav.home", icon: HomeIcon },
   { id: "upload", labelKey: "nav.upcycle", icon: ScissorsIcon },
   { id: "learn", labelKey: "nav.learn", icon: BookIcon },
-  { id: "community", labelKey: "nav.community", icon: LeafIcon },
+  { id: "community", labelKey: "nav.community", icon: CommunityIcon },
 ];
 
 function HomeIcon({ active }) {
@@ -66,7 +66,7 @@ function BookIcon({ active }) {
   );
 }
 
-function LeafIcon({ active }) {
+function CommunityIcon({ active }) {
   return (
     <svg
       width="22"
@@ -78,7 +78,10 @@ function LeafIcon({ active }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M17 8C8 10 5.9 16.17 3.82 19.34c.35.23.73.45 1.18.66C7 21 10 21 12 19c2-2 4-5 4-5s2 2 2 5c0 0 2-4 1-9-1-5-2-7-2-7z" />
+      <circle cx="9" cy="8" r="3" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M4 18c0-2.5 2.5-4 5-4s5 1.5 5 4" />
+      <path d="M14.5 18c.2-1.8 1.9-3 4-3 1.4 0 2.7.5 3.5 1.5" />
     </svg>
   );
 }

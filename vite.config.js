@@ -235,7 +235,9 @@ export default defineConfig(({ mode }) => {
             }
             const t0 = Date.now();
             const maskedKey = key.slice(0, 4) + "…" + key.slice(-4);
-            console.log(`[preview] pollinations key=${maskedKey} seed=${seed} promptLen=${prompt.length}`);
+            console.log(
+              `[preview] pollinations key=${maskedKey} seed=${seed} promptLen=${prompt.length}`,
+            );
             const upstream = await fetch(
               `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
                 `?width=512&height=512&model=flux&nologo=true&seed=${seed}&key=${key}`,
@@ -297,7 +299,7 @@ export default defineConfig(({ mode }) => {
                   return;
                 }
 
-            const ac = new AbortController();
+                const ac = new AbortController();
                 req.on("close", () => ac.abort());
 
                 console.log(
@@ -310,10 +312,15 @@ export default defineConfig(({ mode }) => {
                 // use `fallbackPrompt` (a self-contained prompt without
                 // "in this image" references).
                 const result =
-                  (await tryGemini(prompt, seed, image, ac.signal).catch(() => null)) ??
-                  (await tryPollinations(fallbackPrompt, seed, null, ac.signal).catch(
+                  (await tryGemini(prompt, seed, image, ac.signal).catch(
                     () => null,
-                  ));
+                  )) ??
+                  (await tryPollinations(
+                    fallbackPrompt,
+                    seed,
+                    null,
+                    ac.signal,
+                  ).catch(() => null));
 
                 if (!result) {
                   res.statusCode = 502;

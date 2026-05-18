@@ -422,13 +422,18 @@ export default function TemplateSelectScreen({
     if (!fabric) return;
     const ac = new AbortController();
     (async () => {
-      // Only generate AI previews for the top 3 visible patterns (respects gender + skill filters).
+      // Generate AI previews for the top 3 visible patterns (respects gender + skill filters).
       const previewTargets = visibleItems.slice(0, 3);
       for (const template of previewTargets) {
         if (ac.signal.aborted) break;
         // Skip if we already have a preview (from cache, prior HMR, or this run)
         if (previewsRef.current[template.id]) continue;
-        const dataUrl = await generatePreview(fabric, template, uploadedFile, ac.signal);
+        const dataUrl = await generatePreview(
+          fabric,
+          template,
+          uploadedFile,
+          ac.signal,
+        );
         if (dataUrl && !ac.signal.aborted) {
           setPreviews((prev) => ({ ...prev, [template.id]: dataUrl }));
         }
@@ -706,38 +711,38 @@ export default function TemplateSelectScreen({
                 failReason ||
                 (isFeasible && feasibilityBand)) && (
                 <div className="px-4 pt-4 flex items-start justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {isCleanTop && (
-                    <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                      {t("templateSelect.topRecommendation")}
-                    </span>
-                  )}
-                  {needsInterfacing && (
-                    <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                      {t("templateSelect.needsInterfacing")}
-                    </span>
-                  )}
-                  {isFeasible && feasibilityBand === "likely" && (
-                    <span className="inline-block bg-green-100 text-green-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                      {t("templateSelect.feasibilityLikely")}
-                    </span>
-                  )}
-                  {isFeasible && feasibilityBand === "maybe" && (
-                    <span className="inline-block bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                      {t("templateSelect.feasibilityMaybe")}
-                    </span>
-                  )}
-                  {!isFeasible && (
-                    <span className="inline-block bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                      {t("templateSelect.notFeasible")}
-                    </span>
-                  )}
-                  {failReason && (
-                    <p className="text-red-600 text-[11px] leading-4 mt-2">
-                      {failReason}
-                    </p>
-                  )}
-                </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {isCleanTop && (
+                      <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                        {t("templateSelect.topRecommendation")}
+                      </span>
+                    )}
+                    {needsInterfacing && (
+                      <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                        {t("templateSelect.needsInterfacing")}
+                      </span>
+                    )}
+                    {isFeasible && feasibilityBand === "likely" && (
+                      <span className="inline-block bg-green-100 text-green-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                        {t("templateSelect.feasibilityLikely")}
+                      </span>
+                    )}
+                    {isFeasible && feasibilityBand === "maybe" && (
+                      <span className="inline-block bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                        {t("templateSelect.feasibilityMaybe")}
+                      </span>
+                    )}
+                    {!isFeasible && (
+                      <span className="inline-block bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                        {t("templateSelect.notFeasible")}
+                      </span>
+                    )}
+                    {failReason && (
+                      <p className="text-red-600 text-[11px] leading-4 mt-2">
+                        {failReason}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex flex-col items-end flex-shrink-0">
                     <span
                       className={`text-[14px] font-bold ${matchScore >= 85 ? "text-primary-700" : "text-secondary-600"}`}

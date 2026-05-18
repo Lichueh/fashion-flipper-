@@ -81,8 +81,8 @@ async function _imageToInlineData(imageFile) {
     binary += String.fromCharCode(bytes[i]);
   const data = btoa(binary);
 
-const hash = await _sha256hex(arrayBuffer);
-return { mimeType: "image/jpeg", data, hash };
+  const hash = await _sha256hex(arrayBuffer);
+  return { mimeType: "image/jpeg", data, hash };
 }
 
 function _buildPrompt(fabric, template, hasSourceImage) {
@@ -153,6 +153,30 @@ function _saveCacheWithEviction(cacheKey, dataUrl, currentFabricHash) {
   } catch {}
 }
 
+// Compress a blob to a small JPEG before storing in localStorage.
+// Gemini returns full-size PNGs (often 1024×1024, ~1–3 MB base64) which
+// quickly exhaust the 5 MB localStorage quota. Downscaling to 384 px JPEG
+// @ 0.80 quality brings each entry to ~30–60 KB — easily 80+ images fit.
+async function _compressForCache(blob) {
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const MAX = 384;
+    const ratio = Math.min(MAX / bitmap.width, MAX / bitmap.height, 1);
+    const w = Math.max(1, Math.round(bitmap.width * ratio));
+    const h = Math.max(1, Math.round(bitmap.height * ratio));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    return await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b ?? blob), "image/jpeg", 0.8),
+    );
+  } catch {
+    return blob; // fall back to original if compression fails
+  }
+}
+
 // Fetches the image — always runs inside the queue so only 1 runs at a time
 async function _fetchPreview(
   fabric,
@@ -175,19 +199,22 @@ async function _fetchPreview(
     body.fallbackPrompt = _buildPrompt(fabric, template, false);
   }
 
+  // Do not pass signal to fetch — once the request has started we want it
+  // to complete and be saved to localStorage even if the caller's effect
+  // is torn down mid-flight. The abort checks in _enqueue already prevent
+  // queued-but-not-yet-started requests from firing unnecessarily.
   try {
     const response = await fetch("/api/preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal,
     });
     if (!response.ok) {
       console.warn(`[preview] ${response.status} for ${template.id}`);
       return null;
     }
 
-    const blob = await response.blob();
+    const blob = await _compressForCache(await response.blob());
     const dataUrl = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
@@ -203,14 +230,28 @@ async function _fetchPreview(
 }
 
 // Adds a fetch to the sequential queue so requests don't fire concurrently
-function _enqueue(fabric, template, cacheKey, fabricHash, inlineImage, signal = null) {
+function _enqueue(
+  fabric,
+  template,
+  cacheKey,
+  fabricHash,
+  inlineImage,
+  signal = null,
+) {
   const result = _queue.then(async () => {
     // Skip immediately if the caller already cancelled
     if (signal?.aborted) return null;
     // Wait between requests to avoid rate limiting
     await new Promise((r) => setTimeout(r, DELAY_BETWEEN_REQUESTS_MS));
     if (signal?.aborted) return null;
-    return _fetchPreview(fabric, template, cacheKey, fabricHash, inlineImage, signal);
+    return _fetchPreview(
+      fabric,
+      template,
+      cacheKey,
+      fabricHash,
+      inlineImage,
+      signal,
+    );
   });
   _queue = result.catch(() => {}); // never let one failure break the queue
   return result;
@@ -218,7 +259,12 @@ function _enqueue(fabric, template, cacheKey, fabricHash, inlineImage, signal = 
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export async function generatePreview(fabric, template, imageFile = null, signal = null) {
+export async function generatePreview(
+  fabric,
+  template,
+  imageFile = null,
+  signal = null,
+) {
   if (!fabric || !template) return null;
 
   try {

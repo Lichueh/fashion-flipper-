@@ -50,7 +50,6 @@ export default function ArTutorialScreen({
     calibPxPerCm ??
     tutorial?.fallbackPxPerCm ??
     DEFAULT_FALLBACK_PX_PER_CM;
-  const isApproximate = calibPxPerCm == null;
 
   // Camera startup — adapted from ArMeasureScreen.jsx:50–80
   useEffect(() => {
@@ -430,7 +429,15 @@ export default function ArTutorialScreen({
           ←
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: "white", fontWeight: 700, fontSize: 14, margin: 0 }}>
+          <p
+            style={{
+              color: "white",
+              fontWeight: 700,
+              fontSize: 17,
+              margin: 0,
+              lineHeight: 1.35,
+            }}
+          >
             {t("arTutorial.stepLabel", {
               current: currentStepIdx + 1,
               total: tutorial.steps.length,
@@ -439,37 +446,15 @@ export default function ArTutorialScreen({
           </p>
           <p
             style={{
-              color: "rgba(255,255,255,0.7)",
-              fontSize: 11,
-              margin: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              color: "rgba(255,255,255,0.85)",
+              fontSize: 14,
+              margin: "4px 0 0",
+              lineHeight: 1.5,
             }}
           >
             {tl(step.instruction)}
           </p>
         </div>
-        {isApproximate && phase === "ready" && (
-          <button
-            onClick={() => navigate("arMeasure")}
-            style={{
-              background: "rgba(255,200,100,0.2)",
-              border: "1px solid rgba(255,200,100,0.5)",
-              borderRadius: 10,
-              padding: "3px 8px",
-              color: "#ffc864",
-              fontSize: 10,
-              fontWeight: 700,
-              fontFamily: "monospace",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-            title="Approximate sizing — tap to calibrate"
-          >
-            {t("arTutorial.approxBadge")}
-          </button>
-        )}
         {scale !== 1 && phase === "ready" && (
           <button
             onClick={resetScale}

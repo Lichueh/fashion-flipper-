@@ -165,7 +165,7 @@ export default defineConfig(({ mode }) => {
           const GEMINI_MODEL = "gemini-2.5-flash-image";
           const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-          async function tryGemini(prompt, seed, image) {
+          async function tryGemini(prompt, seed, image, signal) {
             const key = env.GEMINI_API_KEY;
             if (!key) {
               console.log("[preview] gemini: no GEMINI_API_KEY, skipping");
@@ -194,6 +194,7 @@ export default defineConfig(({ mode }) => {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
+              signal,
             });
             if (!upstream.ok) {
               const errBody = await upstream.text();
@@ -223,7 +224,7 @@ export default defineConfig(({ mode }) => {
             };
           }
 
-          async function tryPollinations(prompt, seed, image) {
+          async function tryPollinations(prompt, seed, image, signal) {
             // Pollinations FLUX has no image-to-image — skip when the caller
             // wants the source image preserved.
             if (image) return null;
@@ -233,13 +234,17 @@ export default defineConfig(({ mode }) => {
               return null;
             }
             const t0 = Date.now();
+            const maskedKey = key.slice(0, 4) + "…" + key.slice(-4);
+            console.log(`[preview] pollinations key=${maskedKey} seed=${seed} promptLen=${prompt.length}`);
             const upstream = await fetch(
               `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
                 `?width=512&height=512&model=flux&nologo=true&seed=${seed}&key=${key}`,
+              { signal },
             );
             if (!upstream.ok) {
+              const errText = await upstream.text().catch(() => "");
               console.error(
-                `[preview] pollinations ${upstream.status} in ${Date.now() - t0}ms`,
+                `[preview] pollinations ${upstream.status} in ${Date.now() - t0}ms — ${errText.slice(0, 300)}`,
               );
               return null;
             }
@@ -292,14 +297,21 @@ export default defineConfig(({ mode }) => {
                   return;
                 }
 
+            const ac = new AbortController();
+                req.on("close", () => ac.abort());
+
+                console.log(
+                  `[preview] handler — geminiKey=${!!env.GEMINI_API_KEY} pollinationsKey=${!!env.POLLINATIONS_KEY} hasImage=${!!image} promptLen=${prompt.length}`,
+                );
+
                 // Gemini failure (network error, NO_IMAGE refusal, content
                 // filter) → fall through to Pollinations text-only. Pollinations
                 // FLUX has no image-to-image, so we pass `null` for image and
                 // use `fallbackPrompt` (a self-contained prompt without
                 // "in this image" references).
                 const result =
-                  (await tryGemini(prompt, seed, image).catch(() => null)) ??
-                  (await tryPollinations(fallbackPrompt, seed, null).catch(
+                  (await tryGemini(prompt, seed, image, ac.signal).catch(() => null)) ??
+                  (await tryPollinations(fallbackPrompt, seed, null, ac.signal).catch(
                     () => null,
                   ));
 

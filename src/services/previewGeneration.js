@@ -21,7 +21,7 @@
  * @returns {Promise<string|null>} base64 dataURL of the generated image, or null
  */
 
-const CACHE_PREFIX = "preview_v1_";
+export const CACHE_PREFIX = "preview_v1_";
 const _inFlight = new Map(); // deduplicates concurrent calls for same template+fabric+image
 let _queue = Promise.resolve(); // ensures only 1 request goes to the API at a time
 const DELAY_BETWEEN_REQUESTS_MS = 1000;
@@ -160,6 +160,7 @@ async function _fetchPreview(
   cacheKey,
   fabricHash,
   inlineImage,
+  signal = null,
 ) {
   const prompt = _buildPrompt(fabric, template, !!inlineImage);
   const seed = parseInt(fabricHash.slice(0, 8), 16) % 2147483647;
@@ -179,6 +180,7 @@ async function _fetchPreview(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal,
     });
     if (!response.ok) {
       console.warn(`[preview] ${response.status} for ${template.id}`);
@@ -201,11 +203,14 @@ async function _fetchPreview(
 }
 
 // Adds a fetch to the sequential queue so requests don't fire concurrently
-function _enqueue(fabric, template, cacheKey, fabricHash, inlineImage) {
+function _enqueue(fabric, template, cacheKey, fabricHash, inlineImage, signal = null) {
   const result = _queue.then(async () => {
+    // Skip immediately if the caller already cancelled
+    if (signal?.aborted) return null;
     // Wait between requests to avoid rate limiting
     await new Promise((r) => setTimeout(r, DELAY_BETWEEN_REQUESTS_MS));
-    return _fetchPreview(fabric, template, cacheKey, fabricHash, inlineImage);
+    if (signal?.aborted) return null;
+    return _fetchPreview(fabric, template, cacheKey, fabricHash, inlineImage, signal);
   });
   _queue = result.catch(() => {}); // never let one failure break the queue
   return result;
@@ -213,7 +218,7 @@ function _enqueue(fabric, template, cacheKey, fabricHash, inlineImage) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export async function generatePreview(fabric, template, imageFile = null) {
+export async function generatePreview(fabric, template, imageFile = null, signal = null) {
   if (!fabric || !template) return null;
 
   try {
@@ -257,6 +262,7 @@ export async function generatePreview(fabric, template, imageFile = null) {
       cacheKey,
       fabricHash,
       inlineImage,
+      signal,
     );
     _inFlight.set(cacheKey, promise);
     try {

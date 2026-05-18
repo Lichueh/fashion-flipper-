@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { templates } from "../data/templates";
 import { mockAnalysis } from "../data/mockAnalysis";
-import { generatePreview } from "../services/previewGeneration";
+import { generatePreview, CACHE_PREFIX } from "../services/previewGeneration";
 import patternMeasurements, {
   MEASUREMENT_GROUPS,
   measurementGroup,
@@ -420,24 +420,22 @@ export default function TemplateSelectScreen({
 
   useEffect(() => {
     if (!fabric) return;
-    let cancelled = false;
+    const ac = new AbortController();
     (async () => {
-      // Only generate AI previews for the top 3 patterns by rank.
-      const previewTargets = items.slice(0, 3);
+      // Only generate AI previews for the top 3 visible patterns (respects gender + skill filters).
+      const previewTargets = visibleItems.slice(0, 3);
       for (const template of previewTargets) {
-        if (cancelled) break;
+        if (ac.signal.aborted) break;
         // Skip if we already have a preview (from cache, prior HMR, or this run)
         if (previewsRef.current[template.id]) continue;
-        const dataUrl = await generatePreview(fabric, template, uploadedFile);
-        if (dataUrl && !cancelled) {
+        const dataUrl = await generatePreview(fabric, template, uploadedFile, ac.signal);
+        if (dataUrl && !ac.signal.aborted) {
           setPreviews((prev) => ({ ...prev, [template.id]: dataUrl }));
         }
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fabric, items, uploadedFile]);
+    return () => ac.abort();
+  }, [fabric, visibleItems, uploadedFile]);
 
   // Build a lookup for match scores and feasibility: prefer feasibleTemplates (pipeline), fall back to mockAnalysis.
   // Overlay profileFeasibility so badge rendering reflects profile-adjusted scores.

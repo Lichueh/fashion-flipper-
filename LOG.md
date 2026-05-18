@@ -44,6 +44,14 @@ home → upload → analysis → templateSelect → stepGuide → result
 
 ## 變更紀錄
 
+## 2026-05-18
+- 修改檔案：src/screens/ArTutorialScreen.jsx
+- 修改內容：方巾發圈（及其他模板共用的）AR 教程頂部優化——(1) 移除右上「⚠ 估算 / ⚠ Approx」按鈕（連同 isApproximate 變數），不再導去 arMeasure 校準；(2) 說明文字拿掉 `whiteSpace: nowrap` + `textOverflow: ellipsis` + `overflow: hidden`，讓 step.instruction 可完整換行顯示；(3) 字體放大：標題 14→17 px、說明 11→14 px、說明 opacity 從 0.7→0.85，加上 line-height 1.35/1.5 與 4px 行間距。
+
+## 2026-05-18
+- 修改檔案：src/screens/PatternLayoutScreen.jsx、src/i18n/translations.js
+- 修改內容：版型參考（ArTutorialReferenceView）SVG 圖下方新增線條圖例：黑色虛線 swatch + 「剪線」、紅色虛線 swatch + 「縫紉線」，對應 scrunchie-pattern.svg 內的 #231815（黑/剪）與 #e60012（紅/縫）兩組筆畫。translations.js 三語各加 `patternReference.lineLegendCut` / `lineLegendSew`（en: Cut line / Sew line；nb: Klippelinje / Sømlinje；zh: 剪線 / 縫紉線）。圖例為純展示用 SVG line（aria-hidden），與既有 svgHint 一起在版型卡片內，幫使用者看懂圖。
+
 ## 2026-05-16 21:30
 - 修改檔案：`src/components/PhoneFrame.jsx`
 - 修改內容：修 tour 進行中手機版語言切換器被擋的問題。

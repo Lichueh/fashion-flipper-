@@ -174,7 +174,37 @@ ${svgSized}
                 className="w-full max-w-xs"
               />
             </div>
-            <p className="text-primary-700 text-[11px] leading-4 mt-3 text-center">
+            <div className="flex justify-center gap-4 mt-3 text-[11px] text-primary-700">
+              <span className="flex items-center gap-1.5">
+                <svg width="22" height="6" aria-hidden="true">
+                  <line
+                    x1="0"
+                    y1="3"
+                    x2="22"
+                    y2="3"
+                    stroke="#231815"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 2"
+                  />
+                </svg>
+                {t("patternReference.lineLegendCut")}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <svg width="22" height="6" aria-hidden="true">
+                  <line
+                    x1="0"
+                    y1="3"
+                    x2="22"
+                    y2="3"
+                    stroke="#e60012"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 2"
+                  />
+                </svg>
+                {t("patternReference.lineLegendSew")}
+              </span>
+            </div>
+            <p className="text-primary-700 text-[11px] leading-4 mt-2 text-center">
               {template.patternPrintSize
                 ? t("patternReference.svgHintWithSize", {
                     w: template.patternPrintSize.widthCm,

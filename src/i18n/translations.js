@@ -427,6 +427,8 @@ const translations = {
         "Dimensions and shape of the pieces you'll cut. The AR tutorial walks you through each step on top of your real fabric.",
       svgHintWithSize:
         "Real size: {w} × {h} cm. The AR tutorial walks you through each step on top of your real fabric.",
+      lineLegendCut: "Cut line",
+      lineLegendSew: "Sew line",
       materials: "Materials",
       startArTutorial: "Start AR tutorial",
       print: "Print",
@@ -901,6 +903,8 @@ const translations = {
         "Mål og form på delene du skal klippe. AR-veiledningen leder deg gjennom hvert steg oppå selve stoffet.",
       svgHintWithSize:
         "Faktisk størrelse: {w} × {h} cm. AR-veiledningen leder deg gjennom hvert steg oppå stoffet.",
+      lineLegendCut: "Klippelinje",
+      lineLegendSew: "Sømlinje",
       materials: "Materialer",
       startArTutorial: "Start AR-veiledning",
       print: "Skriv ut",
@@ -1351,8 +1355,9 @@ const translations = {
     patternReference: {
       title: "版型參考",
       svgHint: "要剪的版片形狀與尺寸。AR 教學會在實際布料上一步一步帶你做。",
-      svgHintWithSize:
-        "實際尺寸:{w} × {h} 公分。AR 教學會在布料上一步步帶你做。",
+      svgHintWithSize: "實際尺寸:{w} × {h} 公分。AR 教學會在布料上一步步帶你做。",
+      lineLegendCut: "剪線",
+      lineLegendSew: "縫紉線",
       materials: "材料",
       startArTutorial: "開始 AR 教學",
       print: "列印",

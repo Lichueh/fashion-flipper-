@@ -1,10 +1,10 @@
 import { Waralee } from "@freesewing/waralee";
-import { cisFemaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 // waralee.pantsProto is an internal prototype piece — skipped
 export default {
   Design: Waralee,
-  measurements: cisFemaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "waralee.pants": {
       label: "Pants",

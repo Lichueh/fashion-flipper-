@@ -1,10 +1,10 @@
 import { Simone } from "@freesewing/simone";
-import { cisFemaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 // brian.back, brian.front, library.sleeve, simon.front are base/intermediate pieces — skipped
 export default {
   Design: Simone,
-  measurements: cisFemaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "simon.frontRight": {
       label: "Front Right",

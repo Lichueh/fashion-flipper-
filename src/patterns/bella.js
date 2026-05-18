@@ -1,9 +1,9 @@
 import { Bella } from "@freesewing/bella";
-import { cisFemaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 export default {
   Design: Bella,
-  measurements: cisFemaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "bella.back": {
       label: "Back Bodice",

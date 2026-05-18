@@ -1,9 +1,9 @@
 import { Penelope } from "@freesewing/penelope";
-import { cisFemaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 export default {
   Design: Penelope,
-  measurements: cisFemaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "penelope.front": {
       label: "Front",

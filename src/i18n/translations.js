@@ -291,8 +291,8 @@ const translations = {
       next: "Next",
       done: "Got it",
       step1: {
-        title: "Start a remake",
-        body: "Tap here to photograph an old garment. We read the fabric and your measurements, then suggest patterns you can sew from it.",
+        title: "Start a project",
+        body: "Tap here to photograph an old garment. The app analyzes the fabric and the garment's dimensions, then suggests patterns you can sew from it.",
       },
       step2: {
         title: "Sewing tutorials",
@@ -300,7 +300,7 @@ const translations = {
       },
       step3: {
         title: "Your profile",
-        body: "Edit measurements, skill level and saved profiles here. Recommendations adjust automatically to your sizes.",
+        body: "Edit measurement profiles, skill level and switch profiles here. Recommendations adjust automatically to the activated profile.",
       },
     },
     skillLevel: {
@@ -763,16 +763,16 @@ const translations = {
       next: "Neste",
       done: "Skjønner",
       step1: {
-        title: "Start en gjenbruk",
-        body: "Trykk her for å ta bilde av et gammelt plagg. Vi leser stoffet og målene dine og foreslår mønstre du kan sy av det.",
+        title: "Start et prosjekt",
+        body: "Trykk her for å ta bilde av et gammelt plagg. Appen analyserer stoffet og regner ut hvor mye stoff du har tilgjengelig og foreslår mønstre du kan sy av det.",
       },
       step2: {
         title: "Sy-veiledninger",
-        body: "Steg-for-steg fra å træ en nål til å falde en kant – hvert steg har et AR-overlegg som viser hvor du legger nål og saks.",
+        body: "Steg-for-steg fra å tre en nål til å falde en kant – hvert steg har et AR-overlegg som viser hvor du legger nål og saks.",
       },
       step3: {
         title: "Profilen din",
-        body: "Rediger mål, sy-nivå og lagrede profiler her. Forslagene tilpasses automatisk dine størrelser.",
+        body: "Her kan du lage mål-profiler, endre sy-nivå og bytte mellom profiler. Mønstrene tilpasses automatisk til den aktive profilens størrelser.",
       },
     },
     skillLevel: {

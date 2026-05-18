@@ -1,9 +1,9 @@
 import { Brian } from "@freesewing/brian";
-import { cisMaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 export default {
   Design: Brian,
-  measurements: cisMaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "brian.back": {
       label: "Back",

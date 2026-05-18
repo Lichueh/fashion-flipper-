@@ -1,9 +1,9 @@
 import { Hortensia } from "@freesewing/hortensia";
-import { cisFemaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 export default {
   Design: Hortensia,
-  measurements: cisFemaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "hortensia.frontPanel": {
       label: "Front Panel",

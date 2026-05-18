@@ -1,10 +1,10 @@
 import { Wahid } from "@freesewing/wahid";
-import { cisMaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 // brian.back and brian.front are base blocks — skipped
 export default {
   Design: Wahid,
-  measurements: cisMaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "wahid.front": {
       label: "Front",

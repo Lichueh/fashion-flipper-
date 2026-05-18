@@ -54,11 +54,13 @@ describe("large T-shirt (80×60 cm panel, 3500 cm²) — tote bag", () => {
     expect(byId(results, "bag").failReason).toBeNull();
   });
 
-  it("fitScore is a composite of piece-fit and reuse scores (bag area=875, garment=3500)", () => {
-    // pieceFitScore = 1 (no physical pieces to check), reuseScore = 875/3500 = 0.25
-    // compositeScore = 0.5 * 1 + 0.5 * 0.25 = 0.625
+  it("fitScore uses the conservative safe-available area in the reuse score", () => {
+    // pieceFitScore = 1 (no physical pieces to check),
+    // safeAvailableArea = 3500 * 0.85 = 2975,
+    // reuseScore = 875/2975 ≈ 0.2941,
+    // compositeScore ≈ 0.6471
     const results = checkFeasibility(measurements, realTemplates);
-    expect(byId(results, "bag").fitScore).toBeCloseTo(0.625);
+    expect(byId(results, "bag").fitScore).toBeCloseTo(0.6470588235);
   });
 
   it("usedAreaPct is capped at 100 and is a positive number", () => {
@@ -66,6 +68,13 @@ describe("large T-shirt (80×60 cm panel, 3500 cm²) — tote bag", () => {
     const { usedAreaPct } = byId(results, "bag");
     expect(usedAreaPct).toBeGreaterThan(0);
     expect(usedAreaPct).toBeLessThanOrEqual(100);
+  });
+
+  it("returns both raw and conservative available area for debugging", () => {
+    const results = checkFeasibility(measurements, realTemplates);
+    const bag = byId(results, "bag");
+    expect(bag.availableAreaCm2).toBe(3500);
+    expect(bag.safeAvailableAreaCm2).toBeCloseTo(2975);
   });
 });
 
@@ -151,14 +160,14 @@ describe("medium garment (30×28 cm panel, 1800 cm²) — area ok, one piece too
   });
 });
 
-// ── Test 4: Bucket hat fits, tote bag doesn't ────────────────────────────────
+// ── Test 4: Bucket hat fits conservatively, tote bag doesn't ─────────────────
 //
-// Mock bag:  1 piece 50×35 (area 1750). Buffer 1925 > 900 → area fail.
-// Mock hat:  2 pieces — 35×28 (700) + 20×10 (100) = 800. Buffer 880 ≤ 900 → passes.
+// Mock bag:  1 piece 50×35 (area 1750). Buffer 1925 > 1100 * 0.85 = 935 → area fail.
+// Mock hat:  2 pieces — 35×28 (700) + 20×10 (100) = 800. Buffer 880 ≤ 935 → passes.
 //   35×28 fits in 35×30 panel  (35 ≤ 35 AND 28 ≤ 30) ✓
 //   20×10 fits trivially ✓
 // ─────────────────────────────────────────────────────────────────────────────
-describe("constrained garment (35×30 cm panel, 900 cm²) — hat fits, bag doesn't", () => {
+describe("constrained garment (35×30 cm panel, 1100 cm²) — hat fits, bag doesn't", () => {
   const MOCK_TEMPLATES = {
     bag: {
       id: "bag",
@@ -176,7 +185,7 @@ describe("constrained garment (35×30 cm panel, 900 cm²) — hat fits, bag does
       ],
     },
   };
-  const measurements = makeMeasurements(35, 30, 900);
+  const measurements = makeMeasurements(35, 30, 1100);
 
   it("tote bag is infeasible", () => {
     const results = checkFeasibility(measurements, MOCK_TEMPLATES);
@@ -198,11 +207,27 @@ describe("constrained garment (35×30 cm panel, 900 cm²) — hat fits, bag does
     expect(byId(results, "hat").failReason).toBeNull();
   });
 
-  it("bucket hat fitScore is composite (pieceFit=1, reuse=800/900)", () => {
-    // pieceFitScore = 1, reuseScore = 800/900 = 8/9
-    // compositeScore = 0.5 * 1 + 0.5 * (8/9) = 17/18 ≈ 0.9444
+  it("bucket hat fitScore is capped at 0.60 — 'maybe' band applies", () => {
+    // safeAvailableArea = 935, totalRequiredWithBuffer = 880,
+    // coverageRatio = 935/880 ≈ 1.063 < LIKELY_THRESHOLD (1.25) → band = "maybe"
+    // raw compositeScore ≈ 0.9278 but capped at 0.60 for the "maybe" band.
     const results = checkFeasibility(measurements, MOCK_TEMPLATES);
-    expect(byId(results, "hat").fitScore).toBeCloseTo(17 / 18);
+    expect(byId(results, "hat").fitScore).toBeCloseTo(0.6);
+  });
+
+  it("bucket hat feasibilityBand is 'maybe'", () => {
+    const results = checkFeasibility(measurements, MOCK_TEMPLATES);
+    expect(byId(results, "hat").feasibilityBand).toBe("maybe");
+  });
+
+  it("tote bag feasibilityBand is 'unlikely' — area fails", () => {
+    const results = checkFeasibility(measurements, MOCK_TEMPLATES);
+    expect(byId(results, "bag").feasibilityBand).toBe("unlikely");
+  });
+
+  it("feasible is still true for 'maybe' — backwards compat", () => {
+    const results = checkFeasibility(measurements, MOCK_TEMPLATES);
+    expect(byId(results, "hat").feasible).toBe(true);
   });
 });
 
@@ -235,11 +260,16 @@ describe("rotated piece fits (38×40 cm panel, 2000 cm²)", () => {
     expect(results[0].feasible).toBe(true);
   });
 
-  it("fitScore is composite — pieceFit=1, reuse=1470/2000", () => {
-    // pieceFitScore = 1, reuseScore = 1470/2000 = 0.735
-    // compositeScore = 0.5 * 1 + 0.5 * 0.735 = 0.8675
+  it("fitScore is capped at 0.60 — 'maybe' band (coverage 1700/1617 ≈ 1.051 < 1.25)", () => {
+    // safeAvailableArea = 1700, totalRequiredWithBuffer = 1617,
+    // coverageRatio ≈ 1.051 < LIKELY_THRESHOLD → band = "maybe" → cap at 0.60
     const results = checkFeasibility(measurements, MOCK_TEMPLATES);
-    expect(results[0].fitScore).toBeCloseTo(0.8675);
+    expect(results[0].fitScore).toBeCloseTo(0.6);
+  });
+
+  it("feasibilityBand is 'maybe' — passes but coverage is marginal", () => {
+    const results = checkFeasibility(measurements, MOCK_TEMPLATES);
+    expect(results[0].feasibilityBand).toBe("maybe");
   });
 
   it("failReason is null", () => {
@@ -253,5 +283,86 @@ describe("rotated piece fits (38×40 cm panel, 2000 cm²)", () => {
     const results = checkFeasibility(tightMeasurements, MOCK_TEMPLATES);
     expect(results[0].feasible).toBe(false);
     expect(results[0].failReason).toBe("piece_fit");
+  });
+});
+
+// ── Test 6: Feasibility band classification ───────────────────────────────────
+//
+// "likely"  : coverageRatio ≥ 1.25  — safeArea is comfortably above requirement
+// "maybe"   : coverageRatio 1.0–1.25 — passes but only just
+// "unlikely": fails Stage 1 (area), Stage 2 (piece_fit), or Stage 3 (fabric)
+//
+// feasible: true for "likely" and "maybe"; false for "unlikely".
+// ─────────────────────────────────────────────────────────────────────────────
+describe("feasibility band classification", () => {
+  // "likely": safeArea=2975, buffer=962.5, ratio≈3.09 ≥ 1.25
+  it("'likely' when safe area is ≥ 125% of buffered requirement", () => {
+    const meas = makeMeasurements(80, 60, 3500);
+    const results = checkFeasibility(meas, realTemplates);
+    expect(byId(results, "bag").feasibilityBand).toBe("likely");
+  });
+
+  // "maybe": safeArea=935, buffer=880, ratio≈1.063 < 1.25
+  it("'maybe' when safe area passes but coverage ratio is below 1.25", () => {
+    const MOCK = {
+      hat: {
+        id: "hat",
+        name: "Mock Hat",
+        patternPieces: [
+          { widthCm: 35, heightCm: 28, areaCm2: 700 },
+          { widthCm: 20, heightCm: 10, areaCm2: 100 },
+        ],
+      },
+    };
+    const meas = makeMeasurements(35, 30, 1100);
+    const results = checkFeasibility(meas, MOCK);
+    expect(results[0].feasibilityBand).toBe("maybe");
+  });
+
+  // "unlikely": area stage fails
+  it("'unlikely' when safe area fails Stage 1", () => {
+    const meas = makeMeasurements(25, 20, 400);
+    const results = checkFeasibility(meas, realTemplates);
+    expect(results.every((r) => r.feasibilityBand === "unlikely")).toBe(true);
+  });
+
+  // "unlikely": piece_fit stage fails
+  it("'unlikely' when Stage 2 piece_fit fails", () => {
+    const MOCK = {
+      bag: {
+        id: "bag",
+        name: "Mock",
+        patternPieces: [{ widthCm: 32, heightCm: 16, areaCm2: 512 }],
+      },
+    };
+    // safeArea=1530, buffer=563.2 → Stage 1 passes; piece too wide → Stage 2 fails
+    const meas = makeMeasurements(30, 28, 1800);
+    const results = checkFeasibility(meas, MOCK);
+    expect(results[0].feasibilityBand).toBe("unlikely");
+  });
+
+  // backwards compat: feasible boolean still correct for all three bands
+  it("feasible is true for 'likely' and 'maybe', false for 'unlikely'", () => {
+    const likelyMeas = makeMeasurements(80, 60, 3500);
+    const likelyResults = checkFeasibility(likelyMeas, realTemplates);
+    expect(byId(likelyResults, "bag").feasible).toBe(true);
+
+    const MOCK_HAT = {
+      hat: {
+        id: "hat",
+        name: "Mock Hat",
+        patternPieces: [
+          { widthCm: 35, heightCm: 28, areaCm2: 700 },
+          { widthCm: 20, heightCm: 10, areaCm2: 100 },
+        ],
+      },
+    };
+    const maybeMeas = makeMeasurements(35, 30, 1100);
+    const maybeResults = checkFeasibility(maybeMeas, MOCK_HAT);
+    expect(maybeResults[0].feasible).toBe(true);
+
+    const unlikelyMeas = makeMeasurements(25, 20, 400);
+    const unlikelyResults = checkFeasibility(unlikelyMeas, realTemplates);
+    expect(unlikelyResults.every((r) => r.feasible === false)).toBe(true);
   });
 });

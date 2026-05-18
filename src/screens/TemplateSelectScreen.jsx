@@ -17,7 +17,12 @@ import {
   cmToMm,
   unitLabel,
 } from "../utils/measurementValidation";
-import { interpolatePatternArea } from "../services/feasibility";
+import {
+  interpolatePatternArea,
+  AREA_SAFETY_FACTOR,
+  LIKELY_THRESHOLD,
+  REQUIRED_BUFFER,
+} from "../services/feasibility";
 import { useLang } from "../i18n/LanguageContext";
 import { levelByDifficulty } from "../data/skillLevels";
 
@@ -62,7 +67,9 @@ export default function TemplateSelectScreen({
       const interpolatedArea = interpolatePatternArea(id, chest_mm);
       if (interpolatedArea === null) continue; // no data → keep original
 
-      const feasible = interpolatedArea * 1.1 <= measurements.totalAreaCm2;
+      // These must stay in sync with feasibility.js — AREA_SAFETY_FACTOR, LIKELY_THRESHOLD, REQUIRED_BUFFER
+      const feasible =
+        interpolatedArea * REQUIRED_BUFFER <= measurements.totalAreaCm2;
       const usedAreaPct = Math.round(
         (interpolatedArea / measurements.totalAreaCm2) * 100,
       );
@@ -72,6 +79,15 @@ export default function TemplateSelectScreen({
       const reuseScore = Math.min(usedAreaPct / 100, 1);
       const compositeScore = feasible ? 0.5 * 1 + 0.5 * reuseScore : 0;
 
+      const safeArea = measurements.totalAreaCm2 * AREA_SAFETY_FACTOR;
+      const bufferedRequired = interpolatedArea * REQUIRED_BUFFER;
+      const coverageRatio = safeArea / bufferedRequired;
+      const feasibilityBand = !feasible
+        ? "unlikely"
+        : coverageRatio >= LIKELY_THRESHOLD
+          ? "likely"
+          : "maybe";
+
       rescored[id] = {
         ...original,
         feasible,
@@ -79,6 +95,7 @@ export default function TemplateSelectScreen({
         compositeScore,
         fitScore: compositeScore,
         failReason: feasible ? null : "area",
+        feasibilityBand, // recomputed, not inherited from original
       };
     }
     return rescored;
@@ -189,17 +206,12 @@ export default function TemplateSelectScreen({
           ? 3
           : null;
 
-  // Apply gender + skillLevel filters on top of the sorted items, then cap to
-  // the top 3 so the list never shows more than three patterns at once.
-  const MAX_VISIBLE_PATTERNS = 3;
+  // Apply gender + skillLevel filters on top of the sorted items.
+  // AI previews are generated only for the top 3 by rank (see useEffect below).
   const visibleItems = useMemo(() => {
     let filtered = items;
     // Gender filter: no filtering when toggled off, no profile, or non-binary
-    if (
-      !showAllGenders &&
-      profileGender &&
-      profileGender !== "nonbinary"
-    ) {
+    if (!showAllGenders && profileGender && profileGender !== "nonbinary") {
       filtered = filtered.filter(
         (t) => t.forGender === "any" || t.forGender === profileGender,
       );
@@ -208,14 +220,8 @@ export default function TemplateSelectScreen({
     if (!showAllLevels && profileDifficulty != null) {
       filtered = filtered.filter((t) => t.difficulty === profileDifficulty);
     }
-    return filtered.slice(0, MAX_VISIBLE_PATTERNS);
-  }, [
-    items,
-    showAllGenders,
-    profileGender,
-    showAllLevels,
-    profileDifficulty,
-  ]);
+    return filtered;
+  }, [items, showAllGenders, profileGender, showAllLevels, profileDifficulty]);
 
   // ── Measurements modal state ────────────────────────────────────────────
   // modalTemplate: the template object the user tapped; null = modal closed
@@ -257,11 +263,29 @@ export default function TemplateSelectScreen({
       return;
     }
 
-    // Need the modal — pre-fill fields from the effective profile's missing keys
+    // Need the modal — pre-fill fields from the effective profile's missing keys.
+    // When the profile has no body measurements yet, auto-apply a default size
+    // preset so the user sees sensible starting values instead of an empty form.
+    // Default: Women's 38 (or Men's 42 when profile gender is explicitly male).
     const prefill = {};
+    let defaultPresetId = null;
     if (ep) {
-      for (const k of missing) {
-        prefill[k] = "";
+      const hasNoMeasurements = Object.keys(ep.measurements ?? {}).length === 0;
+      if (hasNoMeasurements) {
+        const presetId =
+          ep.gender === "male" ? "cisMaleAdult42" : "cisFemaleAdult38";
+        const defaultPreset = measurementPresets.find((p) => p.id === presetId);
+        if (defaultPreset) {
+          defaultPresetId = presetId;
+          for (const k of missing) {
+            const mm = defaultPreset.measurements[k];
+            prefill[k] = mm != null ? mmToCm(k, mm) : "";
+          }
+        }
+      } else {
+        for (const k of missing) {
+          prefill[k] = "";
+        }
       }
     }
     setModalTemplate(template);
@@ -270,7 +294,7 @@ export default function TemplateSelectScreen({
     setSaveToProfile(true);
     setShowProfilePicker(false);
     setShowModalPresetPicker(false);
-    setModalSelectedPresetId(null);
+    setModalSelectedPresetId(defaultPresetId);
   }
 
   // Re-diff when the session profile changes inside the modal
@@ -397,7 +421,9 @@ export default function TemplateSelectScreen({
     if (!fabric) return;
     let cancelled = false;
     (async () => {
-      for (const template of items) {
+      // Only generate AI previews for the top 3 patterns by rank.
+      const previewTargets = items.slice(0, 3);
+      for (const template of previewTargets) {
         if (cancelled) break;
         // Skip if we already have a preview (from cache, prior HMR, or this run)
         if (previewsRef.current[template.id]) continue;
@@ -444,12 +470,6 @@ export default function TemplateSelectScreen({
           <p className="text-[11px] text-primary-100 mt-0.5">
             {t("templateSelect.subtitle")}
           </p>
-          {MAX_VISIBLE_PATTERNS != null &&
-            items.length > MAX_VISIBLE_PATTERNS && (
-              <p className="text-[11px] text-secondary-300 mt-0.5">
-                {t("templateSelect.topNHint", { n: MAX_VISIBLE_PATTERNS })}
-              </p>
-            )}
         </div>
       </div>
 
@@ -632,6 +652,11 @@ export default function TemplateSelectScreen({
           const isCleanTop = idx === 0 && isFeasible && !needsInterfacing;
           const matchScore = scoreById[template.id] ?? template.matchScore;
           const level = levelByDifficulty(template.difficulty);
+          // feasibilityBand: from rec if present, else inferred from feasible boolean.
+          // Treat missing band on feasible cards as "maybe" (conservative default).
+          const feasibilityBand =
+            rec?.feasibilityBand ??
+            (rec?.feasible === false ? "unlikely" : "maybe");
           const failReason = !isFeasible
             ? rec?.failReason === "area"
               ? t("templateSelect.reasonArea")
@@ -652,8 +677,7 @@ export default function TemplateSelectScreen({
               : needsInterfacing
                 ? "border-amber-300"
                 : level.border;
-          const zoomSrc =
-            previews[template.id] ?? template.resultImage ?? null;
+          const zoomSrc = previews[template.id] ?? template.resultImage ?? null;
           return (
             <div
               key={template.id}
@@ -664,7 +688,8 @@ export default function TemplateSelectScreen({
               {(isCleanTop ||
                 needsInterfacing ||
                 !isFeasible ||
-                failReason) && (
+                failReason ||
+                (isFeasible && feasibilityBand)) && (
                 <div className="px-4 pt-4">
                   {isCleanTop && (
                     <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
@@ -674,6 +699,16 @@ export default function TemplateSelectScreen({
                   {needsInterfacing && (
                     <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
                       {t("templateSelect.needsInterfacing")}
+                    </span>
+                  )}
+                  {isFeasible && feasibilityBand === "likely" && (
+                    <span className="inline-block bg-green-100 text-green-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                      ✓ Likely enough
+                    </span>
+                  )}
+                  {isFeasible && feasibilityBand === "maybe" && (
+                    <span className="inline-block bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                      ~ Maybe enough
                     </span>
                   )}
                   {!isFeasible && (
@@ -714,8 +749,14 @@ export default function TemplateSelectScreen({
                       className="w-full h-full object-cover pointer-events-none"
                       loading="lazy"
                     />
-                  ) : (
+                  ) : idx < 3 ? (
                     <div className="w-full h-full bg-primary-200 animate-pulse rounded-2xl" />
+                  ) : (
+                    <div className="w-full h-full bg-primary-100 rounded-2xl flex items-center justify-center">
+                      <span className="text-primary-300 text-[10px]">
+                        No preview
+                      </span>
+                    </div>
                   )}
                   {zoomSrc && (
                     <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-black/55 flex items-center justify-center pointer-events-none">
@@ -739,11 +780,14 @@ export default function TemplateSelectScreen({
                     <h3 className="font-bold text-primary-900 text-base leading-tight flex-1 min-w-0 break-words">
                       {tl(template.name)}
                     </h3>
-                    <span
-                      className={`text-xs font-bold flex-shrink-0 ${matchScore >= 85 ? "text-primary-800" : "text-secondary-600"}`}
-                    >
-                      {matchScore}%
-                    </span>
+                    <div className="flex flex-col items-end flex-shrink-0">
+                      <span
+                        className={`text-xs font-bold ${matchScore >= 85 ? "text-primary-800" : "text-secondary-600"}`}
+                      >
+                        {matchScore}%
+                      </span>
+                      <span className="text-[9px] text-primary-400">match</span>
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-primary-500 mt-1">
                     <span>⏱ {tl(template.time)}</span>
@@ -761,7 +805,7 @@ export default function TemplateSelectScreen({
                     <div className="mt-2">
                       <div className="flex items-center justify-between mb-0.5">
                         <span className="text-[10px] text-primary-500">
-                          {t("templateSelect.fabricUsed")}
+                          📐 {t("templateSelect.fabricUsed")}
                         </span>
                         <span
                           className={`text-[10px] font-semibold ${

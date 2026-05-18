@@ -1,9 +1,9 @@
 import { Sophie } from "@freesewing/sophie";
-import { cisFemaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 export default {
   Design: Sophie,
-  measurements: cisFemaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "sophie.frontPanel": {
       label: "Front Panel",

@@ -1,10 +1,10 @@
 import { Teagan } from "@freesewing/teagan";
-import { cisMaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 // library.sleeve is a base block sleeve — teagan.sleeve is the final piece
 export default {
   Design: Teagan,
-  measurements: cisMaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "teagan.front": {
       label: "Front",

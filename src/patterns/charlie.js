@@ -1,10 +1,10 @@
 import { Charlie } from "@freesewing/charlie";
-import { cisMaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 // titan.back and titan.front are base blocks — skipped in favour of charlie.front/back
 export default {
   Design: Charlie,
-  measurements: cisMaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "charlie.front": {
       label: "Front",

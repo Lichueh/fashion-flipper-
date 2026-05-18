@@ -1,5 +1,5 @@
 import { Aaron } from "@freesewing/aaron";
-import { cisMaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 /**
  * FreeSewing config for the Aaron A-shirt.
@@ -10,7 +10,7 @@ import { cisMaleAdult42 } from "@freesewing/models";
  */
 export default {
   Design: Aaron,
-  measurements: cisMaleAdult42,
+  measurements: cisFemaleAdult38,
 
   /**
    * Map of FreeSewing part key → display config for PatternLayoutScreen.

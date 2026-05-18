@@ -7,6 +7,12 @@ import patternAreasBySize, {
   ANCHOR_CHEST,
 } from "../data/patternAreasBySize.js";
 
+// Exported so callers that re-score outside checkFeasibility() (e.g. profileFeasibility
+// in TemplateSelectScreen) can stay in sync without duplicating magic numbers.
+export const AREA_SAFETY_FACTOR = 0.85;
+export const LIKELY_THRESHOLD = 1.25;
+export const REQUIRED_BUFFER = 1.1;
+
 /**
  * Determines which upcycling templates are achievable from a segmented garment.
  *
@@ -25,9 +31,12 @@ import patternAreasBySize, {
  *
  * @returns {Array<template & {
  *   feasible: boolean,
+ *   feasibilityBand: 'likely' | 'maybe' | 'unlikely',
  *   compositeScore: number,
  *   fitScore: number,         // alias of compositeScore for backwards compat
  *   usedAreaPct: number,
+ *   availableAreaCm2: number,
+ *   safeAvailableAreaCm2: number,
  *   needsInterfacing: boolean,
  *   fabricNote: string|null,
  *   failReason: 'area' | 'piece_fit' | 'fabric' | null
@@ -36,6 +45,8 @@ import patternAreasBySize, {
 export function checkFeasibility(measurements, templates, fabric = null) {
   // Collect only the panels that were actually detected.
   const availablePanels = Object.values(measurements.panels).filter(Boolean);
+  const availableAreaCm2 = measurements.totalAreaCm2;
+  const safeAvailableAreaCm2 = _getSafeAvailableAreaCm2(measurements);
 
   // Derive fabric profile once — null fabric means skip all fabric checks.
   const fabricProfile = fabric ? getFabricProfile(fabric) : null;
@@ -55,19 +66,29 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       totalPieces > 0
         ? pieces.reduce((sum, p) => sum + p.areaCm2 * (p.cutCount ?? 1), 0)
         : (fallbackArea ?? 0);
-    const totalRequiredWithBuffer = totalRequiredArea * 1.1;
+    // Intentionally conservative: the requirement buffer models sewing overhead,
+    // while the safety factor discounts measured area for real-world usable yield.
+    const totalRequiredWithBuffer = totalRequiredArea * REQUIRED_BUFFER;
     const usedAreaPct = Math.min(
-      (totalRequiredArea / measurements.totalAreaCm2) * 100,
+      (totalRequiredArea / safeAvailableAreaCm2) * 100,
       100,
     );
 
-    if (measurements.totalAreaCm2 < totalRequiredWithBuffer) {
+    // ── Feasibility band ────────────────────────────────────────────────────
+    // coverageRatio > 1 means Stage 1 passes; the LIKELY_THRESHOLD distinguishes
+    // a comfortable surplus from a marginal pass.
+    const coverageRatio = safeAvailableAreaCm2 / totalRequiredWithBuffer;
+
+    if (safeAvailableAreaCm2 < totalRequiredWithBuffer) {
       return {
         ...template,
         feasible: false,
+        feasibilityBand: "unlikely",
         compositeScore: 0,
         fitScore: 0,
         usedAreaPct,
+        availableAreaCm2,
+        safeAvailableAreaCm2,
         needsInterfacing: false,
         fabricNote: null,
         failReason: "area",
@@ -103,9 +124,12 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       return {
         ...template,
         feasible: false,
+        feasibilityBand: "unlikely",
         compositeScore: 0,
         fitScore: 0,
         usedAreaPct,
+        availableAreaCm2,
+        safeAvailableAreaCm2,
         needsInterfacing: false,
         fabricNote: null,
         failReason: "piece_fit",
@@ -144,9 +168,12 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       return {
         ...template,
         feasible: false,
+        feasibilityBand: "unlikely",
         compositeScore: 0,
         fitScore: 0,
         usedAreaPct,
+        availableAreaCm2,
+        safeAvailableAreaCm2,
         needsInterfacing: false,
         fabricNote,
         failReason: "fabric",
@@ -158,6 +185,14 @@ export function checkFeasibility(measurements, templates, fabric = null) {
     const reuseScore = Math.min(usedAreaPct / 100, 1);
     let compositeScore = 0.5 * pieceFitScore + 0.5 * reuseScore;
 
+    const feasibilityBand =
+      coverageRatio >= LIKELY_THRESHOLD ? "likely" : "maybe";
+
+    // "maybe" templates sort below "likely" — cap their score.
+    if (feasibilityBand === "maybe") {
+      compositeScore = Math.min(compositeScore, 0.6);
+    }
+
     // Cap interfacing-fixable patterns so they sort below clean-feasible ones.
     if (needsInterfacing) {
       compositeScore = Math.min(compositeScore, 0.45);
@@ -166,14 +201,22 @@ export function checkFeasibility(measurements, templates, fabric = null) {
     return {
       ...template,
       feasible: true,
+      feasibilityBand,
       compositeScore,
       fitScore: compositeScore, // backwards-compat alias
       usedAreaPct,
+      availableAreaCm2,
+      safeAvailableAreaCm2,
       needsInterfacing,
       fabricNote,
       failReason: null,
     };
   });
+}
+
+function _getSafeAvailableAreaCm2(measurements) {
+  const availableAreaCm2 = measurements?.totalAreaCm2 ?? 0;
+  return availableAreaCm2 * AREA_SAFETY_FACTOR;
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────

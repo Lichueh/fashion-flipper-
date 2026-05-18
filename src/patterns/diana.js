@@ -1,10 +1,10 @@
 import { Diana } from "@freesewing/diana";
-import { cisFemaleAdult42 } from "@freesewing/models";
+import { cisFemaleAdult38 } from "@freesewing/models";
 
 // brian.back, brian.front, library.sleeve are base blocks — skipped
 export default {
   Design: Diana,
-  measurements: cisFemaleAdult42,
+  measurements: cisFemaleAdult38,
   parts: {
     "diana.front": {
       label: "Front",

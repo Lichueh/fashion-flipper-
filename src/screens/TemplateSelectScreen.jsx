@@ -66,41 +66,37 @@ export default function TemplateSelectScreen({
   }, [feasibilityById, activeProfile, sessionProfileOverride, measurements]);
 
   const items = useMemo(() => {
-    const sorted = Object.values(templates)
-      .filter((t) => {
-        // Hide explicitly infeasible (tier 2). Keep feasible (tier 0/0.5) and
-        // unknown / accessories without area data (tier 1).
-        const f = profileFeasibility[t.id];
-        return !f || f.feasible !== false;
-      })
-      .sort((a, b) => {
-        const fa = profileFeasibility[a.id];
-        const fb = profileFeasibility[b.id];
+    const sorted = Object.values(templates).sort((a, b) => {
+      const fa = profileFeasibility[a.id];
+      const fb = profileFeasibility[b.id];
 
-        // Four-tier: feasible(0) → needs-interfacing(0.5) → no-data/accessories(1) → infeasible(2)
-        const tierA = !fa
-          ? 1
-          : !fa.feasible
-            ? 2
-            : fa.needsInterfacing
-              ? 0.5
-              : 0;
-        const tierB = !fb
-          ? 1
-          : !fb.feasible
-            ? 2
-            : fb.needsInterfacing
-              ? 0.5
-              : 0;
+      // Four-tier: feasible(0) → needs-interfacing(0.5) → no-data/accessories(1) → infeasible(2)
+      const tierA = !fa ? 1 : !fa.feasible ? 2 : fa.needsInterfacing ? 0.5 : 0;
+      const tierB = !fb ? 1 : !fb.feasible ? 2 : fb.needsInterfacing ? 0.5 : 0;
 
-        if (tierA !== tierB) return tierA - tierB;
-        return (
-          (fb?.compositeScore ?? fb?.fitScore ?? 0) -
-          (fa?.compositeScore ?? fa?.fitScore ?? 0)
-        );
-      });
+      if (tierA !== tierB) return tierA - tierB;
+      return (
+        (fb?.compositeScore ?? fb?.fitScore ?? 0) -
+        (fa?.compositeScore ?? fa?.fitScore ?? 0)
+      );
+    });
     return sorted;
   }, [profileFeasibility]);
+
+  // Returns true when a template belongs in the "Less suitable" section:
+  //   • no feasibility data (accessories / no area info)
+  //   • explicitly infeasible (any failReason)
+  //   • feasible but fabricCompatibilityScore is significantly below par
+  function isLowerSectionItem(rec) {
+    if (!rec) return true;
+    if (rec.feasible === false) return true;
+    if (
+      rec.fabricCompatibilityScore !== null &&
+      rec.fabricCompatibilityScore < 0.65
+    )
+      return true;
+    return false;
+  }
 
   const [previews, setPreviews] = useState(() => {
     const result = {};
@@ -421,6 +417,15 @@ export default function TemplateSelectScreen({
     ]),
   );
 
+  // Split the sorted list for section rendering.
+  // firstWeakIdx is the index of the first item that belongs in the lower section;
+  // -1 means all items are strong (no divider needed).
+  const firstWeakIdx = visibleItems.findIndex((t) =>
+    isLowerSectionItem(profileFeasibility[t.id]),
+  );
+  const hasWeakSection = firstWeakIdx !== -1;
+  const hasStrongSection = hasWeakSection && firstWeakIdx > 0;
+
   const LINE_DRAWINGS = (id) => `/images/line_drawings/line_${id}.png`;
 
   return (
@@ -501,7 +506,7 @@ export default function TemplateSelectScreen({
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-primary-400">
+              <p className="text-xs text-primary-200">
                 {t("templateSelect.measurementsUnavailable")}
               </p>
             )}
@@ -545,7 +550,7 @@ export default function TemplateSelectScreen({
         {/* Gender filter toggle — only shown when profile has a binary gender */}
         {profileGender && profileGender !== "nonbinary" && (
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs text-primary-300">
+            <span className="text-xs text-primary-200">
               {showAllGenders
                 ? t("templateSelect.showingAll")
                 : t("templateSelect.showingFiltered", {
@@ -575,7 +580,7 @@ export default function TemplateSelectScreen({
         {/* Skill level filter toggle */}
         {profileDifficulty != null && (
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs text-primary-300">
+            <span className="text-xs text-primary-200">
               {showAllLevels
                 ? t("templateSelect.showingAllLevels")
                 : t("templateSelect.showingForLevel", {
@@ -615,7 +620,15 @@ export default function TemplateSelectScreen({
           </div>
         )}
 
-        {visibleItems.map((template, idx) => {
+        {/* Section label — only when there are items on both sides of the divider */}
+        {hasStrongSection && (
+          <p className="text-[11px] font-bold text-primary-200 uppercase tracking-wider px-1">
+            {t("templateSelect.sectionRecommended")}
+          </p>
+        )}
+
+        {visibleItems.flatMap((template, idx) => {
+          const showDivider = hasWeakSection && idx === firstWeakIdx;
           const rec = recById[template.id];
           const isFeasible = rec?.feasible ?? true;
           const needsInterfacing = rec?.needsInterfacing ?? false;
@@ -662,7 +675,7 @@ export default function TemplateSelectScreen({
               : aiSrc
             : (aiSrc ?? template.resultImage ?? null);
           const zoomSrc = activeSrc;
-          return (
+          const card = (
             <div
               key={template.id}
               onClick={() => handleCardTap(template)}
@@ -845,6 +858,22 @@ export default function TemplateSelectScreen({
               </div>
             </div>
           );
+          if (showDivider) {
+            return [
+              <div
+                key="section-divider"
+                className="flex items-center gap-3 px-1 pt-2"
+              >
+                <div className="flex-1 h-px bg-primary-600" />
+                <span className="text-[11px] font-bold text-primary-200 uppercase tracking-wider whitespace-nowrap">
+                  {t("templateSelect.sectionLessSuitable")}
+                </span>
+                <div className="flex-1 h-px bg-primary-600" />
+              </div>,
+              card,
+            ];
+          }
+          return card;
         })}
       </div>
 
@@ -891,7 +920,7 @@ export default function TemplateSelectScreen({
               >
                 <span className="text-base">👤</span>
                 <span>{effectiveProfile()?.name ?? t("common.noProfile")}</span>
-                <span className="text-primary-400 text-xs">▾</span>
+                <span className="text-primary-200 text-xs">▾</span>
               </button>
 
               {/* Size preset chip */}
@@ -917,7 +946,7 @@ export default function TemplateSelectScreen({
                         ) || t("common.sizePreset")
                       : t("common.startFromSize")}
                   </span>
-                  <span className="text-primary-400 text-xs">▾</span>
+                  <span className="text-primary-200 text-xs">▾</span>
                 </button>
               )}
 
@@ -953,7 +982,7 @@ export default function TemplateSelectScreen({
               {/* Preset dropdown */}
               {showModalPresetPicker && (
                 <div className="absolute left-5 top-full mt-1 bg-white border border-primary-200 rounded-2xl shadow-lg z-20 min-w-[220px] max-h-72 overflow-y-auto">
-                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-primary-400 uppercase tracking-wide">
+                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-primary-200 uppercase tracking-wide">
                     {t("common.women")}
                   </p>
                   {femalePresets.map((p) => (
@@ -969,7 +998,7 @@ export default function TemplateSelectScreen({
                       {tl(p.label)}
                     </button>
                   ))}
-                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-primary-400 uppercase tracking-wide border-t border-primary-100">
+                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold text-primary-200 uppercase tracking-wide border-t border-primary-100">
                     {t("common.men")}
                   </p>
                   {malePresets.map((p) => (

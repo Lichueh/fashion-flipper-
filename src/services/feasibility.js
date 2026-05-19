@@ -191,6 +191,7 @@ export function checkFeasibility(measurements, templates, fabric = null) {
         needsInterfacing: false,
         fabricNote,
         fabricCompatibilityScore: 0,
+        hasLowConfidence: fabricProfile?.hasLowConfidence ?? false,
         failReason: "fabric",
       };
     }
@@ -223,6 +224,7 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       needsInterfacing,
       fabricNote,
       fabricCompatibilityScore,
+      hasLowConfidence: fabricProfile?.hasLowConfidence ?? false,
       failReason: null,
     };
   });

@@ -821,12 +821,6 @@ export default function TemplateSelectScreen({
                           {t("templateSelect.topRecommendation")}
                         </span>
                       )}
-
-                      {needsInterfacing && (
-                        <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                          {t("templateSelect.needsInterfacing")}
-                        </span>
-                      )}
                     </div>
 
                     <div className="flex flex-col items-end flex-shrink-0">

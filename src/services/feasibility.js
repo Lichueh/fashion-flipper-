@@ -3,6 +3,7 @@ import {
   FABRIC_REQUIREMENTS,
   NATURAL_FIBERS,
 } from "../data/fabricRequirements.js";
+import { FABRIC_ISSUE_NOTES } from "../i18n/translations.js";
 import patternAreasBySize, {
   ANCHOR_CHEST,
 } from "../data/patternAreasBySize.js";
@@ -33,12 +34,15 @@ export const REQUIRED_BUFFER = 1.1;
  *   feasible: boolean,
  *   feasibilityBand: 'likely' | 'maybe' | 'unlikely',
  *   compositeScore: number,
- *   fitScore: number,         // alias of compositeScore for backwards compat
+ *   fitScore: number,              // alias of compositeScore for backwards compat
  *   usedAreaPct: number,
  *   availableAreaCm2: number,
  *   safeAvailableAreaCm2: number,
  *   needsInterfacing: boolean,
  *   fabricNote: string|null,
+ *   fabricCompatibilityScore: number|null,
+ *                                  // 0–1 fabric suitability score; null when not evaluated
+ *                                  // (area or piece-fit failed before Stage 3 ran)
  *   failReason: 'area' | 'piece_fit' | 'fabric' | null
  * }>}
  */
@@ -91,6 +95,7 @@ export function checkFeasibility(measurements, templates, fabric = null) {
         safeAvailableAreaCm2,
         needsInterfacing: false,
         fabricNote: null,
+        fabricCompatibilityScore: null,
         failReason: "area",
       };
     }
@@ -132,6 +137,7 @@ export function checkFeasibility(measurements, templates, fabric = null) {
         safeAvailableAreaCm2,
         needsInterfacing: false,
         fabricNote: null,
+        fabricCompatibilityScore: null,
         failReason: "piece_fit",
       };
     }
@@ -141,6 +147,8 @@ export function checkFeasibility(measurements, templates, fabric = null) {
     let needsInterfacing = false;
     let fabricNote = null;
     let fabricFail = false;
+    // Product of per-issue penalties; 1.0 when no fabric or no issues.
+    let fabricCompatibilityScore = 1.0;
 
     if (fabricProfile) {
       const req = FABRIC_REQUIREMENTS[template.id];
@@ -149,16 +157,22 @@ export function checkFeasibility(measurements, templates, fabric = null) {
         const issues = _collectFabricIssues(fabricProfile, req);
 
         if (issues.length > 0) {
-          // Weight-only issue on a canInterfaceFix template → soft warning, not a fail.
-          const isWeightOnly =
-            issues.length === 1 && issues[0].type === "weight";
+          // Prefer the structured, localized req.reason as the UI message.
+          // Fall back to the internal issue note only when req.reason is absent.
+          fabricNote = req.reason ?? issues[0].note;
 
-          if (req.canInterfaceFix && isWeightOnly) {
-            needsInterfacing = true;
-            fabricNote = issues[0].note;
-          } else {
+          const hasBlocker = issues.some((i) => i.isBlocker);
+          if (hasBlocker) {
+            // Hard fail: knit/woven mismatch or stretch requirement unmet.
             fabricFail = true;
-            fabricNote = issues[0].note; // first/most important issue
+            fabricCompatibilityScore = 0;
+          } else {
+            // Soft penalties: multiply per-issue penalty factors together.
+            fabricCompatibilityScore = issues.reduce(
+              (score, i) => score * i.penalty,
+              1.0,
+            );
+            needsInterfacing = issues.some((i) => i.needsInterfacing);
           }
         }
       }
@@ -176,14 +190,18 @@ export function checkFeasibility(measurements, templates, fabric = null) {
         safeAvailableAreaCm2,
         needsInterfacing: false,
         fabricNote,
+        fabricCompatibilityScore: 0,
         failReason: "fabric",
       };
     }
 
     // ── Composite score ──────────────────────────────────────────────────────
-    // 50 % piece-fit ratio + 50 % fabric-utilization (maximize reuse).
+    // 40 % fabric compatibility + 35 % piece-fit ratio + 25 % fabric reuse.
+    // Fabric suitability is the primary ranking signal; reuse is secondary.
+    // When fabric = null, fabricCompatibilityScore = 1.0 (neutral — no penalty).
     const reuseScore = Math.min(usedAreaPct / 100, 1);
-    let compositeScore = 0.5 * pieceFitScore + 0.5 * reuseScore;
+    let compositeScore =
+      0.4 * fabricCompatibilityScore + 0.35 * pieceFitScore + 0.25 * reuseScore;
 
     const feasibilityBand =
       coverageRatio >= LIKELY_THRESHOLD ? "likely" : "maybe";
@@ -191,11 +209,6 @@ export function checkFeasibility(measurements, templates, fabric = null) {
     // "maybe" templates sort below "likely" — cap their score.
     if (feasibilityBand === "maybe") {
       compositeScore = Math.min(compositeScore, 0.6);
-    }
-
-    // Cap interfacing-fixable patterns so they sort below clean-feasible ones.
-    if (needsInterfacing) {
-      compositeScore = Math.min(compositeScore, 0.45);
     }
 
     return {
@@ -209,9 +222,79 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       safeAvailableAreaCm2,
       needsInterfacing,
       fabricNote,
+      fabricCompatibilityScore,
       failReason: null,
     };
   });
+}
+
+/**
+ * Re-applies the Stage 1 area check for a single checkFeasibility result using a
+ * profile-interpolated pattern area instead of the template's default piece area.
+ *
+ * All fabric-derived fields (fabricCompatibilityScore, needsInterfacing, fabricNote)
+ * are preserved from the original — the fabric hasn't changed, only the pattern size.
+ * Stage 2 (bounding-box fit) is not re-run; fitting by area implies piece fit.
+ *
+ * Returns the original object unchanged when:
+ *   - failReason is "fabric" or "piece_fit" — those are not fixable by area
+ *   - interpolatedArea is null — no size data for this template
+ *
+ * @param {Object} original          - Single result object from checkFeasibility()
+ * @param {number|null} interpolatedArea - Profile-adjusted pattern area in cm²
+ * @param {number} totalAreaCm2      - Total garment area from measurements
+ * @returns {Object} Updated result (same reference if unchanged)
+ */
+export function rescoreByArea(original, interpolatedArea, totalAreaCm2) {
+  if (
+    original.failReason === "fabric" ||
+    original.failReason === "piece_fit" ||
+    interpolatedArea === null
+  ) {
+    return original;
+  }
+
+  const bufferedRequired = interpolatedArea * REQUIRED_BUFFER;
+  const feasible = bufferedRequired <= totalAreaCm2;
+  const safeArea = totalAreaCm2 * AREA_SAFETY_FACTOR;
+  const coverageRatio = safeArea / bufferedRequired;
+  const usedAreaPct = Math.min(
+    Math.round((interpolatedArea / totalAreaCm2) * 100),
+    100,
+  );
+
+  if (!feasible) {
+    return {
+      ...original,
+      feasible: false,
+      feasibilityBand: "unlikely",
+      compositeScore: 0,
+      fitScore: 0,
+      usedAreaPct,
+      failReason: "area",
+    };
+  }
+
+  // Preserve Stage 3 fabric result. pieceFitScore = 1 (area fit implies piece fit).
+  const fabricScore = original.fabricCompatibilityScore ?? 1.0;
+  const reuseScore = Math.min(usedAreaPct / 100, 1);
+  let compositeScore = 0.4 * fabricScore + 0.35 * 1 + 0.25 * reuseScore;
+
+  const feasibilityBand =
+    coverageRatio >= LIKELY_THRESHOLD ? "likely" : "maybe";
+  if (feasibilityBand === "maybe") {
+    compositeScore = Math.min(compositeScore, 0.6);
+  }
+
+  return {
+    ...original,
+    feasible: true,
+    feasibilityBand,
+    compositeScore,
+    fitScore: compositeScore,
+    usedAreaPct,
+    failReason: null,
+  };
 }
 
 function _getSafeAvailableAreaCm2(measurements) {
@@ -225,58 +308,133 @@ function _getSafeAvailableAreaCm2(measurements) {
  * Runs the fabric issue pipeline in priority order.
  * Returns an array of { type, note } objects for each failed check.
  */
+/**
+ * Evaluates fabric issues for a given profile and requirement set.
+ *
+ * Each issue carries:
+ *   type            – category string used by the caller
+ *   note            – localized { en, nb, zh } message for the UI
+ *   isBlocker       – true = hard fail (feasible → false); currently only knit/stretch
+ *   penalty         – multiplicative factor (0–1) applied to fabricCompatibilityScore
+ *                     when isBlocker is false
+ *   needsInterfacing – true when adding interfacing resolves the issue
+ */
 function _collectFabricIssues(profile, req) {
   const issues = [];
 
-  // 1. Weight range
+  // Lookup tables for interpolated label values.
+  const weightLabelMap = {
+    1: FABRIC_ISSUE_NOTES.weightLabels.lightweight,
+    2: FABRIC_ISSUE_NOTES.weightLabels.midweight,
+    3: FABRIC_ISSUE_NOTES.weightLabels.heavyweight,
+  };
+  const conditionLabelMap = [
+    FABRIC_ISSUE_NOTES.conditionLabels.damaged,
+    FABRIC_ISSUE_NOTES.conditionLabels.worn,
+    FABRIC_ISSUE_NOTES.conditionLabels.fair,
+    FABRIC_ISSUE_NOTES.conditionLabels.good,
+  ];
+  const noHint = { en: "", nb: "", zh: "" };
+
+  // 1. Weight range — soft penalty.
+  //    canInterfaceFix templates get a milder penalty because the issue is recoverable.
   if (profile.weightClass < req.minWeightClass) {
-    const labels = ["", "lightweight", "midweight", "heavyweight"];
+    const gap = req.minWeightClass - profile.weightClass;
     issues.push({
       type: "weight",
-      note: `Fabric is too lightweight — ${labels[req.minWeightClass]} or heavier needed${req.canInterfaceFix ? "; add interfacing or double-layer for structure" : ""}`,
+      note: _interpolate(FABRIC_ISSUE_NOTES.weightTooLight, {
+        required: weightLabelMap[req.minWeightClass] ?? noHint,
+        interfacingHint: req.canInterfaceFix
+          ? FABRIC_ISSUE_NOTES.interfacingHint
+          : noHint,
+      }),
+      isBlocker: false,
+      penalty: req.canInterfaceFix
+        ? gap === 1
+          ? 0.75
+          : 0.5
+        : gap === 1
+          ? 0.55
+          : 0.3,
+      needsInterfacing: req.canInterfaceFix,
     });
   }
   if (req.maxWeightClass !== null && profile.weightClass > req.maxWeightClass) {
+    const gap = profile.weightClass - req.maxWeightClass;
     issues.push({
       type: "weight",
-      note: "Fabric is too heavy/stiff for this pattern",
+      note: FABRIC_ISSUE_NOTES.weightTooHeavy,
+      isBlocker: false,
+      penalty: gap === 1 ? 0.55 : 0.3,
+      needsInterfacing: false,
     });
   }
 
-  // 2. Knit check
+  // 2. Knit check — TRUE BLOCKER.
+  //    Knit fabric cannot hold the seam structure of a stable-woven pattern.
   if (!req.allowKnit && profile.isKnit) {
     issues.push({
       type: "knit",
-      note: "Knit fabric won't hold seam structure for this pattern",
+      note: FABRIC_ISSUE_NOTES.knitNotAllowed,
+      isBlocker: true,
+      penalty: 0,
+      needsInterfacing: false,
     });
   }
 
-  // 3. Stretch requirement
+  // 3. Stretch requirement — TRUE BLOCKER.
+  //    The garment simply will not fit the body without stretch.
   if (req.requiresStretch && !profile.hasStretch) {
     issues.push({
       type: "stretch",
-      note: "This pattern requires stretch fabric — woven fabric will sew up stiff and unwearable",
+      note: FABRIC_ISSUE_NOTES.stretchRequired,
+      isBlocker: true,
+      penalty: 0,
+      needsInterfacing: false,
     });
   }
 
-  // 4. Bias grain
+  // 4. Bias grain — soft penalty.
   if (!req.allowBias && profile.isBias) {
     issues.push({
       type: "bias",
-      note: "Bias-cut grain causes distortion and sagging for this pattern",
+      note: FABRIC_ISSUE_NOTES.biasNotAllowed,
+      isBlocker: false,
+      penalty: 0.7,
+      needsInterfacing: false,
     });
   }
 
-  // 5. Condition
-  if (profile.conditionRank < req.minConditionRank) {
-    const labels = ["damaged", "worn", "fair", "good"];
+  // 5. Condition — two cases:
+  //   • null (unrecognized input): apply a fixed uncertainty penalty (0.85).
+  //     Unknown ≠ damaged — we simply couldn't assess the condition.
+  //     JS would otherwise coerce null to 0 in the numeric comparison below,
+  //     making the fabric look damaged (rank 0) — which is incorrect.
+  //   • known rank below threshold: gap-proportional soft penalty.
+  if (profile.conditionRank === null) {
+    if (req.minConditionRank > 0) {
+      issues.push({
+        type: "condition",
+        note: FABRIC_ISSUE_NOTES.conditionUnknown,
+        isBlocker: false,
+        penalty: 0.85,
+        needsInterfacing: false,
+      });
+    }
+  } else if (profile.conditionRank < req.minConditionRank) {
+    const gap = req.minConditionRank - profile.conditionRank;
     issues.push({
       type: "condition",
-      note: `Fabric condition too poor — ${labels[req.minConditionRank]} or better required`,
+      note: _interpolate(FABRIC_ISSUE_NOTES.conditionTooLow, {
+        required: conditionLabelMap[req.minConditionRank] ?? noHint,
+      }),
+      isBlocker: false,
+      penalty: gap === 1 ? 0.7 : gap === 2 ? 0.45 : 0.25,
+      needsInterfacing: false,
     });
   }
 
-  // 6. rejectFibers — format: "material>threshold" or "material<threshold"
+  // 6. rejectFibers — soft penalty, proportional to how far over the reject threshold.
   for (const rule of req.rejectFibers) {
     const match = rule.match(/^(\w+)([<>]=?)(\d+)$/);
     if (!match) continue;
@@ -294,15 +452,26 @@ function _collectFabricIssues(profile, req) {
               ? pct <= threshold
               : false;
     if (triggered) {
+      const excess = Math.abs(pct - threshold);
       issues.push({
         type: "fiber",
-        note: `High ${_capitalize(material)} content (${pct}%) — fabric won't press or sew well for this pattern`,
+        note: _interpolate(FABRIC_ISSUE_NOTES.fiberTooHigh, {
+          material: _capitalize(material),
+          pct,
+        }),
+        isBlocker: false,
+        // penalty decays with excess; floor at 0.30.
+        penalty: Math.max(0.3, 1 - excess / 40),
+        needsInterfacing: false,
       });
     }
   }
 
-  // 7. preferredFibers — format: "natural>=50"
-  for (const rule of req.preferredFibers) {
+  // 7. requiredFibers — soft penalty, proportional to shortfall below required minimum.
+  // @deprecated: req.preferredFibers is accepted for backward compatibility;
+  //              new entries in fabricRequirements.js should use requiredFibers.
+  const requiredFiberRules = req.requiredFibers ?? req.preferredFibers ?? [];
+  for (const rule of requiredFiberRules) {
     const match = rule.match(/^(natural|[a-z]+)([<>]=?)(\d+)$/);
     if (!match) continue;
     const [, group, op, threshStr] = match;
@@ -327,9 +496,17 @@ function _collectFabricIssues(profile, req) {
               ? actualPct >= threshold
               : false;
     if (triggered) {
+      const shortfall = Math.abs(threshold - actualPct);
       issues.push({
         type: "fiber",
-        note: `Needs ≥${threshold}% natural fiber for proper drape — current blend has ${Math.round(actualPct)}%`,
+        note: _interpolate(FABRIC_ISSUE_NOTES.naturalFiberInsufficient, {
+          threshold,
+          actual: Math.round(actualPct),
+        }),
+        isBlocker: false,
+        // penalty decays with shortfall; floor at 0.30.
+        penalty: Math.max(0.3, 1 - shortfall / 50),
+        needsInterfacing: false,
       });
     }
   }
@@ -339,6 +516,25 @@ function _collectFabricIssues(profile, req) {
 
 function _capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Substitutes {key} placeholders in a { en, nb, zh } template object.
+ * Values in `vars` can be scalars (applied as-is to all locales) or
+ * { en, nb, zh } objects (locale-specific substitution).
+ */
+function _interpolate(tmpl, vars) {
+  return Object.fromEntries(
+    ["en", "nb", "zh"].map((locale) => [
+      locale,
+      (tmpl[locale] ?? "").replace(/\{(\w+)\}/g, (_, k) => {
+        const v = vars[k];
+        if (v == null) return `{${k}}`;
+        if (typeof v === "object") return v[locale] ?? v.en ?? String(v);
+        return String(v);
+      }),
+    ]),
+  );
 }
 
 // ── Profile-aware area estimation ────────────────────────────────────────────

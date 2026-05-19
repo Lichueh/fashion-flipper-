@@ -17,12 +17,7 @@ import {
   cmToMm,
   unitLabel,
 } from "../utils/measurementValidation";
-import {
-  interpolatePatternArea,
-  AREA_SAFETY_FACTOR,
-  LIKELY_THRESHOLD,
-  REQUIRED_BUFFER,
-} from "../services/feasibility";
+import { interpolatePatternArea, rescoreByArea } from "../services/feasibility";
 import { useLang } from "../i18n/LanguageContext";
 import { levelByDifficulty } from "../data/skillLevels";
 
@@ -54,49 +49,18 @@ export default function TemplateSelectScreen({
     const chest_mm = ep.measurements?.chest;
     if (!chest_mm) return feasibilityById;
 
-    // Re-score each template with profile-adjusted piece area
+    // Re-score each template with a profile-adjusted piece area.
+    // rescoreByArea() handles the area/band/score logic consistently with
+    // checkFeasibility() and preserves fabric fields from the original result.
     const rescored = { ...feasibilityById };
     for (const [id, original] of Object.entries(feasibilityById)) {
-      // Fabric incompatibility cannot be fixed by area re-scoring — keep original
-      if (
-        original.failReason === "fabric" ||
-        original.failReason === "piece_fit"
-      )
-        continue;
-
       const interpolatedArea = interpolatePatternArea(id, chest_mm);
-      if (interpolatedArea === null) continue; // no data → keep original
-
-      // These must stay in sync with feasibility.js — AREA_SAFETY_FACTOR, LIKELY_THRESHOLD, REQUIRED_BUFFER
-      const feasible =
-        interpolatedArea * REQUIRED_BUFFER <= measurements.totalAreaCm2;
-      const usedAreaPct = Math.round(
-        (interpolatedArea / measurements.totalAreaCm2) * 100,
+      const updated = rescoreByArea(
+        original,
+        interpolatedArea,
+        measurements.totalAreaCm2,
       );
-
-      // Compute a proper compositeScore so re-scored feasible items sort correctly.
-      // Stage 2 (bounding-box fit) not re-run — assumes pieces fit if area fits.
-      const reuseScore = Math.min(usedAreaPct / 100, 1);
-      const compositeScore = feasible ? 0.5 * 1 + 0.5 * reuseScore : 0;
-
-      const safeArea = measurements.totalAreaCm2 * AREA_SAFETY_FACTOR;
-      const bufferedRequired = interpolatedArea * REQUIRED_BUFFER;
-      const coverageRatio = safeArea / bufferedRequired;
-      const feasibilityBand = !feasible
-        ? "unlikely"
-        : coverageRatio >= LIKELY_THRESHOLD
-          ? "likely"
-          : "maybe";
-
-      rescored[id] = {
-        ...original,
-        feasible,
-        usedAreaPct,
-        compositeScore,
-        fitScore: compositeScore,
-        failReason: feasible ? null : "area",
-        feasibilityBand, // recomputed, not inherited from original
-      };
+      if (updated !== original) rescored[id] = updated;
     }
     return rescored;
   }, [feasibilityById, activeProfile, sessionProfileOverride, measurements]);

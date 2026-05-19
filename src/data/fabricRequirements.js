@@ -16,7 +16,7 @@
  *   rejectFibers     {string[]}      Material rules that hard-fail the pattern.
  *                                    Format: "material>threshold" or "material<threshold"
  *                                    e.g. "polyester>60" = fail if polyester exceeds 60 %
- *   preferredFibers  {string[]}      Soft requirements; not meeting them is a hard fail.
+ *   requiredFibers   {string[]}      Fiber composition requirements that hard-fail the pattern when not met.
  *                                    Format: "natural>=50" = need ≥50 % natural-fiber total
  *                                    Supported natural fibers: cotton, linen, wool, silk,
  *                                    viscose, rayon, tencel, bamboo
@@ -36,7 +36,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 2, // fair — old tee is fine
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: null,
   },
 
@@ -52,7 +52,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 2,
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: null,
   },
 
@@ -65,7 +65,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 2, // fair
     canInterfaceFix: true,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Tote bag needs structured fabric to hold weight — add interfacing for lighter fabrics",
       nb: "Bærepose trenger strukturert stoff for å bære vekt — legg til mellomfôr for lettere stoffer",
@@ -82,7 +82,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 2, // fair
     canInterfaceFix: true,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Bucket hat brim needs to hold its shape — add interfacing for lighter fabrics",
       nb: "Bøttehattens brem må holde formen — legg til mellomfôr for lettere stoffer",
@@ -102,7 +102,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: null,
   },
 
@@ -116,7 +116,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: ["natural>=50"],
+    requiredFibers: ["natural>=50"],
     reason: {
       en: "Fitted bodice block requires ≥50% natural fiber for proper drape and ease of sewing",
       nb: "Tilpasset livgrunnform krever minst 50 % naturfiber for riktig fall og lett søm",
@@ -134,7 +134,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Sleeve block requires stable woven fabric for accurate shaping",
       nb: "Ermegrunnformen krever stabilt vevd stoff for nøyaktig form",
@@ -152,7 +152,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Body block requires stable woven fabric",
       nb: "Kroppsgrunnformen krever stabilt vevd stoff",
@@ -170,7 +170,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Structured chinos need midweight or heavier woven fabric",
       nb: "Strukturerte chinos trenger middels eller tyngre vevd stoff",
@@ -188,7 +188,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: null,
   },
 
@@ -202,7 +202,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 2, // fair
     canInterfaceFix: true,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Handbag needs structured fabric to hold shape — add interfacing for lighter fabrics",
       nb: "Håndvesken trenger strukturert stoff for å holde formen — legg til mellomfôr for lettere stoffer",
@@ -220,7 +220,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Pencil skirt requires stable woven fabric — heavyweight will be too stiff",
       nb: "Blyantskjørtet krever stabilt vevd stoff — for tungt vil bli for stivt",
@@ -238,7 +238,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: ["polyester>60"],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Shirt requires woven fabric that presses well — high polyester blends don't hold a crisp seam",
       nb: "Skjorten krever vevd stoff som lar seg stryke godt — blandinger med mye polyester holder ikke skarpe sømmer",
@@ -256,7 +256,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: ["polyester>60"],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Shirt requires woven fabric that presses well — high polyester blends don't hold a crisp seam",
       nb: "Skjorten krever vevd stoff som lar seg stryke godt — blandinger med mye polyester holder ikke skarpe sømmer",
@@ -274,7 +274,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Shorts pattern requires stable woven fabric — heavyweight will be too stiff",
       nb: "Shortsmønsteret krever stabilt vevd stoff — for tungt vil bli for stivt",
@@ -292,7 +292,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: null,
   },
 
@@ -306,7 +306,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: null,
   },
 
@@ -320,7 +320,7 @@ export const FABRIC_REQUIREMENTS = {
     minConditionRank: 3, // good
     canInterfaceFix: false,
     rejectFibers: [],
-    preferredFibers: [],
+    requiredFibers: [],
     reason: {
       en: "Waistcoat requires firm woven fabric — knits and lightweight fabrics won't hold the structured shape",
       nb: "Vesten krever fast vevd stoff — strikk og lette stoffer holder ikke den strukturerte formen",
@@ -331,7 +331,7 @@ export const FABRIC_REQUIREMENTS = {
 
 // ── Fiber helpers used by checkFeasibility ──────────────────────────────────
 
-/** Materials counted as "natural fiber" for preferredFibers checks. */
+/** Materials counted as "natural fiber" for requiredFibers checks. */
 export const NATURAL_FIBERS = new Set([
   "cotton",
   "linen",

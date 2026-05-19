@@ -1355,7 +1355,8 @@ const translations = {
     patternReference: {
       title: "版型參考",
       svgHint: "要剪的版片形狀與尺寸。AR 教學會在實際布料上一步一步帶你做。",
-      svgHintWithSize: "實際尺寸:{w} × {h} 公分。AR 教學會在布料上一步步帶你做。",
+      svgHintWithSize:
+        "實際尺寸:{w} × {h} 公分。AR 教學會在布料上一步步帶你做。",
       lineLegendCut: "剪線",
       lineLegendSew: "縫紉線",
       materials: "材料",
@@ -1406,6 +1407,75 @@ const translations = {
       nb: "NO",
       zh: "中",
     },
+  },
+};
+
+// ── Fabric issue notes ────────────────────────────────────────────────────────
+// Structured { en, nb, zh } messages returned by _collectFabricIssues() in
+// feasibility.js. Kept here so they pass through the same translation pipeline
+// as all other user-facing strings (consumed via tl() in the UI).
+export const FABRIC_ISSUE_NOTES = {
+  weightTooLight: {
+    en: "Fabric is too lightweight — {required} or heavier needed{interfacingHint}",
+    nb: "Stoffet er for lett — {required} eller tyngre kreves{interfacingHint}",
+    zh: "布料太薄輕 — 需要{required}或更厚重的布料{interfacingHint}",
+  },
+  weightTooHeavy: {
+    en: "Fabric is too heavy/stiff for this pattern",
+    nb: "Stoffet er for tungt/stivt til dette mønsteret",
+    zh: "布料太厚重／太硬挺，不適合此版型",
+  },
+  knitNotAllowed: {
+    en: "Knit fabric won't hold seam structure for this pattern",
+    nb: "Strikkestoff holder ikke sømsstrukturen til dette mønsteret",
+    zh: "針織布料無法維持此版型的縫份結構",
+  },
+  stretchRequired: {
+    en: "This pattern requires stretch fabric — woven fabric will sew up stiff and unwearable",
+    nb: "Dette mønsteret krever stretchstoff — vevd stoff vil bli stivt og ubrukelig",
+    zh: "此版型需要彈性布料 — 梭織布縫製後會過硬且無法穿戴",
+  },
+  biasNotAllowed: {
+    en: "Bias-cut grain causes distortion and sagging for this pattern",
+    nb: "Skrå trådretning gir forvrengning og henging for dette mønsteret",
+    zh: "斜紋裁切會導致此版型變形與下垂",
+  },
+  conditionTooLow: {
+    en: "Fabric condition too poor — {required} or better required",
+    nb: "Stoffets tilstand er for dårlig — {required} eller bedre kreves",
+    zh: "布料狀態太差 — 需要達到「{required}」或以上的狀態",
+  },
+  conditionUnknown: {
+    en: "Fabric condition could not be determined — suitability is uncertain",
+    nb: "Stoffets tilstand kunne ikke fastslås — egnetheten er usikker",
+    zh: "無法確認布料狀態 — 適合性不確定",
+  },
+  fiberTooHigh: {
+    en: "High {material} content ({pct}%) — fabric won't press or sew well for this pattern",
+    nb: "Høyt {material}-innhold ({pct} %) — stoffet lar seg ikke stryke eller sy godt for dette mønsteret",
+    zh: "{material}含量過高（{pct}%）— 此布料不適合此版型的熨燙或縫紉",
+  },
+  naturalFiberInsufficient: {
+    en: "Needs \u2265{threshold}% natural fiber for proper drape — current blend has {actual}%",
+    nb: "Krever \u2265{threshold}\u00a0% naturfiber for riktig fall — nåværende blanding har {actual}\u00a0%",
+    zh: "需要 \u2265{threshold}% 天然纖維才能有適當垂墜感 — 目前混紡含量為 {actual}%",
+  },
+  // ── Interpolation helpers ──────────────────────────────────────────────────
+  interfacingHint: {
+    en: "; add interfacing or double-layer for structure",
+    nb: "; legg til mellomfôr eller dobbeltlag for struktur",
+    zh: "；請加入襯布或雙層布料以增加支撐",
+  },
+  weightLabels: {
+    lightweight: { en: "lightweight", nb: "lett", zh: "輕薄" },
+    midweight: { en: "midweight", nb: "middels", zh: "中等" },
+    heavyweight: { en: "heavyweight", nb: "tungt", zh: "厚重" },
+  },
+  conditionLabels: {
+    damaged: { en: "damaged", nb: "skadet", zh: "受損" },
+    worn: { en: "worn", nb: "slitt", zh: "磨損" },
+    fair: { en: "fair", nb: "grei", zh: "尚可" },
+    good: { en: "good", nb: "god", zh: "良好" },
   },
 };
 

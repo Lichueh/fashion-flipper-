@@ -12,6 +12,7 @@
 
 import { describe, it, expect } from "vitest";
 import { checkFeasibility } from "./feasibility.js";
+import { getFabricProfile } from "./fabricProfile.js";
 import { templates as realTemplates } from "../data/templates.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -54,13 +55,12 @@ describe("large T-shirt (80×60 cm panel, 3500 cm²) — tote bag", () => {
     expect(byId(results, "bag").failReason).toBeNull();
   });
 
-  it("fitScore uses the conservative safe-available area in the reuse score", () => {
-    // pieceFitScore = 1 (no physical pieces to check),
-    // safeAvailableArea = 3500 * 0.85 = 2975,
-    // reuseScore = 875/2975 ≈ 0.2941,
-    // compositeScore ≈ 0.6471
+  it("fitScore reflects new 40/35/25 composite formula", () => {
+    // fabricCompatibilityScore = 1.0 (no fabric),  pieceFitScore = 1.0 (no physical pieces),
+    // safeAvailableArea = 3500 * 0.85 = 2975,  reuseScore = 875/2975 ≈ 0.2941
+    // compositeScore = 0.40*1 + 0.35*1 + 0.25*(875/2975) ≈ 0.8235
     const results = checkFeasibility(measurements, realTemplates);
-    expect(byId(results, "bag").fitScore).toBeCloseTo(0.6470588235);
+    expect(byId(results, "bag").fitScore).toBeCloseTo(0.8235294118);
   });
 
   it("usedAreaPct is capped at 100 and is a positive number", () => {
@@ -210,7 +210,7 @@ describe("constrained garment (35×30 cm panel, 1100 cm²) — hat fits, bag doe
   it("bucket hat fitScore is capped at 0.60 — 'maybe' band applies", () => {
     // safeAvailableArea = 935, totalRequiredWithBuffer = 880,
     // coverageRatio = 935/880 ≈ 1.063 < LIKELY_THRESHOLD (1.25) → band = "maybe"
-    // raw compositeScore ≈ 0.9278 but capped at 0.60 for the "maybe" band.
+    // raw compositeScore = 0.40+0.35+0.25*(800/935) ≈ 0.9639, capped at 0.60.
     const results = checkFeasibility(measurements, MOCK_TEMPLATES);
     expect(byId(results, "hat").fitScore).toBeCloseTo(0.6);
   });
@@ -364,5 +364,197 @@ describe("feasibility band classification", () => {
     const unlikelyMeas = makeMeasurements(25, 20, 400);
     const unlikelyResults = checkFeasibility(unlikelyMeas, realTemplates);
     expect(unlikelyResults.every((r) => r.feasible === false)).toBe(true);
+  });
+});
+
+// ── Test 7: Fabric compatibility scoring ──────────────────────────────────────
+//
+// Stage 3 tests with real fabric profiles. Exercises hard-fail (blocker) and
+// soft-penalty paths. Uses a large panel so area/fit never interfere.
+//
+// fabricCompatibilityScore = product of per-issue penalties (0–1).
+//   perfect match                              → 1.00
+//   lightweight on canInterfaceFix template    → 0.75, needsInterfacing=true
+//   knit on woven-only template                → hard fail, score=0
+//   worn condition (gap=2) on strict template  → 0.45, still feasible
+// ─────────────────────────────────────────────────────────────────────────────
+describe("Stage 3 fabric compatibility scoring", () => {
+  // Generous panel — area/fit never fail in these tests.
+  const bigMeasurements = makeMeasurements(100, 100, 20000);
+
+  /** Minimal fabric object accepted by getFabricProfile(). */
+  function makeFabric(texture, weight, condition, materialList) {
+    return {
+      texture,
+      weight,
+      condition,
+      composition: materialList.map(([material, percentage]) => ({
+        material,
+        percentage,
+      })),
+    };
+  }
+
+  // Bag: minWeightClass=2, allowKnit=false, minConditionRank=2, canInterfaceFix=true
+  const BAG = { bag: realTemplates.bag };
+
+  // Brian (body block): minWeightClass=1, maxWeightClass=2, allowKnit=false,
+  //                     minConditionRank=3, canInterfaceFix=false
+  const BRIAN = { brian: realTemplates.brian };
+
+  it("perfect fabric match yields fabricCompatibilityScore 1.0", () => {
+    const fabric = makeFabric("plain weave", "midweight", "good", [
+      ["cotton", 100],
+    ]);
+    const results = checkFeasibility(bigMeasurements, BAG, fabric);
+    expect(byId(results, "bag").fabricCompatibilityScore).toBeCloseTo(1.0);
+    expect(byId(results, "bag").feasible).toBe(true);
+    expect(byId(results, "bag").needsInterfacing).toBe(false);
+  });
+
+  it("lightweight on canInterfaceFix template → score 0.75, needsInterfacing true", () => {
+    // Bag needs midweight (class=2); lightweight (class=1) + canInterfaceFix → penalty 0.75.
+    const fabric = makeFabric("plain weave", "lightweight", "good", [
+      ["cotton", 100],
+    ]);
+    const results = checkFeasibility(bigMeasurements, BAG, fabric);
+    const bag = byId(results, "bag");
+    expect(bag.feasible).toBe(true);
+    expect(bag.needsInterfacing).toBe(true);
+    expect(bag.fabricCompatibilityScore).toBeCloseTo(0.75);
+    expect(bag.failReason).toBeNull();
+  });
+
+  it("lightweight penalty reduces compositeScore proportionally", () => {
+    // fabricCompatibilityScore=0.75, pieceFitScore=1, safeArea=17000,
+    // reuseScore=875/17000≈0.0515
+    // compositeScore = 0.40*0.75 + 0.35*1 + 0.25*0.0515 ≈ 0.663
+    const fabric = makeFabric("plain weave", "lightweight", "good", [
+      ["cotton", 100],
+    ]);
+    const results = checkFeasibility(bigMeasurements, BAG, fabric);
+    const bag = byId(results, "bag");
+    expect(bag.compositeScore).toBeGreaterThan(0.64);
+    expect(bag.compositeScore).toBeLessThan(0.7);
+  });
+
+  it("knit on woven-only template is a hard fail", () => {
+    // Brian requires woven (allowKnit=false); jersey knit → isBlocker → hard fail.
+    const fabric = makeFabric("jersey knit", "lightweight", "good", [
+      ["cotton", 100],
+    ]);
+    const results = checkFeasibility(bigMeasurements, BRIAN, fabric);
+    const brian = byId(results, "brian");
+    expect(brian.feasible).toBe(false);
+    expect(brian.failReason).toBe("fabric");
+    expect(brian.fabricCompatibilityScore).toBe(0);
+    expect(brian.compositeScore).toBe(0);
+  });
+
+  it("worn condition (gap=2) is a soft penalty — still feasible, score 0.45", () => {
+    // Brian minConditionRank=3; worn=rank1 → gap=2 → penalty=0.45.
+    const fabric = makeFabric("plain weave", "midweight", "worn", [
+      ["cotton", 100],
+    ]);
+    const results = checkFeasibility(bigMeasurements, BRIAN, fabric);
+    const brian = byId(results, "brian");
+    expect(brian.feasible).toBe(true);
+    expect(brian.failReason).toBeNull();
+    expect(brian.fabricCompatibilityScore).toBeCloseTo(0.45);
+  });
+
+  it("area-fail result has fabricCompatibilityScore null — Stage 3 not reached", () => {
+    const smallMeasurements = makeMeasurements(25, 20, 400);
+    const fabric = makeFabric("plain weave", "midweight", "good", [
+      ["cotton", 100],
+    ]);
+    const results = checkFeasibility(smallMeasurements, BAG, fabric);
+    expect(byId(results, "bag").failReason).toBe("area");
+    expect(byId(results, "bag").fabricCompatibilityScore).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 8 — low-confidence / unknown analyzer values
+//
+//   Unknown condition → conditionRank null, conditionKnown false
+//   Unknown weight    → weightClass 2 (fallback), weightKnown false
+//   Unknown texture   → isKnit false, isWoven false, textureKnown false
+//   Unknown condition through pipeline → soft uncertainty penalty (0.85), not 0
+//   All unknowns through pipeline → no crash, numeric scores returned
+// ─────────────────────────────────────────────────────────────────────────────
+describe("low-confidence / unknown analyzer values", () => {
+  const bigMeasurements = makeMeasurements(100, 100, 20000);
+
+  function makeFabric(texture, weight, condition, materialList) {
+    return {
+      texture,
+      weight,
+      condition,
+      composition: materialList.map(([material, percentage]) => ({
+        material,
+        percentage,
+      })),
+    };
+  }
+
+  const BAG = { bag: realTemplates.bag };
+  const BRIAN = { brian: realTemplates.brian };
+
+  it("unrecognized condition string → conditionRank null, conditionKnown false, hasLowConfidence true", () => {
+    const profile = getFabricProfile(
+      makeFabric("plain weave", "midweight", "pretty alright", [
+        ["cotton", 100],
+      ]),
+    );
+    expect(profile.conditionRank).toBeNull();
+    expect(profile.conditionKnown).toBe(false);
+    expect(profile.hasLowConfidence).toBe(true);
+  });
+
+  it("unrecognized weight string → weightClass 2 (fallback), weightKnown false, hasLowConfidence true", () => {
+    const profile = getFabricProfile(
+      makeFabric("plain weave", "shirt-weight", "good", [["cotton", 100]]),
+    );
+    expect(profile.weightClass).toBe(2);
+    expect(profile.weightKnown).toBe(false);
+    expect(profile.hasLowConfidence).toBe(true);
+  });
+
+  it("unrecognized texture string → isKnit false, isWoven false, textureKnown false, hasLowConfidence true", () => {
+    const profile = getFabricProfile(
+      makeFabric("techno fabric", "midweight", "good", [["polyester", 100]]),
+    );
+    expect(profile.isKnit).toBe(false);
+    expect(profile.isWoven).toBe(false);
+    expect(profile.textureKnown).toBe(false);
+    expect(profile.hasLowConfidence).toBe(true);
+  });
+
+  it("unknown condition through pipeline → soft uncertainty penalty (0.85), not a hard fail", () => {
+    // Brian minConditionRank=3; unrecognized condition → null rank → penalty 0.85 (not rank=0 damage).
+    const fabric = makeFabric("plain weave", "midweight", "pretty alright", [
+      ["cotton", 100],
+    ]);
+    const results = checkFeasibility(bigMeasurements, BRIAN, fabric);
+    const brian = byId(results, "brian");
+    expect(brian.feasible).toBe(true);
+    expect(brian.failReason).toBeNull();
+    expect(brian.fabricCompatibilityScore).toBeCloseTo(0.85);
+  });
+
+  it("all-unknown fabric through pipeline → no crash, compositeScore and fabricCompatibilityScore are numbers", () => {
+    const fabric = makeFabric(
+      "techno fabric",
+      "shirt-weight",
+      "pretty alright",
+      [["polyester", 100]],
+    );
+    expect(() => checkFeasibility(bigMeasurements, BAG, fabric)).not.toThrow();
+    const results = checkFeasibility(bigMeasurements, BAG, fabric);
+    const bag = byId(results, "bag");
+    expect(bag).toBeDefined();
+    expect(typeof bag.compositeScore).toBe("number");
+    expect(typeof bag.fabricCompatibilityScore).toBe("number");
   });
 });

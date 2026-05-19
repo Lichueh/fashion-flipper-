@@ -21,6 +21,97 @@ import { interpolatePatternArea, rescoreByArea } from "../services/feasibility";
 import { useLang } from "../i18n/LanguageContext";
 import { levelByDifficulty } from "../data/skillLevels";
 
+// Returns a normalized fabric-fit presentation object for a pattern card.
+// Never returns null — templates without fabric preference data get an explicit
+// "unknownPreference" state, keeping it visually distinct from a real good-fit result.
+// TEMP: rawLabel/rawReason fields exist to support dev logging. Can be trimmed before production.
+function getFabricFitPresentation(rec, t) {
+  const base = {
+    score: rec?.fabricCompatibilityScore ?? null,
+    rawLabel: rec?.fabricLabel ?? null,
+    rawReason: rec?.fabricReason ?? null,
+  };
+
+  // 1. Area check failed before fabric was evaluated
+  if (rec?.failReason === "area") {
+    return {
+      ...base,
+      state: "notEvaluatedAreaFail",
+      label: t("fabricLabel.notChecked"),
+      reason: t("fabricReason.notCheckedBecauseAreaFailed"),
+    };
+  }
+  // 2. Fabric itself is the blocker
+  if (rec?.failReason === "fabric") {
+    return {
+      ...base,
+      state: "notFeasibleFabric",
+      label: rec?.fabricLabel ?? t("fabricLabel.poorFit"),
+      reason: rec?.fabricReason ?? t("fabricReason.fabricRejected"),
+    };
+  }
+  // 3. Piece fit failed — fabric was not evaluated
+  if (rec?.failReason === "piece_fit") {
+    return {
+      ...base,
+      state: "notFeasiblePieceFit",
+      label: t("fabricLabel.notChecked"),
+      reason: t("fabricReason.notCheckedBecausePieceFitFailed"),
+    };
+  }
+  // 4. No fabric preference metadata for this template yet
+  if (rec?.fabricCompatibilityScore == null) {
+    return {
+      ...base,
+      state: "unknownPreference",
+      label: t("fabricLabel.noPreferenceDefined"),
+      reason: t("fabricReason.noPreferenceDefined"),
+    };
+  }
+  // 5. Needs interfacing
+  if (rec?.needsInterfacing) {
+    return {
+      ...base,
+      state: "interfacing",
+      label: rec?.fabricLabel ?? t("fabricLabel.couldWorkWithInterfacing"),
+      reason: rec?.fabricReason ?? t("fabricReason.interfacingRecommended"),
+    };
+  }
+  // 6. Good fit
+  if (rec.fabricCompatibilityScore >= 0.85) {
+    return {
+      ...base,
+      state: "good",
+      label: rec?.fabricLabel ?? t("fabricLabel.goodFit"),
+      reason: rec?.fabricReason ?? t("fabricReason.goodGeneral"),
+    };
+  }
+  // 7. Could work but not ideal
+  return {
+    ...base,
+    state: "couldWork",
+    label: rec?.fabricLabel ?? t("fabricLabel.couldWork"),
+    reason: rec?.fabricReason ?? t("fabricReason.couldWorkGeneral"),
+  };
+}
+
+// Badge colour classes keyed by presentation state.
+function fabricFitBadgeClass(state) {
+  switch (state) {
+    case "good":
+      return "bg-green-100 text-green-800";
+    case "interfacing":
+      return "bg-amber-100 text-amber-800";
+    case "couldWork":
+      return "bg-amber-50 text-amber-700";
+    case "notFeasibleFabric":
+      return "bg-rose-100 text-rose-700";
+    default:
+      // unknownPreference / notEvaluatedAreaFail / notFeasiblePieceFit — neutral/subtle
+      return "bg-primary-100 text-primary-400";
+  }
+}
+
 export default function TemplateSelectScreen({
   navigate,
   feasibleTemplates,
@@ -651,6 +742,44 @@ export default function TemplateSelectScreen({
                     ? t("templateSelect.reasonGeneric")
                     : t("templateSelect.reasonArea")
             : null;
+          const presentation = getFabricFitPresentation(rec, t);
+          if (import.meta.env.DEV) {
+            // TEMP DEBUG — fabric fit decision path per template. Remove before production.
+            const _asEn = (v) =>
+              v == null
+                ? null
+                : typeof v === "object"
+                  ? (v.en ?? null)
+                  : String(v);
+            const materialSummary = fabric
+              ? [
+                  _asEn(fabric.type),
+                  _asEn(fabric.weight),
+                  _asEn(fabric.condition),
+                ]
+                  .filter(Boolean)
+                  .join(" / ") || "unknown"
+              : "no fabric analyzed";
+            console.log("[FabricFitPresentation]", template.id, {
+              materialSummary,
+              state: presentation.state,
+              score: presentation.score,
+              rawLabel: presentation.rawLabel,
+              rawReason: presentation.rawReason,
+              finalLabel:
+                presentation.rawLabel == null
+                  ? `${presentation.label} [fallback]`
+                  : presentation.label,
+              finalReason:
+                presentation.rawReason == null
+                  ? `${presentation.reason} [fallback]`
+                  : presentation.reason,
+              failReason: rec?.failReason ?? null,
+              feasible: rec?.feasible ?? null,
+              feasibilityBand: rec?.feasibilityBand ?? null,
+              needsInterfacing: rec?.needsInterfacing ?? false,
+            });
+          }
           // Status borders (top pick / infeasible / needs interfacing) win
           // over the level-tinted default border.
           const borderClass = isCleanTop
@@ -681,52 +810,67 @@ export default function TemplateSelectScreen({
               onClick={() => handleCardTap(template)}
               className={`${level.cardBg} rounded-3xl overflow-hidden border-2 cursor-pointer active:scale-[0.98] transition-transform ${borderClass} ${!isFeasible ? "opacity-60" : ""}`}
             >
-              {/* Badges + fail reason — full width across top */}
-              {(isCleanTop ||
-                needsInterfacing ||
-                !isFeasible ||
-                failReason ||
-                (isFeasible && feasibilityBand)) && (
-                <div className="px-4 pt-4 flex items-start justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {isCleanTop && (
-                      <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                        {t("templateSelect.topRecommendation")}
+              {/* Badges + fail reason — full width across top;
+                   presentation is always defined so this row always renders */}
+              {!!presentation && (
+                <div className="px-4 pt-4 flex flex-col gap-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                      {isCleanTop && (
+                        <span className="inline-block bg-secondary-200 text-secondary-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                          {t("templateSelect.topRecommendation")}
+                        </span>
+                      )}
+
+                      {needsInterfacing && (
+                        <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
+                          {t("templateSelect.needsInterfacing")}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col items-end flex-shrink-0">
+                      <span
+                        className={`text-[12.8px] font-bold ${
+                          matchScore >= 85
+                            ? "text-primary-700"
+                            : "text-secondary-600"
+                        }`}
+                      >
+                        {matchScore}% match
                       </span>
-                    )}
-                    {needsInterfacing && (
-                      <span className="inline-block bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                        {t("templateSelect.needsInterfacing")}
-                      </span>
-                    )}
-                    {isFeasible && feasibilityBand === "likely" && (
-                      <span className="inline-block bg-green-100 text-green-800 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                        {t("templateSelect.feasibilityLikely")}
-                      </span>
-                    )}
-                    {isFeasible && feasibilityBand === "maybe" && (
-                      <span className="inline-block bg-amber-50 text-amber-700 text-[11px] font-bold px-2.5 py-1 rounded-full mr-1.5">
-                        {t("templateSelect.feasibilityMaybe")}
-                      </span>
-                    )}
-                    {!isFeasible && (
-                      <span className="inline-block bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                        {t("templateSelect.notFeasible")}
-                      </span>
-                    )}
-                    {failReason && (
-                      <p className="text-red-600 text-[11px] leading-4 mt-2">
-                        {failReason}
-                      </p>
-                    )}
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end flex-shrink-0">
-                    <span
-                      className={`text-[14px] font-bold ${matchScore >= 85 ? "text-primary-700" : "text-secondary-600"}`}
-                    >
-                      {matchScore}% match
-                    </span>
+
+                  <div className="flex items-center gap-1 min-w-0 whitespace-nowrap">
+                      {isFeasible && feasibilityBand === "likely" && (
+                        <span className="inline-block shrink-0 bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded-full">
+                          {t("templateSelect.feasibilityLikely")}
+                        </span>
+                      )}
+
+                      {isFeasible && feasibilityBand === "maybe" && (
+                        <span className="inline-block shrink-0 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full">
+                          {t("templateSelect.feasibilityMaybe")}
+                        </span>
+                      )}
+
+                      {!isFeasible && (
+                        <span className="inline-block shrink-0 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full">
+                          {t("templateSelect.notFeasible")}
+                        </span>
+                      )}
+
+                      <span
+                        className={`inline-block shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${fabricFitBadgeClass(presentation.state)}`}
+                      >
+                        {presentation.label}
+                      </span>
                   </div>
+
+                  <p className="text-[10px] text-primary-700 leading-4">
+                    {presentation.reason}
+                  </p>
                 </div>
               )}
 

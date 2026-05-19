@@ -295,6 +295,11 @@ export function rescoreByArea(original, interpolatedArea, totalAreaCm2) {
     compositeScore,
     fitScore: compositeScore,
     usedAreaPct,
+    // Write fabricScore back explicitly — original may have null here when the
+    // template previously failed the area check (Stage 3 never ran then).
+    // fabricScore already defaults to 1.0 in that case, same neutral assumption
+    // as when fabric=null is passed to checkFeasibility.
+    fabricCompatibilityScore: fabricScore,
     failReason: null,
   };
 }

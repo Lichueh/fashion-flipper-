@@ -183,6 +183,28 @@ const translations = {
       continueAnyway: "Continue anyway",
       saveTo: 'Save to "{name}"',
     },
+    fabricLabel: {
+      goodFit: "Good fabric fit",
+      couldWork: "Could work",
+      couldWorkWithInterfacing: "Could work with interfacing",
+      poorFit: "Not recommended for this fabric",
+      noPreferenceDefined: "Fabric preference not set",
+      notChecked: "Fabric not checked",
+    },
+    fabricReason: {
+      goodGeneral: "This fabric is well suited to the pattern requirements.",
+      couldWorkGeneral:
+        "This fabric may work but is not ideal for this pattern.",
+      interfacingRecommended:
+        "This pattern can work, but lighter or less structured fabric may need interfacing.",
+      noPreferenceDefined:
+        "Fabric preference has not been added for this pattern yet.",
+      notCheckedBecauseAreaFailed:
+        "Fabric fit was not checked because there is not enough usable fabric area.",
+      notCheckedBecausePieceFitFailed:
+        "Fabric fit was not checked because pattern pieces do not fit on this garment.",
+      fabricRejected: "The fabric type is not compatible with this pattern.",
+    },
     stepGuide: {
       materialsList: "Materials List",
       sewingInstructions: "Sewing Instructions",
@@ -657,6 +679,28 @@ const translations = {
       continueAnyway: "Fortsett likevel",
       saveTo: "Lagre i «{name}»",
     },
+    fabricLabel: {
+      goodFit: "God stoffpasning",
+      couldWork: "Kan fungere",
+      couldWorkWithInterfacing: "Kan fungere med mellomfôr",
+      poorFit: "Ikke anbefalt for dette stoffet",
+      noPreferenceDefined: "Stoffpreferanse ikke satt",
+      notChecked: "Stoff ikke sjekket",
+    },
+    fabricReason: {
+      goodGeneral: "Dette stoffet passer godt til mønsterkravene.",
+      couldWorkGeneral:
+        "Dette stoffet kan fungere, men er ikke ideelt for dette mønsteret.",
+      interfacingRecommended:
+        "Mønsteret kan fungere, men lett eller ustrukturert stoff kan trenge mellomfôr.",
+      noPreferenceDefined:
+        "Stoffpreferanse er ikke lagt til for dette mønsteret ennå.",
+      notCheckedBecauseAreaFailed:
+        "Stoffpasning ble ikke sjekket fordi det ikke er nok brukbart stoffareal.",
+      notCheckedBecausePieceFitFailed:
+        "Stoffpasning ble ikke sjekket fordi mønsterdelene ikke passer på plagget.",
+      fabricRejected: "Stofftypen er ikke kompatibel med dette mønsteret.",
+    },
     stepGuide: {
       materialsList: "Materialliste",
       sewingInstructions: "Syveiledning",
@@ -1125,6 +1169,25 @@ const translations = {
       generatePattern: "產生紙型",
       continueAnyway: "仍然繼續",
       saveTo: "儲存到「{name}」",
+    },
+    fabricLabel: {
+      goodFit: "布料適合",
+      couldWork: "可以使用",
+      couldWorkWithInterfacing: "加襯布可使用",
+      poorFit: "不建議使用此布料",
+      noPreferenceDefined: "尚未設定布料偏好",
+      notChecked: "未檢查布料",
+    },
+    fabricReason: {
+      goodGeneral: "此布料非常適合此版型的要求。",
+      couldWorkGeneral: "此布料可能可用，但不是此版型的最佳選擇。",
+      interfacingRecommended:
+        "此版型可以製作，但較輕薄或無結構的布料可能需要加襯布。",
+      noPreferenceDefined: "此版型尚未設定布料偏好。",
+      notCheckedBecauseAreaFailed: "因可用布料面積不足，未檢查布料適合度。",
+      notCheckedBecausePieceFitFailed:
+        "因版型裁片無法放入衣物，未檢查布料適合度。",
+      fabricRejected: "布料類型不適合此版型。",
     },
     stepGuide: {
       materialsList: "材料清單",

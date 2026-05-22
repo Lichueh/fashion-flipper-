@@ -1,4 +1,37 @@
 /* ── Helpers also imported by PatternLayoutScreen ─────────────────── */
+export const LAYOUT_OPTIONS = [
+  {
+    id: "opaque",
+    label: "Classic",
+    buttonLabel: "◐",
+    fill: "rgba(248, 250, 252, 0.92)",
+    borderColor: "#0f172a",
+    borderWidth: 1,
+    borderStyle: "solid",
+    seamColor: "rgba(71, 85, 105, 0.8)",
+    annotationColor: "#1e3a5f",
+    grainColor: "#1e3a5f",
+    labelColor: "#0f172a",
+    metaColor: "#334155",
+    labelShadow: "0 1px 1px rgba(255,255,255,0.85)",
+  },
+  {
+    id: "mist",
+    label: "Soft transparent",
+    buttonLabel: "●",
+    fill: "rgba(255, 255, 255, 0.58)",
+    borderColor: "#020617",
+    borderWidth: 1.8,
+    borderStyle: "solid",
+    seamColor: "rgba(15, 23, 42, 0.72)",
+    annotationColor: "#1e3a5f",
+    grainColor: "#1e3a5f",
+    labelColor: "#0f172a",
+    metaColor: "#334155",
+    labelShadow: "0 1px 2px rgba(255,255,255,0.95)",
+  },
+];
+
 export function isMisaligned(pieceAngle, garmentAngle) {
   const diff = Math.abs((pieceAngle - garmentAngle + 180) % 180);
   return diff > 15;
@@ -129,62 +162,90 @@ function _enLabel(v) {
   return v.en ?? "";
 }
 
-function PieceShape({ piece, scale, tl = _enLabel }) {
+function pieceAppearanceStyles(appearance) {
+  const option = appearance ?? {};
+  return {
+    fill: option.fill ?? "rgba(255, 255, 255, 0.9)",
+    borderColor: option.borderColor ?? "#0f172a",
+    borderWidth: option.borderWidth ?? 1,
+    borderStyle: option.borderStyle ?? "solid",
+    outlineColor: option.outlineColor ?? option.borderColor ?? "#0f172a",
+    outlineWidth: option.outlineWidth ?? 1,
+    seamColor: option.seamColor ?? "rgba(71, 85, 105, 0.75)",
+    seamDash: option.seamDash ?? "3,2",
+    annotationColor: option.annotationColor ?? option.borderColor ?? "#1e3a5f",
+    grainColor: option.grainColor ?? option.borderColor ?? "#1e3a5f",
+    labelColor: option.labelColor ?? "#0f172a",
+    metaColor: option.metaColor ?? "rgba(51, 65, 85, 0.9)",
+    labelShadow: option.labelShadow ?? "0 1px 1px rgba(255,255,255,0.65)",
+  };
+}
+
+function PieceShape({ piece, scale, tl = _enLabel, appearance = null }) {
   const pw = piece.widthCm * scale;
   const ph = piece.heightCm * scale;
   const seam = Math.min(3, pw * 0.07, ph * 0.07);
   const isCircular = piece.shape === "circle" || piece.shape === "ring";
+  const styles = pieceAppearanceStyles(appearance);
 
   // FreeSewing-sourced pieces: render the extracted SVG seam path directly
   if (piece.shape === "svgpath") {
     const annotationStyle = {
       cutonfold: {
-        stroke: "#1e3a5f",
+        stroke: styles.annotationColor,
         strokeWidth: "1",
         strokeDasharray: "8 4",
         fill: "none",
       },
-      grainline: { stroke: "#1e3a5f", strokeWidth: "1", fill: "none" },
+      grainline: {
+        stroke: styles.grainColor,
+        strokeWidth: "1",
+        fill: "none",
+      },
       lining: {
-        stroke: "#4a90d9",
+        stroke: styles.seamColor,
         strokeWidth: "1",
         strokeDasharray: "4 4",
         fill: "none",
       },
       mark: {
-        stroke: "#1e3a5f",
+        stroke: styles.annotationColor,
         strokeWidth: "0.8",
         strokeDasharray: "4 2",
         fill: "none",
       },
       help: {
-        stroke: "#999999",
+        stroke: styles.metaColor,
         strokeWidth: "0.7",
         strokeDasharray: "2 2",
         fill: "none",
       },
       dotted: {
-        stroke: "#1e3a5f",
+        stroke: styles.annotationColor,
         strokeWidth: "0.7",
         strokeDasharray: "2 3",
         fill: "none",
       },
       dashed: {
-        stroke: "#1e3a5f",
+        stroke: styles.annotationColor,
         strokeWidth: "0.8",
         strokeDasharray: "6 3",
         fill: "none",
       },
-      various: { stroke: "#999999", strokeWidth: "0.7", fill: "none" },
+      various: {
+        stroke: styles.metaColor,
+        strokeWidth: "0.7",
+        fill: "none",
+      },
     };
     return (
       <div style={{ width: pw, height: ph, position: "relative" }}>
         <svg viewBox={piece.viewBox} width={pw} height={ph}>
           <path
             d={piece.svgPath}
-            fill={piece.color}
-            stroke="#1e3a5f"
-            strokeWidth="1"
+            fill={styles.fill}
+            stroke={styles.borderColor}
+            strokeWidth={styles.borderWidth}
           />
           {Object.entries(piece.annotationPaths ?? {}).map(([cat, paths]) =>
             paths.map((d, i) => (
@@ -208,15 +269,25 @@ function PieceShape({ piece, scale, tl = _enLabel }) {
           }}
         >
           <div
-            className="text-primary-900 font-bold font-mono"
-            style={{ fontSize: 6, lineHeight: 1.3 }}
+            className="font-bold font-mono"
+            style={{
+              fontSize: 6,
+              lineHeight: 1.3,
+              color: styles.labelColor,
+              textShadow: styles.labelShadow,
+            }}
           >
             {tl(piece.label)}
           </div>
           {(piece.cutCount ?? 1) > 1 && (
             <div
-              className="text-secondary-700 font-bold font-mono"
-              style={{ fontSize: 6, lineHeight: 1.3 }}
+              className="font-bold font-mono"
+              style={{
+                fontSize: 6,
+                lineHeight: 1.3,
+                color: styles.metaColor,
+                textShadow: styles.labelShadow,
+              }}
             >
               Cut ×{piece.cutCount}
             </div>
@@ -230,6 +301,8 @@ function PieceShape({ piece, scale, tl = _enLabel }) {
     width: pw,
     height: ph,
     position: "relative",
+    background: styles.fill,
+    border: `${styles.borderWidth}px ${styles.borderStyle} ${styles.borderColor}`,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -243,13 +316,7 @@ function PieceShape({ piece, scale, tl = _enLabel }) {
     ...(piece.shape === "circle" && { borderRadius: "50%" }),
     ...(piece.shape === "ring" && { borderRadius: "50%" }),
   };
-  const outerClass = [
-    "bg-primary-50 shadow-sm",
-    piece.shape !== "trapezoid" && "border border-primary-900",
-    piece.shape === "ring" && "outline outline-1 outline-primary-900",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const outerClass = ["shadow-sm"].filter(Boolean).join(" ");
 
   return (
     <div style={outerStyle} className={outerClass}>
@@ -262,22 +329,28 @@ function PieceShape({ piece, scale, tl = _enLabel }) {
         >
           <polygon
             points={`${pw * 0.08},0 ${pw * 0.92},0 ${pw},${ph} 0,${ph}`}
-            className="fill-primary-50 stroke-primary-900"
-            strokeWidth="1.5"
+            fill={styles.fill}
+            stroke={styles.borderColor}
+            strokeWidth={Math.max(1.2, styles.borderWidth)}
           />
           <polygon
             points={`${pw * 0.08 + seam},${seam} ${pw * 0.92 - seam},${seam} ${pw - seam},${ph - seam} ${seam},${ph - seam}`}
             fill="none"
-            className="stroke-primary-500"
+            stroke={styles.seamColor}
             strokeWidth="0.7"
-            strokeDasharray="3,2"
+            strokeDasharray={styles.seamDash}
           />
         </svg>
       )}
       {piece.shape !== "trapezoid" && !isCircular && (
         <div
-          className="absolute border border-dashed border-primary-500"
-          style={{ inset: seam, borderRadius: 1, pointerEvents: "none" }}
+          className="absolute"
+          style={{
+            inset: seam,
+            borderRadius: 1,
+            pointerEvents: "none",
+            border: `1px dashed ${styles.seamColor}`,
+          }}
         />
       )}
       <GrainArrow angle={piece.grainAngleDeg} pw={pw} ph={ph} />
@@ -292,22 +365,37 @@ function PieceShape({ piece, scale, tl = _enLabel }) {
         }}
       >
         <div
-          className="text-primary-900 font-bold font-mono"
-          style={{ fontSize: 6, lineHeight: 1.3 }}
+          className="font-bold font-mono"
+          style={{
+            fontSize: 6,
+            lineHeight: 1.3,
+            color: styles.labelColor,
+            textShadow: styles.labelShadow,
+          }}
         >
           {tl(piece.label)}
         </div>
         {(piece.cutCount ?? 1) > 1 && (
           <div
-            className="text-secondary-700 font-bold font-mono"
-            style={{ fontSize: 6, lineHeight: 1.3 }}
+            className="font-bold font-mono"
+            style={{
+              fontSize: 6,
+              lineHeight: 1.3,
+              color: styles.metaColor,
+              textShadow: styles.labelShadow,
+            }}
           >
             Cut ×{piece.cutCount}
           </div>
         )}
         <div
-          className="text-primary-600 font-mono"
-          style={{ fontSize: 5, lineHeight: 1.2 }}
+          className="font-mono"
+          style={{
+            fontSize: 5,
+            lineHeight: 1.2,
+            color: styles.metaColor,
+            textShadow: styles.labelShadow,
+          }}
         >
           {piece.widthCm}×{piece.heightCm}cm
         </div>
@@ -332,6 +420,7 @@ export default function PatternPanel({
   dragOverPanel,
   imageUrl,
   imgOpacity,
+  pieceAppearance,
   tl,
   onPointerDown,
   onPointerMove,
@@ -409,7 +498,12 @@ export default function PatternPanel({
                   transformOrigin: "center center",
                 }}
               >
-                <PieceShape piece={piece} scale={scale} tl={tl} />
+                <PieceShape
+                  piece={piece}
+                  scale={scale}
+                  tl={tl}
+                  appearance={pieceAppearance}
+                />
               </div>
               {misaligned && (
                 <div

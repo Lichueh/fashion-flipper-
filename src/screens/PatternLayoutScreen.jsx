@@ -5,6 +5,7 @@ import { extractPatternPieces } from "../utils/extractFreeSewingPieces";
 import patternMeasurements from "../data/patternMeasurements";
 import MeasurementsModal from "../components/MeasurementsModal";
 import PatternPanel, {
+  LAYOUT_OPTIONS,
   effectiveSize,
   isMisaligned,
 } from "../components/PatternPanel";
@@ -348,6 +349,7 @@ export default function PatternLayoutScreen({
 
   /* ── generate masked garment photo ── */
   const [maskedImageUrl, setMaskedImageUrl] = useState(null);
+  const [layoutOptionIndex, setLayoutOptionIndex] = useState(0);
 
   useEffect(() => {
     if (!uploadedImage) {
@@ -410,6 +412,7 @@ export default function PatternLayoutScreen({
   const [dragOverPanel, setDragOverPanel] = useState(null);
   const [showAiBadge, setShowAiBadge] = useState(true);
   const [showHint, setShowHint] = useState(true);
+  const activeLayoutOption = LAYOUT_OPTIONS[layoutOptionIndex] ?? LAYOUT_OPTIONS[0];
   const activePieces =
     template.patternSource === "freesewing"
       ? (runtimePieces ??
@@ -823,26 +826,42 @@ export default function PatternLayoutScreen({
         )}
         {/* Front then back, stacked vertically */}
         <div className="flex flex-col items-center px-2.5 gap-3 mb-4">
-          <PatternPanel
-            panelLabel={t("patternLayout.panelFront")}
-            panelKey="front"
-            panelRef={frontRef}
-            panelW={PANEL_W}
-            panelH={panelPxH}
-            activePieces={activePieces}
-            positions={positions}
-            scale={scale}
-            dragging={dragging}
-            grainAngleDeg={grainAngleDeg}
-            bboxFraction={bboxFraction}
-            dragOverPanel={dragOverPanel}
-            imageUrl={maskedImageUrl}
-            imgOpacity={0.8}
-            tl={tl}
-            onPointerDown={(e) => handlePointerDown(e, frontRef, "front")}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-          />
+          <div className="relative" style={{ width: PANEL_W }}>
+            <button
+              type="button"
+              onClick={() =>
+                setLayoutOptionIndex((index) =>
+                  (index + 1) % LAYOUT_OPTIONS.length,
+                )
+              }
+              aria-label={`Switch piece style. Current: ${activeLayoutOption.label}`}
+              title={`Piece style: ${activeLayoutOption.label}`}
+              className="absolute right-1.5 top-1.5 z-20 h-7 w-7 rounded-full bg-primary-800/90 border border-primary-500 text-primary-50 text-xs font-semibold shadow-sm backdrop-blur-sm active:scale-[0.98] transition-transform flex items-center justify-center"
+            >
+              {activeLayoutOption.buttonLabel}
+            </button>
+            <PatternPanel
+              panelLabel={t("patternLayout.panelFront")}
+              panelKey="front"
+              panelRef={frontRef}
+              panelW={PANEL_W}
+              panelH={panelPxH}
+              activePieces={activePieces}
+              positions={positions}
+              scale={scale}
+              dragging={dragging}
+              grainAngleDeg={grainAngleDeg}
+              bboxFraction={bboxFraction}
+              dragOverPanel={dragOverPanel}
+              imageUrl={maskedImageUrl}
+              imgOpacity={0.8}
+              pieceAppearance={activeLayoutOption}
+              tl={tl}
+              onPointerDown={(e) => handlePointerDown(e, frontRef, "front")}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+            />
+          </div>
           <PatternPanel
             panelLabel={t("patternLayout.panelBack")}
             panelKey="back"
@@ -858,11 +877,18 @@ export default function PatternLayoutScreen({
             dragOverPanel={dragOverPanel}
             imageUrl={maskedImageUrl}
             imgOpacity={0.35}
+            pieceAppearance={activeLayoutOption}
             tl={tl}
             onPointerDown={(e) => handlePointerDown(e, backRef, "back")}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
           />
+        </div>
+
+        <div className="mx-5 mb-3 flex justify-center">
+          <div className="bg-primary-700 border border-primary-600 rounded-full px-3 py-1 text-[11px] text-primary-100">
+            Piece style: <span className="font-semibold">{activeLayoutOption.label}</span>
+          </div>
         </div>
 
         {showAiBadge && (

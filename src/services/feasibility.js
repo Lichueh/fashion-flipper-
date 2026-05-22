@@ -78,6 +78,11 @@ export function checkFeasibility(measurements, templates, fabric = null) {
       100,
     );
 
+    const fabricEvaluation = _evaluateFabricCompatibility(
+      template,
+      fabricProfile,
+    );
+
     // ── Feasibility band ────────────────────────────────────────────────────
     // coverageRatio > 1 means Stage 1 passes; the LIKELY_THRESHOLD distinguishes
     // a comfortable surplus from a marginal pass.
@@ -93,9 +98,10 @@ export function checkFeasibility(measurements, templates, fabric = null) {
         usedAreaPct,
         availableAreaCm2,
         safeAvailableAreaCm2,
-        needsInterfacing: false,
-        fabricNote: null,
-        fabricCompatibilityScore: null,
+        needsInterfacing: fabricEvaluation.needsInterfacing,
+        fabricNote: fabricEvaluation.fabricNote,
+        fabricCompatibilityScore: fabricEvaluation.fabricCompatibilityScore,
+        hasLowConfidence: fabricProfile?.hasLowConfidence ?? false,
         failReason: "area",
       };
     }
@@ -144,39 +150,12 @@ export function checkFeasibility(measurements, templates, fabric = null) {
 
     // ── Stage 3: fabric compatibility ────────────────────────────────────────
     // Skipped entirely when fabric = null (pre-analysis state).
-    let needsInterfacing = false;
-    let fabricNote = null;
-    let fabricFail = false;
-    // Product of per-issue penalties; 1.0 when no fabric or no issues.
-    let fabricCompatibilityScore = 1.0;
-
-    if (fabricProfile) {
-      const req = FABRIC_REQUIREMENTS[template.id];
-
-      if (req) {
-        const issues = _collectFabricIssues(fabricProfile, req);
-
-        if (issues.length > 0) {
-          // Prefer the structured, localized req.reason as the UI message.
-          // Fall back to the internal issue note only when req.reason is absent.
-          fabricNote = req.reason ?? issues[0].note;
-
-          const hasBlocker = issues.some((i) => i.isBlocker);
-          if (hasBlocker) {
-            // Hard fail: knit/woven mismatch or stretch requirement unmet.
-            fabricFail = true;
-            fabricCompatibilityScore = 0;
-          } else {
-            // Soft penalties: multiply per-issue penalty factors together.
-            fabricCompatibilityScore = issues.reduce(
-              (score, i) => score * i.penalty,
-              1.0,
-            );
-            needsInterfacing = issues.some((i) => i.needsInterfacing);
-          }
-        }
-      }
-    }
+    const {
+      needsInterfacing,
+      fabricNote,
+      fabricFail,
+      fabricCompatibilityScore,
+    } = fabricEvaluation;
 
     if (fabricFail) {
       return {
@@ -307,6 +286,58 @@ export function rescoreByArea(original, interpolatedArea, totalAreaCm2) {
 function _getSafeAvailableAreaCm2(measurements) {
   const availableAreaCm2 = measurements?.totalAreaCm2 ?? 0;
   return availableAreaCm2 * AREA_SAFETY_FACTOR;
+}
+
+function _evaluateFabricCompatibility(template, fabricProfile) {
+  if (!fabricProfile) {
+    return {
+      needsInterfacing: false,
+      fabricNote: null,
+      fabricFail: false,
+      fabricCompatibilityScore: null,
+    };
+  }
+
+  const req = FABRIC_REQUIREMENTS[template.id];
+  if (!req) {
+    return {
+      needsInterfacing: false,
+      fabricNote: null,
+      fabricFail: false,
+      fabricCompatibilityScore: null,
+    };
+  }
+
+  const issues = _collectFabricIssues(fabricProfile, req);
+  if (issues.length === 0) {
+    return {
+      needsInterfacing: false,
+      fabricNote: null,
+      fabricFail: false,
+      fabricCompatibilityScore: 1.0,
+    };
+  }
+
+  const fabricNote = req.reason ?? issues[0].note;
+  const fabricFail = issues.some((issue) => issue.isBlocker);
+  if (fabricFail) {
+    return {
+      needsInterfacing: false,
+      fabricNote,
+      fabricFail: true,
+      fabricCompatibilityScore: 0,
+    };
+  }
+
+  return {
+    needsInterfacing: issues.some((issue) => issue.needsInterfacing),
+    fabricNote,
+    fabricFail: false,
+    fabricCompatibilityScore: issues.reduce(
+      (score, issue) => score * issue.penalty,
+      1.0,
+    ),
+  };
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────

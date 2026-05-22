@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { templates } from "../data/templates";
 import { mockAnalysis } from "../data/mockAnalysis";
-import { generatePreview, CACHE_PREFIX } from "../services/previewGeneration";
+import { generatePreview } from "../services/previewGeneration";
 import patternMeasurements, {
   MEASUREMENT_GROUPS,
   measurementGroup,
@@ -25,15 +25,21 @@ import { levelByDifficulty } from "../data/skillLevels";
 // Never returns null — templates without fabric preference data get an explicit
 // "unknownPreference" state, keeping it visually distinct from a real good-fit result.
 // TEMP: rawLabel/rawReason fields exist to support dev logging. Can be trimmed before production.
-function getFabricFitPresentation(rec, t) {
+function getFabricFitPresentation(rec, t, tl) {
+  const localizedReason = (value, fallback) => {
+    if (value == null) return fallback;
+    return typeof value === "string" ? value : tl(value);
+  };
+
   const base = {
     score: rec?.fabricCompatibilityScore ?? null,
     rawLabel: rec?.fabricLabel ?? null,
-    rawReason: rec?.fabricReason ?? null,
+    rawReason: rec?.fabricNote ?? rec?.fabricReason ?? null,
   };
 
-  // 1. Area check failed before fabric was evaluated
-  if (rec?.failReason === "area") {
+  // 1. Area check failed and we still do not have enough fabric context
+  //    to score compatibility for this template.
+  if (rec?.failReason === "area" && rec?.fabricCompatibilityScore == null) {
     return {
       ...base,
       state: "notEvaluatedAreaFail",
@@ -47,7 +53,10 @@ function getFabricFitPresentation(rec, t) {
       ...base,
       state: "notFeasibleFabric",
       label: rec?.fabricLabel ?? t("fabricLabel.poorFit"),
-      reason: rec?.fabricReason ?? t("fabricReason.fabricRejected"),
+      reason: localizedReason(
+        rec?.fabricNote ?? rec?.fabricReason,
+        t("fabricReason.fabricRejected"),
+      ),
     };
   }
   // 3. Piece fit failed — fabric was not evaluated
@@ -74,7 +83,10 @@ function getFabricFitPresentation(rec, t) {
       ...base,
       state: "interfacing",
       label: rec?.fabricLabel ?? t("fabricLabel.couldWorkWithInterfacing"),
-      reason: rec?.fabricReason ?? t("fabricReason.interfacingRecommended"),
+      reason: localizedReason(
+        rec?.fabricNote ?? rec?.fabricReason,
+        t("fabricReason.interfacingRecommended"),
+      ),
     };
   }
   // 6. Good fit
@@ -83,7 +95,10 @@ function getFabricFitPresentation(rec, t) {
       ...base,
       state: "good",
       label: rec?.fabricLabel ?? t("fabricLabel.goodFit"),
-      reason: rec?.fabricReason ?? t("fabricReason.goodGeneral"),
+      reason: localizedReason(
+        rec?.fabricNote ?? rec?.fabricReason,
+        t("fabricReason.goodGeneral"),
+      ),
     };
   }
   // 7. Could work but not ideal
@@ -91,7 +106,10 @@ function getFabricFitPresentation(rec, t) {
     ...base,
     state: "couldWork",
     label: rec?.fabricLabel ?? t("fabricLabel.couldWork"),
-    reason: rec?.fabricReason ?? t("fabricReason.couldWorkGeneral"),
+    reason: localizedReason(
+      rec?.fabricNote ?? rec?.fabricReason,
+      t("fabricReason.couldWorkGeneral"),
+    ),
   };
 }
 
@@ -189,21 +207,7 @@ export default function TemplateSelectScreen({
     return false;
   }
 
-  const [previews, setPreviews] = useState(() => {
-    const result = {};
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith(CACHE_PREFIX)) {
-          const value = localStorage.getItem(key);
-          // templateId is always the last _-separated segment
-          const templateId = key.split("_").at(-1);
-          if (value && templateId) result[templateId] = value;
-        }
-      }
-    } catch {}
-    return result;
-  });
+  const [previews, setPreviews] = useState({});
   const [showAllGenders, setShowAllGenders] = useState(false);
   const [showAllLevels, setShowAllLevels] = useState(false);
   const [flippedCards, setFlippedCards] = useState({}); // [IMAGE-LAYOUT-C] per-card toggle state
@@ -242,9 +246,9 @@ export default function TemplateSelectScreen({
     return ep?.gender ?? null; // "female" | "male" | "nonbinary" | null
   }, [sessionProfileOverride, activeProfile]);
 
-  // Skill level filter: only recommend templates that match the user's level.
-  // beginner → difficulty 1, intermediate → 2, advanced → 3. Can be overridden
-  // by the "Show all levels" toggle below.
+  // Skill level filter: show templates up to the user's level.
+  // beginner → difficulty 1, intermediate → 1-2, advanced → 1-3.
+  // Can be overridden by the "Show all levels" toggle below.
   const profileSkillLevel = useMemo(() => {
     const ep = sessionProfileOverride ?? activeProfile ?? null;
     return ep?.skillLevel ?? null;
@@ -257,6 +261,18 @@ export default function TemplateSelectScreen({
         : profileSkillLevel === "advanced"
           ? 3
           : null;
+  const skillFilterMaxDifficulty =
+    showAllLevels || profileDifficulty == null || profileDifficulty >= 3
+      ? null
+      : profileDifficulty;
+  const showSkillLevelToggle =
+    profileDifficulty != null && profileDifficulty < 3;
+  const visibleSkillLevelLabel =
+    profileDifficulty === 1
+      ? t("skillLevel.beginner")
+      : profileDifficulty === 2
+        ? `${t("skillLevel.beginner")} + ${t("skillLevel.intermediate")}`
+        : t("templateSelect.showingAllLevels");
 
   // Apply gender + skillLevel filters on top of the sorted items.
   // AI previews are generated only for the top 3 by rank (see useEffect below).
@@ -268,12 +284,14 @@ export default function TemplateSelectScreen({
         (t) => t.forGender === "any" || t.forGender === profileGender,
       );
     }
-    // Skill level filter: only templates matching the user's exact level
-    if (!showAllLevels && profileDifficulty != null) {
-      filtered = filtered.filter((t) => t.difficulty === profileDifficulty);
+    // Skill level filter: include templates at or below the user's level.
+    if (skillFilterMaxDifficulty != null) {
+      filtered = filtered.filter(
+        (t) => t.difficulty <= skillFilterMaxDifficulty,
+      );
     }
     return filtered;
-  }, [items, showAllGenders, profileGender, showAllLevels, profileDifficulty]);
+  }, [items, showAllGenders, profileGender, skillFilterMaxDifficulty]);
 
   // ── Measurements modal state ────────────────────────────────────────────
   // modalTemplate: the template object the user tapped; null = modal closed
@@ -468,6 +486,10 @@ export default function TemplateSelectScreen({
   useEffect(() => {
     previewsRef.current = previews;
   }, [previews]);
+
+  useEffect(() => {
+    setPreviews({});
+  }, [fabric, uploadedFile]);
 
   useEffect(() => {
     if (!fabric) return;
@@ -669,13 +691,13 @@ export default function TemplateSelectScreen({
         )}
 
         {/* Skill level filter toggle */}
-        {profileDifficulty != null && (
+        {showSkillLevelToggle && (
           <div className="flex items-center justify-between px-1">
             <span className="text-xs text-primary-200">
               {showAllLevels
                 ? t("templateSelect.showingAllLevels")
                 : t("templateSelect.showingForLevel", {
-                    level: t(`skillLevel.${profileSkillLevel}`),
+                    level: visibleSkillLevelLabel,
                   })}
             </span>
             <button
@@ -697,9 +719,7 @@ export default function TemplateSelectScreen({
           <div className="bg-primary-100 rounded-3xl px-5 py-6 text-center">
             <p className="text-primary-700 text-sm">
               {t("templateSelect.noLevelMatches", {
-                level: profileSkillLevel
-                  ? t(`skillLevel.${profileSkillLevel}`)
-                  : "",
+                level: visibleSkillLevelLabel,
               })}
             </p>
             <button
@@ -742,7 +762,7 @@ export default function TemplateSelectScreen({
                     ? t("templateSelect.reasonGeneric")
                     : t("templateSelect.reasonArea")
             : null;
-          const presentation = getFabricFitPresentation(rec, t);
+          const presentation = getFabricFitPresentation(rec, t, tl);
           if (import.meta.env.DEV) {
             // TEMP DEBUG — fabric fit decision path per template. Remove before production.
             const _asEn = (v) =>
@@ -837,29 +857,29 @@ export default function TemplateSelectScreen({
                   </div>
 
                   <div className="flex items-center gap-1 min-w-0 whitespace-nowrap">
-                      {isFeasible && feasibilityBand === "likely" && (
-                        <span className="inline-block shrink-0 bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded-full">
-                          {t("templateSelect.feasibilityLikely")}
-                        </span>
-                      )}
-
-                      {isFeasible && feasibilityBand === "maybe" && (
-                        <span className="inline-block shrink-0 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full">
-                          {t("templateSelect.feasibilityMaybe")}
-                        </span>
-                      )}
-
-                      {!isFeasible && (
-                        <span className="inline-block shrink-0 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full">
-                          {t("templateSelect.notFeasible")}
-                        </span>
-                      )}
-
-                      <span
-                        className={`inline-block shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${fabricFitBadgeClass(presentation.state)}`}
-                      >
-                        {presentation.label}
+                    {isFeasible && feasibilityBand === "likely" && (
+                      <span className="inline-block shrink-0 bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded-full">
+                        {t("templateSelect.feasibilityLikely")}
                       </span>
+                    )}
+
+                    {isFeasible && feasibilityBand === "maybe" && (
+                      <span className="inline-block shrink-0 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full">
+                        {t("templateSelect.feasibilityMaybe")}
+                      </span>
+                    )}
+
+                    {!isFeasible && (
+                      <span className="inline-block shrink-0 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full">
+                        {t("templateSelect.notFeasible")}
+                      </span>
+                    )}
+
+                    <span
+                      className={`inline-block shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${fabricFitBadgeClass(presentation.state)}`}
+                    >
+                      {presentation.label}
+                    </span>
                   </div>
 
                   <p className="text-[10px] text-primary-700 leading-4">

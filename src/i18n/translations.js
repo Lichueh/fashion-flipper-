@@ -199,7 +199,7 @@ const translations = {
       noPreferenceDefined:
         "Fabric preference has not been added for this pattern yet.",
       notCheckedBecauseAreaFailed:
-        "Fabric fit was not checked because there is not enough usable fabric area.",
+        "Fabric fit could not be assessed because fabric context is missing for this pattern.",
       notCheckedBecausePieceFitFailed:
         "Fabric fit was not checked because pattern pieces do not fit on this garment.",
       fabricRejected: "The fabric type is not compatible with this pattern.",
@@ -694,7 +694,7 @@ const translations = {
       noPreferenceDefined:
         "Stoffpreferanse er ikke lagt til for dette mønsteret ennå.",
       notCheckedBecauseAreaFailed:
-        "Stoffpasning ble ikke sjekket fordi det ikke er nok brukbart stoffareal.",
+        "Stoffpasning kunne ikke vurderes fordi stoffkontekst mangler for dette mønsteret.",
       notCheckedBecausePieceFitFailed:
         "Stoffpasning ble ikke sjekket fordi mønsterdelene ikke passer på plagget.",
       fabricRejected: "Stofftypen er ikke kompatibel med dette mønsteret.",
@@ -1181,7 +1181,8 @@ const translations = {
       interfacingRecommended:
         "此版型可以製作，但較輕薄或無結構的布料可能需要加襯布。",
       noPreferenceDefined: "此版型尚未設定布料偏好。",
-      notCheckedBecauseAreaFailed: "因可用布料面積不足，未檢查布料適合度。",
+      notCheckedBecauseAreaFailed:
+        "因這個版型缺少布料判斷資訊，無法評估布料適合度。",
       notCheckedBecausePieceFitFailed:
         "因版型裁片無法放入衣物，未檢查布料適合度。",
       fabricRejected: "布料類型不適合此版型。",

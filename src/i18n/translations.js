@@ -1477,6 +1477,28 @@ const translations = {
   },
 };
 
+export const MEASUREMENT_PRESET_LABELS = {
+  female: {
+    base: {
+      en: "Women's {size}",
+      nb: "Dame {size}",
+      zh: "女款 {size}",
+    },
+  },
+  male: {
+    base: {
+      en: "Men's {size}",
+      nb: "Herre {size}",
+      zh: "男款 {size}",
+    },
+  },
+  withHint: {
+    en: "{base} ({hint})",
+    nb: "{base} ({hint})",
+    zh: "{base}（{hint}）",
+  },
+};
+
 // ── Fabric issue notes ────────────────────────────────────────────────────────
 // Structured { en, nb, zh } messages returned by _collectFabricIssues() in
 // feasibility.js. Kept here so they pass through the same translation pipeline

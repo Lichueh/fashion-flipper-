@@ -195,7 +195,9 @@ export default function ResultScreen({
                 : "bg-secondary-300 text-white shadow-md shadow-black/20"
             }`}
           >
-            {shared ? t("result.sharedToCommunity") : t("result.shareToCommunity")}
+            {shared
+              ? t("result.sharedToCommunity")
+              : t("result.shareToCommunity")}
           </button>
           <button
             onClick={() => navigate("community")}

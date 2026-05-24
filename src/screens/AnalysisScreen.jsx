@@ -144,12 +144,12 @@ export default function AnalysisScreen({
         </div>
         <div className="space-y-3 text-center mb-8">
           {segmentationFailed && (
-            <p className="text-primary-100 font-semibold text-base">
+            <p className="text-primary-100 font-medium text-base">
               {t("analysis.failedSegTitle")}
             </p>
           )}
           {fabricFailed && (
-            <p className="text-primary-100 font-semibold text-base">
+            <p className="text-primary-100 font-medium text-base">
               {t("analysis.failedFabricTitle")}
             </p>
           )}
@@ -215,11 +215,11 @@ export default function AnalysisScreen({
           ←
         </button>
         <div className="flex-1">
-          <h2 className="font-semibold text-primary-100">
+          <h2 className="font-medium text-primary-100">
             {t("analysis.title")}
           </h2>
         </div>
-        <span className="bg-secondary-300 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+        <span className="bg-secondary-300 text-white text-xs font-medium px-2.5 py-1 rounded-full">
           {t("analysis.complete")}
         </span>
       </div>
@@ -254,17 +254,17 @@ export default function AnalysisScreen({
               )}
             </div>
             <div className="flex-1">
-              <p className="text-[11px] text-primary-500 mb-0.5 font-medium uppercase tracking-wider">
+              <p className="text-xs text-primary-700 mb-0.5 font-medium uppercase tracking-wider">
                 {t("analysis.detectedMaterial")}
               </p>
-              <p className="text-xl font-bold text-primary-900">
+              <p className="text-xl font-bold text-primary-800">
                 {tl(displayFabric.type)}
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {displayFabric.tags.map((tag, i) => (
                   <span
                     key={i}
-                    className="bg-primary-200 text-primary-800 text-[11px] px-2 py-0.5 rounded-full font-medium"
+                    className="bg-primary-200 text-primary-700 text-xs px-2 py-0.5 rounded-full font-medium"
                   >
                     {tl(tag)}
                   </span>
@@ -276,7 +276,7 @@ export default function AnalysisScreen({
 
         {/* Fabric details */}
         <div className="bg-primary-100 rounded-3xl p-4 border border-primary-200 fade-in">
-          <p className="text-[11px] font-semibold text-primary-500 uppercase tracking-wider mb-3">
+          <p className="text-xs font-medium text-primary-700 uppercase tracking-wider mb-3">
             {t("analysis.fabricProperties")}
           </p>
           <div className="space-y-2.5">
@@ -300,13 +300,61 @@ export default function AnalysisScreen({
                 key={item.label}
                 className="flex justify-between items-center"
               >
-                <span className="text-primary-500 text-sm">{item.label}</span>
-                <span className="text-primary-900 text-sm font-medium">
+                <span className="text-primary-700 text-sm">{item.label}</span>
+                <span className="text-primary-800 text-sm font-medium">
                   {item.value}
                 </span>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Garment dimensions */}
+        <div className="bg-primary-100 rounded-3xl p-4 border border-primary-200 fade-in">
+          <p className="text-xs font-medium text-primary-700 uppercase tracking-wider mb-3">
+            {t("templateSelect.yourGarment")}
+          </p>
+
+          {measurements?.panels?.frontPanel != null ? (
+            <div className="flex gap-4 flex-wrap">
+              <div>
+                <p className="text-xs text-primary-700">
+                  {t("templateSelect.widthLabel")}
+                </p>
+                <p className="text-sm font-medium text-primary-800">
+                  {measurements.panels.frontPanel.widthCm} cm
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-primary-700">
+                  {t("templateSelect.heightLabel")}
+                </p>
+                <p className="text-sm font-medium text-primary-800">
+                  {measurements.panels.frontPanel.heightCm} cm
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-primary-700">
+                  {t("templateSelect.usableFabricOneSide")}
+                </p>
+                <p className="text-sm font-medium text-primary-800">
+                  {measurements.panels.frontPanel.areaCm2} cm²
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-primary-700">
+                  {t("templateSelect.totalFabricBothSides")}
+                </p>
+                <p className="text-sm font-medium text-primary-800">
+                  {measurements.totalAreaCm2} cm²
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-primary-700">
+              {t("templateSelect.measurementsUnavailable")}
+            </p>
+          )}
         </div>
       </div>
 

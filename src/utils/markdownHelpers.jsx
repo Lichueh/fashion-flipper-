@@ -43,7 +43,11 @@ export function preprocessFreesewingMarkdown(md) {
   for (const { tag, emoji, label } of CALLOUT_TAGS) {
     const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "gi");
     result = result.replace(regex, (_, inner) => {
-      const lines = inner.trim().split("\n").map(l => `> ${l}`).join("\n");
+      const lines = inner
+        .trim()
+        .split("\n")
+        .map((l) => `> ${l}`)
+        .join("\n");
       return `> ${emoji} **${label}:**\n>\n${lines}\n`;
     });
   }

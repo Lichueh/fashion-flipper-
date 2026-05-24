@@ -194,7 +194,9 @@ export default function ProfilesScreen({
                         : "bg-primary-200 text-red-500"
                     }`}
                   >
-                    {awaitingConfirm ? t("profiles.confirmDelete") : t("common.delete")}
+                    {awaitingConfirm
+                      ? t("profiles.confirmDelete")
+                      : t("common.delete")}
                   </button>
                 </div>
               </div>

@@ -28,7 +28,9 @@ export default function BasicTutorialScreen({ navigate, activeProfile }) {
     <div className="h-full flex flex-col bg-primary-800">
       {/* Header */}
       <div className="px-5 pt-8 pb-4">
-        <h1 className="text-xl font-bold text-primary-50">{t("learn.title")}</h1>
+        <h1 className="text-xl font-bold text-primary-50">
+          {t("learn.title")}
+        </h1>
         <p className="text-primary-100 text-xs mt-0.5">{t("learn.subtitle")}</p>
 
         {/* Overall progress */}

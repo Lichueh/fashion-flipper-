@@ -166,5 +166,3 @@ export async function analyzeFabric(imageFile, options = {}) {
     return null;
   }
 }
-
-

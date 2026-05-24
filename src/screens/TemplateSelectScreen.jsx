@@ -305,7 +305,6 @@ export default function TemplateSelectScreen({
   // Preset picker inside the modal
   const [showModalPresetPicker, setShowModalPresetPicker] = useState(false);
   const [modalSelectedPresetId, setModalSelectedPresetId] = useState(null);
-  const [showDimensions, setShowDimensions] = useState(false);
   // Derived: which profile is in effect for the modal
   function effectiveProfile() {
     return sessionProfileOverride ?? activeProfile ?? null;
@@ -561,72 +560,6 @@ export default function TemplateSelectScreen({
         </div>
       </div>
 
-      {/* Dimensions overlay */}
-      {showDimensions && (
-        <div
-          className="absolute inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setShowDimensions(false)}
-        >
-          <div
-            className="mx-5 bg-primary-200 border border-primary-600 rounded-2xl px-5 py-4 w-full max-w-sm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-bold text-secondary-700 bg-secondary-200 rounded-full px-3 py-0.5 uppercase tracking-wider">
-                {t("templateSelect.yourGarment")}
-              </p>
-              <button
-                onClick={() => setShowDimensions(false)}
-                className="text-primary-500 hover:text-primary-800 text-lg leading-none"
-              >
-                ✕
-              </button>
-            </div>
-
-            {measurements?.panels?.frontPanel != null ? (
-              <div className="flex gap-4 flex-wrap">
-                <div>
-                  <p className="text-[10px] text-primary-800">
-                    {t("templateSelect.widthLabel")}
-                  </p>
-                  <p className="text-sm font-semibold text-secondary-700">
-                    {measurements.panels.frontPanel.widthCm} cm
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-primary-800">
-                    {t("templateSelect.heightLabel")}
-                  </p>
-                  <p className="text-sm font-semibold text-secondary-700">
-                    {measurements.panels.frontPanel.heightCm} cm
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-primary-800">
-                    {t("templateSelect.usableFabricOneSide")}
-                  </p>
-                  <p className="text-sm font-semibold text-secondary-700">
-                    {measurements.panels.frontPanel.areaCm2} cm²
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-primary-800">
-                    {t("templateSelect.totalFabricBothSides")}
-                  </p>
-                  <p className="text-sm font-semibold text-secondary-700">
-                    {measurements.totalAreaCm2} cm²
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-primary-200">
-                {t("templateSelect.measurementsUnavailable")}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4 space-y-4">
         {/* Info box */}
         <div className="bg-primary-100 rounded-2xl p-4">
@@ -647,17 +580,6 @@ export default function TemplateSelectScreen({
             </svg>
             <span>{t("templateSelect.longPressHint")}</span>
           </div>
-          {measurements != null && (
-            <div className="flex justify-end mt-3">
-              <button
-                onClick={() => setShowDimensions((v) => !v)}
-                className="text-[10px] border-primary-500 bg-primary-200 text-primary-700 flex items-center gap-1 hover:text-secondary-700 hover:bg-secondary-200 transition-colors rounded-full px-3 py-1.5"
-              >
-                <span>📏</span>
-                <span>{t("templateSelect.showGarmentDimensions")}</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Gender filter toggle — only shown when profile has a binary gender */}

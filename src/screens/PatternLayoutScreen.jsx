@@ -273,7 +273,13 @@ export default function PatternLayoutScreen({
   // tutorial. Short-circuit the whole drag UI in that case.
   if (template?.patternSource === "ar-tutorial") {
     return (
-      <ArTutorialReferenceView template={template} navigate={navigate} t={t} tl={tl} from={from} />
+      <ArTutorialReferenceView
+        template={template}
+        navigate={navigate}
+        t={t}
+        tl={tl}
+        from={from}
+      />
     );
   }
 
@@ -412,7 +418,8 @@ export default function PatternLayoutScreen({
   const [dragOverPanel, setDragOverPanel] = useState(null);
   const [showAiBadge, setShowAiBadge] = useState(true);
   const [showHint, setShowHint] = useState(true);
-  const activeLayoutOption = LAYOUT_OPTIONS[layoutOptionIndex] ?? LAYOUT_OPTIONS[0];
+  const activeLayoutOption =
+    LAYOUT_OPTIONS[layoutOptionIndex] ?? LAYOUT_OPTIONS[0];
   const activePieces =
     template.patternSource === "freesewing"
       ? (runtimePieces ??
@@ -830,8 +837,8 @@ export default function PatternLayoutScreen({
             <button
               type="button"
               onClick={() =>
-                setLayoutOptionIndex((index) =>
-                  (index + 1) % LAYOUT_OPTIONS.length,
+                setLayoutOptionIndex(
+                  (index) => (index + 1) % LAYOUT_OPTIONS.length,
                 )
               }
               aria-label={`Switch piece style. Current: ${activeLayoutOption.label}`}
@@ -887,7 +894,8 @@ export default function PatternLayoutScreen({
 
         <div className="mx-5 mb-3 flex justify-center">
           <div className="bg-primary-700 border border-primary-600 rounded-full px-3 py-1 text-[11px] text-primary-100">
-            Piece style: <span className="font-semibold">{activeLayoutOption.label}</span>
+            Piece style:{" "}
+            <span className="font-semibold">{activeLayoutOption.label}</span>
           </div>
         </div>
 

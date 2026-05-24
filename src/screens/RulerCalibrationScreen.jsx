@@ -41,9 +41,7 @@ export default function RulerCalibrationScreen({
     const x = (clientX - rect.left) / rect.width;
     const y = (clientY - rect.top) / rect.height;
     if (x < 0 || x > 1 || y < 0 || y > 1) return;
-    setPoints((prev) =>
-      prev.length >= 2 ? [{ x, y }] : [...prev, { x, y }],
-    );
+    setPoints((prev) => (prev.length >= 2 ? [{ x, y }] : [...prev, { x, y }]));
   };
 
   const onPointerDown = (e) => {

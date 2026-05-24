@@ -484,7 +484,9 @@ export default function ArMeasureScreen({ navigate }) {
                 margin: 0,
               }}
             >
-              {isCalibrating ? t("arMeasure.calibrate") : t("arMeasure.measureGarment")}
+              {isCalibrating
+                ? t("arMeasure.calibrate")
+                : t("arMeasure.measureGarment")}
             </p>
             <p
               style={{

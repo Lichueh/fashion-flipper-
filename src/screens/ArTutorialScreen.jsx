@@ -35,8 +35,11 @@ export default function ArTutorialScreen({
   const containerRef = useRef();
   const streamRef = useRef();
 
-  const { orientation, permission: orientPerm, requestPermission: requestOrient } =
-    useDeviceOrientation();
+  const {
+    orientation,
+    permission: orientPerm,
+    requestPermission: requestOrient,
+  } = useDeviceOrientation();
   const { scale, reset: resetScale } = usePinchScale(containerRef, {
     enabled: phase === "ready",
   });
@@ -47,9 +50,7 @@ export default function ArTutorialScreen({
   }, [currentStepIdx, resetScale]);
 
   const pxPerCm =
-    calibPxPerCm ??
-    tutorial?.fallbackPxPerCm ??
-    DEFAULT_FALLBACK_PX_PER_CM;
+    calibPxPerCm ?? tutorial?.fallbackPxPerCm ?? DEFAULT_FALLBACK_PX_PER_CM;
 
   // Camera startup — adapted from ArMeasureScreen.jsx:50–80
   useEffect(() => {
@@ -88,7 +89,8 @@ export default function ArTutorialScreen({
   useEffect(() => {
     if (!containerRef.current) return;
     const el = containerRef.current;
-    const update = () => setDimensions({ w: el.offsetWidth, h: el.offsetHeight });
+    const update = () =>
+      setDimensions({ w: el.offsetWidth, h: el.offsetHeight });
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
@@ -198,8 +200,9 @@ export default function ArTutorialScreen({
   }
 
   function markAllPairsDone() {
-    const fringe =
-      tutorial.steps.find((s) => s.id === step.overlay?.inheritFrom)?.overlay;
+    const fringe = tutorial.steps.find(
+      (s) => s.id === step.overlay?.inheritFrom,
+    )?.overlay;
     const numPairs = fringe ? Math.floor(fringe.count / 2) : 0;
     setCompletedPairs(new Set(Array.from({ length: numPairs }, (_, i) => i)));
   }
@@ -213,8 +216,9 @@ export default function ArTutorialScreen({
     : null;
 
   // Step 3 next-button gating: at least 1 pair OR all pairs done is fine
-  const canAdvanceStep3 =
-    step.overlay?.handsOffMode ? completedPairs.size >= 1 : true;
+  const canAdvanceStep3 = step.overlay?.handsOffMode
+    ? completedPairs.size >= 1
+    : true;
 
   // Permission denied splash — adapted from ArMeasureScreen.jsx:520–571
   if (phase === "denied") {
@@ -254,7 +258,14 @@ export default function ArTutorialScreen({
         >
           {t("arTutorial.cameraDeniedBody")}
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            width: "100%",
+          }}
+        >
           <button
             onClick={() => navigate(backTarget)}
             style={{
@@ -374,9 +385,7 @@ export default function ArTutorialScreen({
               overlay={step.overlay}
               inheritedOverlay={inheritedStep.overlay}
               inheritedDragOffset={inheritedOffset}
-              onTranslateInherited={(o) =>
-                setStepOffset(inheritedStep.id, o)
-              }
+              onTranslateInherited={(o) => setStepOffset(inheritedStep.id, o)}
               completedPairs={completedPairs}
               onTogglePair={togglePair}
             />
@@ -401,7 +410,8 @@ export default function ArTutorialScreen({
           left: 0,
           right: 0,
           padding: "12px 16px 14px",
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)",
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)",
           display: "flex",
           alignItems: "center",
           gap: 12,

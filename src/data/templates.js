@@ -52,7 +52,7 @@ export const templates = {
     id: "scrunchie",
     name: {
       en: "Kerchief Scrunchie",
-      nb: "Tørkle-hårstrikk",
+      nb: "Scrunchie-hårstrikk",
       zh: "方巾髮圈",
     },
     style: {
@@ -118,7 +118,7 @@ export const templates = {
     id: "bag",
     name: {
       en: "Tote Bag with chain",
-      nb: "Bærepose med kjede",
+      nb: "Totebag med kjede",
       zh: "鏈條托特包",
     },
     style: {
@@ -134,7 +134,7 @@ export const templates = {
     matchScore: 90,
     description: {
       en: "A simple, practical everyday tote — perfect for shopping or commuting",
-      nb: "En enkel, praktisk hverdagspose — perfekt for handling eller pendling",
+      nb: "En enkel, praktisk hverdagstote — perfekt for handling eller pendling",
       zh: "簡單實用的日常托特包 — 適合購物或通勤",
     },
     visualDescription:

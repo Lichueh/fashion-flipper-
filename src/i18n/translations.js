@@ -96,7 +96,7 @@ const translations = {
       analyzingFabric: "Analyzing Fabric",
       analyzingBody: "AI is identifying fabric material, color, and condition…",
       title: "AI Analysis Results",
-      complete: "✓ Analysis Complete",
+      complete: "✓ Complete",
       detectedMaterial: "Detected Material",
       fabricProperties: "Fabric Properties",
       composition: "Composition",
@@ -534,29 +534,29 @@ const translations = {
       profiles: "Profiler",
     },
     home: {
-      tagline: "Gi gamle klær nytt liv",
+      tagline: "Gi klærne dine et nytt liv",
       heroBadge: "AI-veiledet gjenbruk",
       heroTitle: "Ta et bilde og gjør\ndine gamle klær til noe nytt",
       heroBody:
-        "AI identifiserer stoffet og anbefaler det beste gjenbruksforslaget",
+        "AI identifiserer stoffet og anbefaler prosjektet som passer best",
       startUpcycling: "Start gjenbruk ✂️",
-      stat1Label: "Verk fra fellesskapet",
-      stat2Label: "Maler",
+      stat1Label: "Prosjekter fra fellesskapet",
+      stat2Label: "Mønstre",
       stat3Label: "Avfall redusert",
       communityPicks: "Utvalgt fra fellesskapet",
       seeAll: "Se alle →",
-      availableTemplates: "Tilgjengelige maler",
+      availableTemplates: "Tilgjengelige mønstre",
       recommendedForLevel: "Anbefalt for {level}",
     },
     upload: {
-      title: "Last opp bilde av dine gamle klær",
+      title: "Last opp bilde av et klesplagg",
       intro: "Trykk for å ta eller laste opp et bilde",
       reselect: "Trykk for å velge på nytt",
       tapToTake: "Ta bilde / last opp bilde",
       formatHint:
         "Bruk naturlig lys, en enkel bakgrunn med god kontrast, og få hele plagget med i bildet.",
       garmentMeasure: "📏 Mål på plagg",
-      garmentMeasureHint: "Velg hvordan du vil oppgi høyden  siden av plagget.",
+      garmentMeasureHint: "Velg hvordan du vil oppgi høyden av plagget.",
       manualOptionTitle: "Skriv inn høyden på plagget",
       arOptionTitle: "📏 Mål med AR",
       arOptionHint: "Trykk på to endepunkter med kameraet",
@@ -590,8 +590,8 @@ const translations = {
     analysis: {
       analyzingFabric: "Analyserer stoff",
       analyzingBody: "AI identifiserer stoffmateriale, farge og tilstand …",
-      title: "AI-analyseresultater",
-      complete: "✓ Analyse fullført",
+      title: "AI-Analyseresultater",
+      complete: "✓ Fullført",
       detectedMaterial: "Påvist materiale",
       fabricProperties: "Stoffegenskaper",
       composition: "Sammensetning",
@@ -604,13 +604,13 @@ const translations = {
       grainHorizontal: "Horisontal (innslag)",
       grainBias: "Skrå ({deg}°)",
       chooseDirection: "Velg retning →",
-      failedSegTitle: "Vi klarte ikke å oppdage plaggkonturen",
+      failedSegTitle: "Vi klarte ikke å regne ut arealet",
       failedFabricTitle: "Vi klarte ikke å identifisere stoffet",
       tryAgain: "Prøv igjen",
-      enterFabricManually: "Skriv inn stoff manuelt",
+      enterFabricManually: "Skriv inn stofftypen manuelt",
       continueAnyway: "Fortsett likevel",
       dimensionsWarning:
-        "Plaggmål kunne ikke beregnes — mønsteranbefalinger kan bli mindre nøyaktige.",
+        "Arealet kunne ikke beregnes — mønsteranbefalinger kan bli mindre nøyaktige.",
       manualFabricTitle: "Beskriv stoffet",
       manualFabricSubtitle:
         "Skriv inn stofftype. Du kan også legge til flere med prosentandeler.",
@@ -618,7 +618,7 @@ const translations = {
       manualFabricConfirm: "Bruk dette stoffet",
       manualFabricSkip: "Hopp over stoffinfo",
       fabricSuggestionSingle: "Mente du {suggestion} i stedet for {name}?",
-      fabricSuggestionMultiple: "Noen stoff navn ser ukjente ut:",
+      fabricSuggestionMultiple: "Vi kjenner ikke igjen alle stofftypene:",
       fabricUseSuggestion: "Bruk forslag",
       fabricKeepOriginal: "Behold som skrevet",
       fabricFormSubtitle:
@@ -633,7 +633,7 @@ const translations = {
     },
     templateSelect: {
       title: "Velg gjenbruksmal",
-      subtitle: "Anbefalt basert på AI-analyse",
+      subtitle: "Anbefalt basert på AI-analysen",
       topNHint: "Viser de {n} beste anbefalingene",
       intro:
         "Du har nok stoff til disse mønstrene. Prosentvurderingen viser stoffpasning og hvor mye stoff som gjenbrukes. Velg et mønster og få instruksjoner.",
@@ -660,7 +660,7 @@ const translations = {
       topRecommendation: "✨ AI-toppanbefaling",
       feasibilityLikely: "✓ Sannsynligvis nok stoff",
       feasibilityMaybe: "~ Kanskje nok stoff",
-      notFeasible: "✕ Ikke gjennomførbar",
+      notFeasible: "✕ Ikke gjennomførbart",
       sectionRecommended: "Anbefalt for dette stoffet",
       sectionLessSuitable: "Mindre egnet for dette stoffet",
       reasonArea: "Ikke nok stoffareal til dette mønsteret",
@@ -694,9 +694,9 @@ const translations = {
       noPreferenceDefined:
         "Stoffpreferanse er ikke lagt til for dette mønsteret ennå.",
       notCheckedBecauseAreaFailed:
-        "Stoffpasning kunne ikke vurderes fordi stoffkontekst mangler for dette mønsteret.",
+        "Stofftilpasning kunne ikke vurderes fordi stoffkontekst mangler for dette mønsteret.",
       notCheckedBecausePieceFitFailed:
-        "Stoffpasning ble ikke sjekket fordi mønsterdelene ikke passer på plagget.",
+        "Stofftilpasning ble ikke sjekket fordi mønsterdelene ikke passer på plagget.",
       fabricRejected: "Stofftypen er ikke kompatibel med dette mønsteret.",
     },
     stepGuide: {
@@ -720,7 +720,7 @@ const translations = {
     },
     result: {
       title: "Gjenbruksresultater",
-      complete: "Gjenbruk fullført!",
+      complete: "Prosjekt fullført!",
       subtitle: "Her er den AI-genererte gjenbruksforhåndsvisningen",
       afterTab: "✨ Etter (AI-forhåndsvisning)",
       beforeTab: "Originalt plagg",

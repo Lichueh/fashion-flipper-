@@ -215,7 +215,7 @@ export default function AnalysisScreen({
           ←
         </button>
         <div className="flex-1">
-          <h2 className="font-medium text-primary-100">
+          <h2 className="font-medium text-s text-primary-100">
             {t("analysis.title")}
           </h2>
         </div>

@@ -17,6 +17,7 @@ import ProfilesScreen from "./screens/ProfilesScreen";
 import ProfileEditorScreen from "./screens/ProfileEditorScreen";
 import SkillLevelScreen from "./screens/SkillLevelScreen";
 import AuthScreen from "./screens/AuthScreen";
+import ClosetScreen from "./screens/ClosetScreen";
 import CoachmarkTour from "./components/CoachmarkTour";
 import useProfiles from "./hooks/useProfiles";
 import { useAuth } from "./context/AuthContext";
@@ -204,6 +205,7 @@ export default function App() {
     community: (
       <CommunityScreen navigate={navigate} activeProfile={activeProfile} />
     ),
+    closet: <ClosetScreen navigate={navigate} activeProfile={activeProfile} />,
     profiles: (
       <ProfilesScreen
         profiles={profiles}

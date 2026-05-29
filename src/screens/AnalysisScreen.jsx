@@ -3,6 +3,8 @@ import { mockAnalysis } from "../data/mockAnalysis";
 import { useAnalysisPipeline } from "../hooks/useAnalysisPipeline";
 import { useLang } from "../i18n/LanguageContext";
 import ManualFabricForm from "../components/ManualFabricForm";
+import { useAuth } from "../context/AuthContext";
+import useFabrics from "../hooks/useFabrics";
 
 export default function AnalysisScreen({
   navigate,
@@ -14,6 +16,9 @@ export default function AnalysisScreen({
   imageWidth,
 }) {
   const { t, tl } = useLang();
+  const { user } = useAuth();
+  const { addFabric } = useFabrics(user?.id);
+  const [savedToCloset, setSavedToCloset] = useState(false);
   const {
     status,
     progress: pipelineProgress,
@@ -386,7 +391,7 @@ export default function AnalysisScreen({
       </div>
 
       {/* Pinned CTA */}
-      <div className="px-5 pb-6 pt-3 bg-primary-800">
+      <div className="px-5 pb-6 pt-3 bg-primary-800 space-y-3">
         <button
           onClick={() =>
             navigate("templateSelect", {
@@ -399,6 +404,57 @@ export default function AnalysisScreen({
           className="w-full bg-secondary-300 text-white py-4 rounded-2xl font-bold active:scale-[0.98] transition-transform shadow-md shadow-black/20"
         >
           {t("analysis.chooseDirection")}
+        </button>
+        <button
+          onClick={() => {
+            if (savedToCloset) return;
+            const fiberContent =
+              displayFabric.composition
+                ?.map(
+                  (c) =>
+                    `${c.percentage}% ${typeof c.material === "string" ? c.material : (c.material?.en ?? "")}`,
+                )
+                .join(", ") ?? null;
+            const noteParts = [
+              displayFabric.weight?.en ??
+                (typeof displayFabric.weight === "string"
+                  ? displayFabric.weight
+                  : null),
+              displayFabric.texture?.en ??
+                (typeof displayFabric.texture === "string"
+                  ? displayFabric.texture
+                  : null),
+              displayFabric.condition?.en ??
+                (typeof displayFabric.condition === "string"
+                  ? displayFabric.condition
+                  : null),
+            ].filter(Boolean);
+            addFabric({
+              name: displayFabric.type?.en ?? "Analysed Fabric",
+              source_type: "owned",
+              color:
+                displayFabric.color?.en ??
+                (typeof displayFabric.color === "string"
+                  ? displayFabric.color
+                  : null),
+              fiber_content: fiberContent || null,
+              length_cm: null,
+              width_cm: null,
+              notes: noteParts.length > 0 ? noteParts.join(" · ") : null,
+              image_url: null,
+            });
+            setSavedToCloset(true);
+          }}
+          disabled={savedToCloset}
+          className={`w-full py-3.5 rounded-2xl font-semibold text-sm transition-all active:scale-[0.97] ${
+            savedToCloset
+              ? "bg-primary-700 text-primary-100 cursor-default"
+              : "bg-primary-700 border border-primary-600 text-primary-100 active:bg-primary-600"
+          }`}
+        >
+          {savedToCloset
+            ? t("analysis.savedToCloset")
+            : `${t("analysis.saveToCloset")}`}
         </button>
       </div>
     </div>

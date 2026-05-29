@@ -228,7 +228,7 @@ ${svgSized}
                   key={i}
                   className="text-primary-900 text-sm flex items-start gap-2"
                 >
-                  <span className="text-secondary-400 mt-0.5">•</span>
+                  <span className="text-secondary-200 mt-0.5">•</span>
                   <span>{tl(m)}</span>
                 </li>
               ))}
@@ -774,7 +774,7 @@ export default function PatternLayoutScreen({
             title={t("patternLayout.printTooltip")}
             className="ml-2 h-9 px-3 bg-primary-700 border border-primary-600 rounded-full text-primary-100 text-xs font-semibold shadow-sm active:scale-[0.97] transition-transform whitespace-nowrap"
           >
-            {t("patternLayout.printPattern")}
+            🖨️ {t("patternLayout.printPattern")}
           </button>
         )}
         <button

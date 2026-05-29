@@ -2,7 +2,7 @@ import { useLang } from "../i18n/LanguageContext";
 
 const NAV_ITEMS = [
   { id: "home", labelKey: "nav.home", icon: HomeIcon },
-  { id: "upload", labelKey: "nav.upcycle", icon: ScissorsIcon },
+  { id: "closet", labelKey: "nav.closet", icon: ClosetIcon },
   { id: "learn", labelKey: "nav.learn", icon: BookIcon },
   { id: "community", labelKey: "nav.community", icon: CommunityIcon },
 ];
@@ -42,6 +42,30 @@ function ScissorsIcon({ active }) {
       <line x1="20" y1="4" x2="8.12" y2="15.88" />
       <line x1="14.47" y1="14.48" x2="20" y2="20" />
       <line x1="8.12" y1="8.12" x2="12" y2="12" />
+    </svg>
+  );
+}
+
+function ClosetIcon({ active }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={active ? "text-green-700" : "text-gray-400"}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path
+        d="M10 4.75a2 2 0 1 1 4 0c0 1.2-.9 1.9-2 2.5"
+        transform="translate(0.25 0.9)"
+      />
+      {/* hanger body */}
+      <path d="M12 8.75 4 15h16L12 8.75Z" />
     </svg>
   );
 }

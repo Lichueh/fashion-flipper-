@@ -16,8 +16,10 @@ import RulerCalibrationScreen from "./screens/RulerCalibrationScreen";
 import ProfilesScreen from "./screens/ProfilesScreen";
 import ProfileEditorScreen from "./screens/ProfileEditorScreen";
 import SkillLevelScreen from "./screens/SkillLevelScreen";
+import AuthScreen from "./screens/AuthScreen";
 import CoachmarkTour from "./components/CoachmarkTour";
 import useProfiles from "./hooks/useProfiles";
+import { useAuth } from "./context/AuthContext";
 
 const WALKTHROUGH_KEY = "ff_walkthrough_seen_v1";
 
@@ -33,6 +35,7 @@ const TOUR_STEPS = [
 ];
 
 export default function App() {
+  const { user, authLoading, signOut } = useAuth();
   const [screen, setScreen] = useState("home");
   const [walkthroughSeen, setWalkthroughSeen] = useState(() => {
     try {
@@ -68,7 +71,10 @@ export default function App() {
     updateProfile,
     deleteProfile,
     setActiveProfile,
-  } = useProfiles();
+    loading: profilesLoading,
+    timedOut: profilesTimedOut,
+    initialized: profilesInitialized,
+  } = useProfiles(user?.id);
 
   // Which profile is open in the editor (null = new profile)
   const [editingProfileId, setEditingProfileId] = useState(null);
@@ -207,6 +213,7 @@ export default function App() {
         deleteProfile={deleteProfile}
         setActiveProfile={setActiveProfile}
         navigate={navigate}
+        signOut={signOut}
       />
     ),
     profileEditor: (
@@ -232,7 +239,32 @@ export default function App() {
   // (or there is no profile at all), force the picker before anything else.
   // After skillLevel is set, the home screen renders the 3-stop coachmark tour
   // over its own UI on first visit (gated by `walkthroughSeen`).
-  const needsSkillLevel = !activeProfile || !activeProfile.skillLevel;
+  // Show a neutral spinner while Supabase auth or profile data is resolving,
+  // to avoid flashing SkillLevelScreen before the data arrives.
+  if (authLoading || (user && !profilesInitialized)) {
+    return (
+      <PhoneFrame>
+        <div className="h-full flex items-center justify-center bg-primary-800">
+          <p className="text-primary-300 text-sm">Loading…</p>
+        </div>
+      </PhoneFrame>
+    );
+  }
+
+  if (!user) {
+    return (
+      <PhoneFrame>
+        <AuthScreen />
+      </PhoneFrame>
+    );
+  }
+
+  // Skip the skill-level gate when profiles timed out — without profiles the
+  // gate would trap the user on SkillLevelScreen with no way to sign out.
+  const needsSkillLevel =
+    !profilesTimedOut &&
+    profilesInitialized &&
+    (!activeProfile || !activeProfile.skillLevel);
   const effectiveScreen =
     needsSkillLevel && screen !== "skillLevel" ? "skillLevel" : screen;
 

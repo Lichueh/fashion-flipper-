@@ -18,6 +18,7 @@ export default function ProfilesScreen({
   deleteProfile,
   setActiveProfile,
   navigate,
+  signOut,
 }) {
   const { t, lang } = useLang();
   const localeMap = { en: undefined, nb: "nb-NO", zh: "zh-Hant-TW" };
@@ -72,7 +73,7 @@ export default function ProfilesScreen({
         >
           ←
         </button>
-        <div>
+        <div className="flex-1">
           <h2 className="font-semibold text-primary-100 text-base">
             {t("profiles.title")}
           </h2>
@@ -80,6 +81,14 @@ export default function ProfilesScreen({
             {t("profiles.subtitle")}
           </p>
         </div>
+        {signOut && (
+          <button
+            onClick={signOut}
+            className="text-primary-200 text-xs px-3 py-1.5 rounded-full border border-primary-600 active:scale-95 transition-transform"
+          >
+            Sign out
+          </button>
+        )}
       </div>
 
       {noActiveButHasProfiles && (
@@ -131,7 +140,7 @@ export default function ProfilesScreen({
                 key={profile.id}
                 onClick={(e) => handleRowClick(e, profile.id)}
                 className={`bg-primary-100 rounded-3xl px-4 py-4 flex items-center gap-3 border-2 transition-colors ${
-                  isActive ? "border-secondary-400" : "border-primary-200"
+                  isActive ? "border-secondary-200" : "border-primary-200"
                 }`}
               >
                 <div

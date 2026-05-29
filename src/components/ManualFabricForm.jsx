@@ -40,18 +40,49 @@ const MATERIAL_OPTIONS = FABRIC_TYPES;
 
 const UNKNOWN = { en: "Unknown", nb: "Ukjent", zh: "未知" };
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function matchOrNull(options, obj) {
+  if (!obj || obj.en === "Unknown") return null;
+  return options.find((o) => o.en === obj.en) ?? null;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function ManualFabricForm({ setManualFabric, onCancel }) {
+export default function ManualFabricForm({
+  setManualFabric,
+  onCancel,
+  initialFabric,
+}) {
   const { t, tl } = useLang();
 
+  // Resolve initial values from pre-existing fabric data (if any).
+  const initType = initialFabric
+    ? (matchOrNull(FABRIC_TYPES, initialFabric.type) ??
+      (initialFabric.type?.en ? "custom" : null))
+    : null;
+  const initCustomType =
+    initialFabric && initType === "custom"
+      ? (initialFabric.type?.en ?? "")
+      : "";
+  const initWeight = initialFabric
+    ? matchOrNull(WEIGHT_OPTIONS, initialFabric.weight)
+    : null;
+  const initTexture = initialFabric
+    ? matchOrNull(TEXTURE_OPTIONS, initialFabric.texture)
+    : null;
+  const initComposition =
+    initialFabric?.composition?.length > 0
+      ? initialFabric.composition.map((c) => ({
+          material: matchOrNull(MATERIAL_OPTIONS, c.material),
+          percentage: c.percentage != null ? String(c.percentage) : "",
+        }))
+      : [{ material: null, percentage: "" }];
+
   // typeChoice: one of FABRIC_TYPES (object) | "custom" | null
-  const [typeChoice, setTypeChoice] = useState(null);
-  const [customType, setCustomType] = useState("");
-  const [weight, setWeight] = useState(null);
-  const [texture, setTexture] = useState(null);
-  const [composition, setComposition] = useState([
-    { material: null, percentage: "" },
-  ]);
+  const [typeChoice, setTypeChoice] = useState(initType);
+  const [customType, setCustomType] = useState(initCustomType);
+  const [weight, setWeight] = useState(initWeight);
+  const [texture, setTexture] = useState(initTexture);
+  const [composition, setComposition] = useState(initComposition);
 
   const resolvedType =
     typeChoice === "custom"

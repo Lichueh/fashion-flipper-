@@ -47,6 +47,7 @@ export default function AnalysisScreen({
   }, [uploadedFile]);
 
   const [phase, setPhase] = useState("scanning");
+  const [isEditingFabric, setIsEditingFabric] = useState(false);
 
   useEffect(() => {
     if (status === "done" || status === "error") {
@@ -64,6 +65,13 @@ export default function AnalysisScreen({
         : null;
     run(uploadedFile, lengthGarment, hasLayers, rulerScale);
   };
+
+  const handleFabricEdited = () => {
+    setIsEditingFabric(false);
+  };
+
+  // Computed early so it's available to the editing-phase early return below.
+  const displayFabric = fabric ?? mockAnalysis.fabric;
 
   // ─── SCANNING PHASE ─────────────────────────────────────────────
   if (phase === "scanning") {
@@ -192,10 +200,21 @@ export default function AnalysisScreen({
     );
   }
 
+  // ─── EDITING FABRIC PHASE ────────────────────────────────────────
+  if (phase === "result" && isEditingFabric) {
+    return (
+      <ManualFabricForm
+        initialFabric={displayFabric}
+        setManualFabric={(updatedFabric) => {
+          setManualFabric(updatedFabric);
+          handleFabricEdited();
+        }}
+        onCancel={() => handleFabricEdited()}
+      />
+    );
+  }
+
   // ─── RESULTS PHASE ───────────────────────────────────────────────
-  // Fall back to mock fabric when setManualFabric(null) was called
-  // ("Continue anyway" / "Skip fabric info" paths).
-  const displayFabric = fabric ?? mockAnalysis.fabric;
   const grainAngle = mockAnalysis.garmentLayout.grainAngleDeg;
   const grainText =
     grainAngle === 90
@@ -276,9 +295,17 @@ export default function AnalysisScreen({
 
         {/* Fabric details */}
         <div className="bg-primary-100 rounded-3xl p-4 border border-primary-200 fade-in">
-          <p className="text-xs font-medium text-primary-700 uppercase tracking-wider mb-3">
-            {t("analysis.fabricProperties")}
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-medium text-primary-700 uppercase tracking-wider">
+              {t("analysis.fabricProperties")}
+            </p>
+            <button
+              onClick={() => setIsEditingFabric(true)}
+              className="text-xs font-medium text-secondary-300 hover:text-secondary-400 active:opacity-70 transition-colors"
+            >
+              ✎ {t("common.edit") || "Edit"}
+            </button>
+          </div>
           <div className="space-y-2.5">
             {[
               {

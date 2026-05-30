@@ -66,6 +66,14 @@ const translations = {
       errorLoad: "Failed to load fabrics",
       errorSave: "Failed to save fabric",
       errorDelete: "Failed to delete fabric",
+      detailsTitle: "Fabric Details",
+      labelDimensions: "Dimensions",
+      close: "Close",
+      deleteConfirmTitle: "Remove fabric?",
+      deleteConfirmBody:
+        "\u201c{name}\u201d will be permanently removed from your closet.",
+      renameTitle: "Rename fabric",
+      rename: "Rename",
     },
     home: {
       tagline: "Give old clothes a new life",
@@ -590,6 +598,14 @@ const translations = {
       errorLoad: "Kunne ikke laste stoffer",
       errorSave: "Kunne ikke lagre stoff",
       errorDelete: "Kunne ikke slette stoff",
+      detailsTitle: "Stoffdetaljer",
+      labelDimensions: "Dimensjoner",
+      close: "Lukk",
+      deleteConfirmTitle: "Fjerne stoff?",
+      deleteConfirmBody:
+        "\u00ab{name}\u00bb vil bli permanent fjernet fra garderoben din.",
+      renameTitle: "Gi stoff nytt navn",
+      rename: "Gi nytt navn",
     },
     home: {
       tagline: "Gi klærne dine et nytt liv",
@@ -1119,6 +1135,13 @@ const translations = {
       errorLoad: "無法載入布料",
       errorSave: "無法儲存布料",
       errorDelete: "無法刪除布料",
+      detailsTitle: "布料詳細資料",
+      labelDimensions: "尺寸",
+      close: "關閉",
+      deleteConfirmTitle: "移除布料？",
+      deleteConfirmBody: "「{name}」將永久從你的衣櫃中移除。",
+      renameTitle: "重新命名布料",
+      rename: "重新命名",
     },
     home: {
       tagline: "讓舊衣物重獲新生",

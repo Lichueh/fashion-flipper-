@@ -3,6 +3,7 @@ import BottomNav from "../components/BottomNav";
 import { useAuth } from "../context/AuthContext";
 import useFabrics from "../hooks/useFabrics";
 import { useLang } from "../i18n/LanguageContext";
+import FabricDetailSheet from "../components/FabricDetailSheet";
 
 // ── Source badge colours ──────────────────────────────────────────────────────
 const SOURCE_COLORS = {
@@ -40,6 +41,24 @@ function PlusIcon() {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
 function TrashIcon() {
   return (
     <svg
@@ -61,7 +80,7 @@ function TrashIcon() {
 }
 
 // ── FabricCard ────────────────────────────────────────────────────────────────
-function FabricCard({ fabric, onDelete, t }) {
+function FabricCard({ fabric, onDelete, onSelect, onRename, t }) {
   const dims =
     fabric.length_cm && fabric.width_cm
       ? `${fabric.length_cm} × ${fabric.width_cm} cm`
@@ -72,7 +91,10 @@ function FabricCard({ fabric, onDelete, t }) {
           : null;
 
   return (
-    <div className="bg-primary-100 rounded-2xl border border-primary-200 p-4 flex gap-3 items-start active:scale-[0.98] transition-transform">
+    <div
+      onClick={() => onSelect(fabric)}
+      className="bg-primary-100 rounded-2xl border border-primary-200 p-4 flex gap-3 items-start active:scale-[0.98] transition-transform cursor-pointer"
+    >
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-2 flex-wrap mb-1">
           <span className="font-semibold text-primary-900 text-sm leading-snug">
@@ -101,12 +123,25 @@ function FabricCard({ fabric, onDelete, t }) {
         )}
       </div>
       <button
-        onClick={() => onDelete(fabric.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(fabric);
+        }}
         className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-error-200 hover:bg-error-50 active:bg-error-100 transition-colors"
         aria-label={t("closet.delete")}
       >
         <TrashIcon />
-      </button>
+      </button>{" "}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRename(fabric);
+        }}
+        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-primary-500 hover:bg-primary-200 active:bg-primary-300 transition-colors"
+        aria-label={t("closet.rename")}
+      >
+        <PencilIcon />
+      </button>{" "}
     </div>
   );
 }
@@ -299,8 +334,19 @@ function AddFabricModal({ t, onClose, onSubmit }) {
 export default function ClosetScreen({ navigate, activeProfile }) {
   const { user } = useAuth();
   const { t } = useLang();
-  const { fabrics, loading, error, initialized, addFabric, deleteFabric } =
-    useFabrics(user?.id);
+  const {
+    fabrics,
+    loading,
+    error,
+    initialized,
+    addFabric,
+    deleteFabric,
+    renameFabric,
+  } = useFabrics(user?.id);
+  const [selectedFabric, setSelectedFabric] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
   return (
     <div className="relative h-full flex flex-col bg-primary-800">
       {/* Header */}
@@ -361,7 +407,12 @@ export default function ClosetScreen({ navigate, activeProfile }) {
               <FabricCard
                 key={fabric.id}
                 fabric={fabric}
-                onDelete={deleteFabric}
+                onDelete={setDeleteTarget}
+                onSelect={setSelectedFabric}
+                onRename={(f) => {
+                  setRenameTarget(f);
+                  setRenameValue(f.name);
+                }}
                 t={t}
               />
             ))}
@@ -374,6 +425,94 @@ export default function ClosetScreen({ navigate, activeProfile }) {
         navigate={navigate}
         activeProfile={activeProfile}
       />
+
+      {selectedFabric && (
+        <FabricDetailSheet
+          fabric={selectedFabric}
+          onClose={() => setSelectedFabric(null)}
+          t={t}
+        />
+      )}
+
+      {renameTarget && (
+        <div className="absolute inset-0 bg-black/50 flex items-end justify-center z-50">
+          <div
+            className="absolute inset-0"
+            onClick={() => setRenameTarget(null)}
+          />
+          <div className="relative w-full bg-white rounded-t-3xl px-5 pt-4 pb-10">
+            <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+            <p className="text-base font-bold text-primary-900 mb-4">
+              {t("closet.renameTitle")}
+            </p>
+            <input
+              autoFocus
+              className="w-full bg-primary-50 border border-primary-200 rounded-xl px-3 py-2.5 text-sm text-primary-900 focus:outline-none focus:border-primary-500 mb-5"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && renameValue.trim()) {
+                  renameFabric(renameTarget.id, renameValue.trim());
+                  setRenameTarget(null);
+                }
+              }}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRenameTarget(null)}
+                className="flex-1 py-3 rounded-xl border border-primary-300 text-primary-800 font-semibold text-sm active:bg-primary-100 transition-colors"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                disabled={!renameValue.trim()}
+                onClick={() => {
+                  renameFabric(renameTarget.id, renameValue.trim());
+                  setRenameTarget(null);
+                }}
+                className="flex-1 py-3 rounded-xl bg-primary-700 text-primary-100 font-semibold text-sm active:bg-primary-800 transition-colors disabled:opacity-40"
+              >
+                {t("common.save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="absolute inset-0 bg-black/50 flex items-end justify-center z-50">
+          <div
+            className="absolute inset-0"
+            onClick={() => setDeleteTarget(null)}
+          />
+          <div className="relative w-full bg-white rounded-t-3xl px-5 pt-4 pb-10">
+            <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+            <p className="text-base font-bold text-primary-900 mb-1">
+              {t("closet.deleteConfirmTitle")}
+            </p>
+            <p className="text-sm text-primary-600 mb-6">
+              {t("closet.deleteConfirmBody", { name: deleteTarget.name })}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-3 rounded-xl border border-primary-300 text-primary-800 font-semibold text-sm active:bg-primary-100 transition-colors"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={() => {
+                  deleteFabric(deleteTarget.id);
+                  setDeleteTarget(null);
+                }}
+                className="flex-1 py-3 rounded-xl bg-error-200 text-white font-semibold text-sm active:bg-error-300 transition-colors"
+              >
+                {t("common.delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

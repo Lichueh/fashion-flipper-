@@ -17,7 +17,7 @@ export default function AnalysisScreen({
 }) {
   const { t, tl } = useLang();
   const { user } = useAuth();
-  const { addFabric } = useFabrics(user?.id);
+  const { addFabric } = useFabrics(user?.id, { fetch: false });
   const [savedToCloset, setSavedToCloset] = useState(false);
   const {
     status,

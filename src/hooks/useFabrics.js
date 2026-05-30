@@ -1,11 +1,31 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../utils/supabase";
 
+// ── Request deduplication ─────────────────────────────────────────────────────
+// PhoneFrame renders children into both a desktop branch and a mobile branch
+// simultaneously (CSS hides one, but React mounts both). Combined with
+// StrictMode's double-invoke, a single navigation to ClosetScreen would fire
+// 4 identical SELECT queries. This Map ensures all concurrent callers for the
+// same userId share one in-flight promise.
+const _inFlight = new Map(); // userId → Promise<{ data, error }>
+
+function _fetchFabrics(userId) {
+  if (_inFlight.has(userId)) return _inFlight.get(userId);
+  const p = supabase
+    .from("fabrics")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  _inFlight.set(userId, p);
+  p.finally(() => _inFlight.delete(userId));
+  return p;
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export default function useFabrics(userId) {
+export default function useFabrics(userId, { fetch = true } = {}) {
   const [fabrics, setFabrics] = useState([]);
-  const [loading, setLoading] = useState(!!userId);
+  const [loading, setLoading] = useState(fetch && !!userId);
   const [error, setError] = useState(null);
   const [initialized, setInitialized] = useState(false);
 
@@ -15,6 +35,9 @@ export default function useFabrics(userId) {
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
+    // Skip fetching entirely when the caller only needs mutation helpers.
+    if (!fetch) return;
+
     if (!userId) {
       setFabrics([]);
       setError(null);
@@ -36,11 +59,7 @@ export default function useFabrics(userId) {
 
     async function load() {
       try {
-        const { data, error: queryError } = await supabase
-          .from("fabrics")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false });
+        const { data, error: queryError } = await _fetchFabrics(userId);
 
         if (cancelled) return;
 
@@ -145,5 +164,42 @@ export default function useFabrics(userId) {
       });
   }, []);
 
-  return { fabrics, loading, error, initialized, addFabric, deleteFabric };
+  // ── renameFabric ─────────────────────────────────────────────────────────────
+  // Optimistic: local state updated immediately. Supabase write fires in background.
+  const renameFabric = useCallback((id, name) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+
+    let previous;
+    setFabrics((prev) => {
+      previous = prev.find((f) => f.id === id)?.name;
+      return prev.map((f) => (f.id === id ? { ...f, name } : f));
+    });
+
+    supabase
+      .from("fabrics")
+      .update({ name })
+      .eq("id", id)
+      .eq("user_id", uid)
+      .then(({ error: updateError }) => {
+        if (updateError) {
+          console.error("[useFabrics] renameFabric:", updateError.message);
+          if (previous !== undefined) {
+            setFabrics((prev) =>
+              prev.map((f) => (f.id === id ? { ...f, name: previous } : f)),
+            );
+          }
+        }
+      });
+  }, []);
+
+  return {
+    fabrics,
+    loading,
+    error,
+    initialized,
+    addFabric,
+    deleteFabric,
+    renameFabric,
+  };
 }

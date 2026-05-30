@@ -5,6 +5,7 @@ import { useLang } from "../i18n/LanguageContext";
 import ManualFabricForm from "../components/ManualFabricForm";
 import { useAuth } from "../context/AuthContext";
 import useFabrics from "../hooks/useFabrics";
+import { supabase } from "../utils/supabase";
 
 export default function AnalysisScreen({
   navigate,
@@ -19,6 +20,7 @@ export default function AnalysisScreen({
   const { user } = useAuth();
   const { addFabric } = useFabrics(user?.id, { fetch: false });
   const [savedToCloset, setSavedToCloset] = useState(false);
+  const savingRef = useRef(false);
   const {
     status,
     progress: pipelineProgress,
@@ -406,8 +408,28 @@ export default function AnalysisScreen({
           {t("analysis.chooseDirection")}
         </button>
         <button
-          onClick={() => {
-            if (savedToCloset) return;
+          onClick={async () => {
+            if (savingRef.current) return;
+            savingRef.current = true;
+            setSavedToCloset(true);
+
+            let imageUrl = null;
+
+            if (uploadedFile && user?.id) {
+              const ext = uploadedFile.name.split(".").pop() || "jpg";
+              const path = `${user.id}/${Date.now()}.${ext}`;
+              const { data: uploadData, error: uploadError } =
+                await supabase.storage
+                  .from("fabric-images")
+                  .upload(path, uploadedFile, { upsert: false });
+              if (!uploadError) {
+                const { data: urlData } = supabase.storage
+                  .from("fabric-images")
+                  .getPublicUrl(uploadData.path);
+                imageUrl = urlData.publicUrl;
+              }
+            }
+
             const fiberContent =
               displayFabric.composition
                 ?.map(
@@ -441,9 +463,8 @@ export default function AnalysisScreen({
               length_cm: null,
               width_cm: null,
               notes: noteParts.length > 0 ? noteParts.join(" · ") : null,
-              image_url: null,
+              image_url: imageUrl,
             });
-            setSavedToCloset(true);
           }}
           disabled={savedToCloset}
           className={`w-full py-3.5 rounded-2xl font-semibold text-sm transition-all active:scale-[0.97] ${
